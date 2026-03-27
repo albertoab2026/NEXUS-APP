@@ -90,6 +90,10 @@
             transition: transform 0.2s, box-shadow 0.2s;
             margin-bottom: 15px;
             color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px; /* Espacio entre el icono y el texto */
         }
         .btn-main:active {
             transform: scale(0.98); /* Efecto de clic */
@@ -116,7 +120,7 @@
         .btn-pago {
             width: 100%;
             border: none;
-            padding: 12px;
+            padding: 10px;
             border-radius: 10px;
             font-size: 16px;
             font-weight: bold;
@@ -127,9 +131,14 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            gap: 10px; /* Espacio entre el logo y el texto */
         }
         .btn-pago:hover {
             opacity: 0.85;
+        }
+        .btn-pago img {
+            height: 24px; /* Tamaño de los logos */
+            width: auto;
         }
 
         /* --- BOTONES DE PAGO ESPECÍFICOS --- */
@@ -138,6 +147,10 @@
         }
         .btn-yape {
             background-color: #ff6600; /* Anaranjado Yape/BCP */
+        }
+        .btn-efectivo {
+            background-color: #2e7d32; /* Verde Efectivo */
+            font-size: 30px; /* Tamaño del icono de billetes */
         }
 
         /* ESTADO DE ENVÍO */
@@ -148,6 +161,14 @@
             text-align: center;
             display: none;
             font-weight: bold;
+        }
+
+        /* FIRMA DEL AUTOR */
+        .autor-firma {
+            font-size: 12px;
+            color: #00796b;
+            margin-top: 30px;
+            font-style: italic;
         }
     </style>
 </head>
@@ -174,15 +195,33 @@
         <input type="number" id="prodStock" placeholder="0">
     </div>
 
-    <button class="btn-main btn-vender" onclick="registrarVenta()">🟠 REGISTRAR VENTA / COBRAR</button>
+    <button class="btn-main btn-vender" onclick="registrarVenta()">
+        <span>🛒</span> REGISTRAR VENTA / COBRAR
+    </button>
     
     <div class="pagos-container">
         <h3>Métodos de Pago Rápidos</h3>
-        <button class="btn-pago btn-plin">⚡ Cobrar con PLIN</button>
-        <button class="btn-pago btn-yape">🟣 Cobrar con YAPE</button>
+        
+        <button class="btn-pago btn-plin">
+            <img src="https://plin.pe/wp-content/uploads/2021/08/plin_logo.svg" alt="Logo Plin">
+            Cobrar con PLIN
+        </button>
+        
+        <button class="btn-pago btn-yape">
+            <img src="https://yape.pe/wp-content/uploads/2022/10/logo-yape-white.svg" alt="Logo Yape">
+            Cobrar con YAPE
+        </button>
+        
+        <button class="btn-pago btn-efectivo">
+            <span>💵</span> Cobrar en EFECTIVO
+        </button>
     </div>
 
     <div id="mensaje" class="status"></div>
+
+    <div class="autor-firma">
+        Creado por Alberto Ballarta - Soluciones Digitales
+    </div>
 </div>
 
 <script>
