@@ -2,259 +2,139 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Inventario Dental Premium - Demo</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Inventario Dental - Alberto Ballarta</title>
     <style>
-        /* FONDO RELACIONADO CON LA TIENDA (Clínica Dental) */
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
-            padding: 20px;
+            padding: 15px;
+            background: linear-gradient(135deg, #e0f7fa 0%, #80deea 100%);
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
-            /* Usamos un degradado suave y profesional con tonos celestes/dentales */
-            background: linear-gradient(135deg, #e0f7fa 0%, #80deea 100%);
-            /* Opcional: Imagen de fondo sutil (descomenta la línea de abajo si tienes una imagen) */
-            /* background-image: url('ruta/a/tu/imagen-fondo-dental.jpg'); background-size: cover; */
         }
 
         .card {
-            background: rgba(255, 255, 255, 0.95); /* Fondo blanco semi-transparente */
-            padding: 30px;
-            border-radius: 20px;
-            box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+            background: #ffffff;
             width: 100%;
-            max-width: 450px;
+            max-width: 380px; /* Tamaño perfecto para móvil y PC */
+            padding: 25px;
+            border-radius: 25px;
+            box-shadow: 0 15px 35px rgba(0,0,0,0.15);
             text-align: center;
-            position: relative; /* Para el diente animado */
-            border: 2px solid #00acc1; /* Borde de color dental */
+            border: 2px solid #00acc1;
         }
 
-        /* TÍTULO CON ICONO */
-        h2 {
-            color: #00796b;
-            margin-bottom: 10px;
-            font-size: 24px;
-        }
-
-        /* --- EL DIENTE MOVIÉNDOSE (Animación) --- */
-        .diente-animado {
+        .diente {
             font-size: 50px;
-            position: absolute;
-            top: -30px;
-            left: calc(50% - 25px); /* Centrado arriba de la tarjeta */
-            animation: bounce 2s infinite ease-in-out; /* Nombre de la animación, duración, repetición */
+            display: inline-block;
+            animation: bounce 2s infinite ease-in-out;
         }
 
-        /* Definición de la animación 'bounce' */
         @keyframes bounce {
             0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-15px); } /* Sube 15px */
+            50% { transform: translateY(-15px); }
         }
 
-        /* ESTILOS DE FORMULARIO */
-        .input-group {
-            margin-bottom: 15px;
-            text-align: left;
-        }
-        label {
-            display: block;
-            margin-bottom: 5px;
-            color: #004d40;
-            font-weight: bold;
-        }
-        input, select {
+        h2 { color: #00796b; margin: 15px 0 5px 0; font-size: 22px; }
+
+        input {
             width: 100%;
-            padding: 12px;
+            padding: 14px;
+            margin-top: 12px;
             border: 2px solid #b2dfdb;
-            border-radius: 10px;
+            border-radius: 12px;
             box-sizing: border-box;
             font-size: 16px;
         }
-        input:focus {
-            border-color: #00acc1;
-            outline: none;
-        }
-
-        /* BOTONES PRINCIPALES (Vender/Cobrar) LLAMATIVOS */
-        .btn-main {
-            width: 100%;
-            border: none;
-            padding: 15px;
-            border-radius: 12px;
-            font-size: 18px;
-            font-weight: bold;
-            cursor: pointer;
-            transition: transform 0.2s, box-shadow 0.2s;
-            margin-bottom: 15px;
-            color: white;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 10px; /* Espacio entre el icono y el texto */
-        }
-        .btn-main:active {
-            transform: scale(0.98); /* Efecto de clic */
-        }
 
         .btn-vender {
-            background: linear-gradient(45deg, #ffc107, #ff9800); /* Naranja/Amarillo brillante */
-            box-shadow: 0 5px 15px rgba(255, 152, 0, 0.4);
-        }
-        .btn-vender:hover {
-            box-shadow: 0 8px 20px rgba(255, 152, 0, 0.6);
+            width: 100%;
+            background: linear-gradient(45deg, #ffc107, #ff9800);
+            color: white;
+            border: none;
+            padding: 16px;
+            border-radius: 15px;
+            font-size: 18px;
+            font-weight: bold;
+            margin-top: 20px;
+            cursor: pointer;
+            box-shadow: 0 5px 15px rgba(255, 152, 0, 0.3);
         }
 
-        /* Icono de carrito en el botón de venta */
-        .icono-carrito {
-            font-size: 24px;
-        }
-
-        /* SECCIÓN DE PAGOS */
-        .pagos-container {
+        .seccion-pagos {
             margin-top: 25px;
-            border-top: 2px dashed #b2dfdb;
+            border-top: 2px dashed #eee;
             padding-top: 20px;
         }
-        h3 {
-            color: #00796b;
-            margin-bottom: 15px;
-        }
+
         .btn-pago {
             width: 100%;
-            border: none;
-            padding: 10px;
-            border-radius: 10px;
-            font-size: 16px;
-            font-weight: bold;
-            cursor: pointer;
+            padding: 12px;
             margin-bottom: 10px;
-            transition: opacity 0.3s;
+            border-radius: 12px;
+            border: none;
             color: white;
+            font-weight: bold;
+            font-size: 16px;
             display: flex;
             align-items: center;
             justify-content: center;
-            gap: 10px; /* Espacio entre el icono y el texto */
-        }
-        .btn-pago:hover {
-            opacity: 0.85;
+            gap: 12px;
         }
 
-        /* Iconos de los botones de pago */
-        .icono-pago {
-            font-size: 24px;
-        }
+        /* --- LOS COLORES QUE PEDISTE --- */
+        .plin { background-color: #00a8e1; } /* Celeste Plin */
+        .yape { background-color: #6a1b9a; } /* Morado Yape */
+        .efectivo { background-color: #2e7d32; } /* Verde Efectivo */
 
-        /* --- BOTONES DE PAGO ESPECÍFICOS --- */
-        .btn-plin {
-            background-color: #00a8e1; /* Celeste Plin/BBVA */
-        }
-        .btn-yape {
-            background-color: #ff6600; /* Anaranjado Yape/BCP */
-        }
-        .btn-efectivo {
-            background-color: #2e7d32; /* Verde Efectivo */
-        }
+        .bola { font-size: 20px; }
 
-        /* ESTADO DE ENVÍO */
-        .status {
-            margin-top: 20px;
-            padding: 12px;
-            border-radius: 8px;
-            text-align: center;
-            display: none;
-            font-weight: bold;
-        }
-
-        /* FIRMA DEL AUTOR */
-        .autor-firma {
+        .firma {
             font-size: 12px;
             color: #00796b;
-            margin-top: 30px;
+            margin-top: 25px;
             font-style: italic;
+            border-top: 1px solid #f0f0f0;
+            padding-top: 15px;
         }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <div class="diente-animado">🦷</div>
-    
-    <h2>Inventario Dental Express</h2>
-    <p style="color: #555; margin-top: -5px; margin-bottom: 20px;">Local Carabayllo / San Felipe</p>
-    
-    <div class="input-group">
-        <label>Código del Producto</label>
-        <input type="text" id="prodId" placeholder="Ej: RES-A2">
-    </div>
+    <div class="diente">🦷</div>
+    <h2>Inventario Dental</h2>
+    <p style="color: #666; font-size: 14px; margin-bottom: 10px;">Gestión Alberto Ballarta</p>
 
-    <div class="input-group">
-        <label>Nombre del Material</label>
-        <input type="text" id="prodNombre" placeholder="Ej: Resina Z350 3M">
-    </div>
+    <input type="text" placeholder="Código del producto">
+    <input type="text" placeholder="Nombre del material">
+    <input type="number" placeholder="Cantidad">
 
-    <div class="input-group">
-        <label>Cantidad (Stock)</label>
-        <input type="number" id="prodStock" placeholder="0">
-    </div>
+    <button class="btn-vender">🛒 REGISTRAR VENTA</button>
 
-    <button class="btn-main btn-vender" onclick="registrarVenta()">
-        <span class="icono-carrito">🛒</span> REGISTRAR VENTA / COBRAR
-    </button>
-    
-    <div class="pagos-container">
-        <h3>Métodos de Pago Rápidos</h3>
+    <div class="seccion-pagos">
+        <p style="font-weight: bold; color: #444; margin-bottom: 15px;">Métodos de Pago</p>
         
-        <button class="btn-pago btn-plin">
-            <span class="icono-pago">🔵</span> Cobrar con PLIN
+        <button class="btn-pago plin">
+            <span class="bola">🔵</span> Cobrar con PLIN
         </button>
-        
-        <button class="btn-pago btn-yape">
-            <span class="icono-pago">🟣</span> Cobrar con YAPE
+
+        <button class="btn-pago yape">
+            <span class="bola">🟣</span> Cobrar con YAPE
         </button>
-        
-        <button class="btn-pago btn-efectivo">
-            <span class="icono-pago">💵</span> Cobrar en EFECTIVO
+
+        <button class="btn-pago efectivo">
+            <span class="bola">💵</span> EFECTIVO
         </button>
     </div>
 
-    <div id="mensaje" class="status"></div>
-
-    <div class="autor-firma">
+    <div class="firma">
         Creado por Alberto Ballarta - Soluciones Digitales
     </div>
 </div>
-
-<script>
-    function registrarVenta() {
-        // (Aquí iría la lógica para enviar el JSON real a AWS en el futuro)
-        const id = document.getElementById('prodId').value;
-        const nombre = document.getElementById('prodNombre').value;
-        const stock = document.getElementById('prodStock').value;
-        const msj = document.getElementById('mensaje');
-
-        if(!id || !nombre || !stock) {
-            alert("Por favor completa los datos de la venta.");
-            return;
-        }
-
-        // Simulación para la Demo
-        msj.style.display = "block";
-        msj.style.backgroundColor = "#d4edda"; // Verde éxito
-        msj.style.color = "#155724";
-        msj.innerHTML = `¡Venta de ${nombre} registrada! Datos enviados a AWS ☁️`;
-        
-        // Limpiar campos después de 3 segundos
-        setTimeout(()=> {
-            document.getElementById('prodId').value = '';
-            document.getElementById('prodNombre').value = '';
-            document.getElementById('prodStock').value = '';
-            msj.style.display = "none";
-        }, 3000);
-    }
-</script>
 
 </body>
 </html>
