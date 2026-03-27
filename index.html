@@ -143,4 +143,118 @@
         }
 
         /* Iconos de los botones de pago */
-        .icono
+        .icono-pago {
+            font-size: 24px;
+        }
+
+        /* --- BOTONES DE PAGO ESPECÍFICOS --- */
+        .btn-plin {
+            background-color: #00a8e1; /* Celeste Plin/BBVA */
+        }
+        .btn-yape {
+            background-color: #ff6600; /* Anaranjado Yape/BCP */
+        }
+        .btn-efectivo {
+            background-color: #2e7d32; /* Verde Efectivo */
+        }
+
+        /* ESTADO DE ENVÍO */
+        .status {
+            margin-top: 20px;
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+            display: none;
+            font-weight: bold;
+        }
+
+        /* FIRMA DEL AUTOR */
+        .autor-firma {
+            font-size: 12px;
+            color: #00796b;
+            margin-top: 30px;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <div class="diente-animado">🦷</div>
+    
+    <h2>Inventario Dental Express</h2>
+    <p style="color: #555; margin-top: -5px; margin-bottom: 20px;">Local Carabayllo / San Felipe</p>
+    
+    <div class="input-group">
+        <label>Código del Producto</label>
+        <input type="text" id="prodId" placeholder="Ej: RES-A2">
+    </div>
+
+    <div class="input-group">
+        <label>Nombre del Material</label>
+        <input type="text" id="prodNombre" placeholder="Ej: Resina Z350 3M">
+    </div>
+
+    <div class="input-group">
+        <label>Cantidad (Stock)</label>
+        <input type="number" id="prodStock" placeholder="0">
+    </div>
+
+    <button class="btn-main btn-vender" onclick="registrarVenta()">
+        <span class="icono-carrito">🛒</span> REGISTRAR VENTA / COBRAR
+    </button>
+    
+    <div class="pagos-container">
+        <h3>Métodos de Pago Rápidos</h3>
+        
+        <button class="btn-pago btn-plin">
+            <span class="icono-pago">🔵</span> Cobrar con PLIN
+        </button>
+        
+        <button class="btn-pago btn-yape">
+            <span class="icono-pago">🟣</span> Cobrar con YAPE
+        </button>
+        
+        <button class="btn-pago btn-efectivo">
+            <span class="icono-pago">💵</span> Cobrar en EFECTIVO
+        </button>
+    </div>
+
+    <div id="mensaje" class="status"></div>
+
+    <div class="autor-firma">
+        Creado por Alberto Ballarta - Soluciones Digitales
+    </div>
+</div>
+
+<script>
+    function registrarVenta() {
+        // (Aquí iría la lógica para enviar el JSON real a AWS en el futuro)
+        const id = document.getElementById('prodId').value;
+        const nombre = document.getElementById('prodNombre').value;
+        const stock = document.getElementById('prodStock').value;
+        const msj = document.getElementById('mensaje');
+
+        if(!id || !nombre || !stock) {
+            alert("Por favor completa los datos de la venta.");
+            return;
+        }
+
+        // Simulación para la Demo
+        msj.style.display = "block";
+        msj.style.backgroundColor = "#d4edda"; // Verde éxito
+        msj.style.color = "#155724";
+        msj.innerHTML = `¡Venta de ${nombre} registrada! Datos enviados a AWS ☁️`;
+        
+        // Limpiar campos después de 3 segundos
+        setTimeout(()=> {
+            document.getElementById('prodId').value = '';
+            document.getElementById('prodNombre').value = '';
+            document.getElementById('prodStock').value = '';
+            msj.style.display = "none";
+        }, 3000);
+    }
+</script>
+
+</body>
+</html>
