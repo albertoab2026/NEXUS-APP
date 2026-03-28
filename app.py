@@ -3,13 +3,35 @@ import pandas as pd
 from datetime import datetime
 import pytz
 
-# Configuración de Hora de Lima
+# 1. Configuración de Hora de Lima
 zona_horaria = pytz.timezone('America/Lima')
 
 st.set_page_config(page_title="Inventario Dental Pro", layout="wide")
+
+# Estilo personalizado para las tablas y el pie de página
+st.markdown("""
+    <style>
+    .stTable {
+        background-color: #f8f9fa;
+        border-radius: 10px;
+    }
+    footer {
+        visibility: hidden;
+    }
+    .footer-text {
+        text-align: center;
+        color: #6c757d;
+        padding: 20px;
+        font-size: 14px;
+        border-top: 1px solid #dee2e6;
+        margin-top: 50px;
+    }
+    </style>
+    """, unsafe_allow_html=True)
+
 st.title("🦷 Sistema Dental - Control de Ventas")
 
-# 1. Inicializar memorias
+# 2. Inicializar memorias
 if 'df_memoria' not in st.session_state:
     st.session_state.df_memoria = pd.read_csv('inventario.csv')
     st.session_state.df_memoria['Stock_Actual'] = st.session_state.df_memoria['Stock_Inicial']
@@ -20,24 +42,22 @@ if 'carrito' not in st.session_state:
 if 'historial_ventas' not in st.session_state:
     st.session_state.historial_ventas = []
 
-# --- NUEVA LÓGICA DE RESETEO SIN AVISOS AMARILLOS ---
 if 'producto_anterior' not in st.session_state:
     st.session_state.producto_anterior = None
 
-# 2. Mostrar Inventario
+# 3. Mostrar Inventario (Con color suave)
 st.subheader("📋 Stock en Tienda")
-st.table(st.session_state.df_memoria[['Producto', 'Stock_Actual', 'Precio_Venta']])
+st.dataframe(st.session_state.df_memoria[['Producto', 'Stock_Actual', 'Precio_Venta']], use_container_width=True)
 
 st.divider()
 
-# 3. SECCIÓN: ARMAR EL PEDIDO
+# 4. SECCIÓN: ARMAR EL PEDIDO
 st.subheader("🛒 Armar Pedido del Cliente")
 c1, c2 = st.columns(2)
 
 with c1:
     prod_sel = st.selectbox("Selecciona producto:", st.session_state.df_memoria['Producto'])
 
-# Si el producto cambió, reseteamos la cantidad en la memoria
 if prod_sel != st.session_state.producto_anterior:
     st.session_state.cant_input = 1
     st.session_state.producto_anterior = prod_sel
@@ -55,7 +75,7 @@ if st.button("➕ Agregar al Carrito"):
         "Subtotal": cant_sel * precio_v
     })
     st.toast(f"Agregado: {prod_sel}")
-    st.rerun() # Para que se limpie la pantalla tras agregar
+    st.rerun()
 
 # --- GESTIÓN DEL CARRITO ---
 if st.session_state.carrito:
@@ -99,7 +119,7 @@ if st.session_state.carrito:
 
 st.divider()
 
-# 4. CIERRE DE CAJA
+# 5. CIERRE DE CAJA
 if st.button("🔴 VER RECAUDACIÓN DEL DÍA"):
     if st.session_state.historial_ventas:
         st.header("💰 Resumen de Caja Final")
@@ -113,3 +133,11 @@ if st.button("🔴 VER RECAUDACIÓN DEL DÍA"):
         st.metric("TOTAL GENERAL", f"S/ {df_final['Total'].sum():,.2f}")
     else:
         st.warning("No hay ventas en el historial.")
+
+# --- TU FIRMA AL FINAL ---
+st.markdown("""
+    <div class="footer-text">
+        Desarrollado con ❤️ por <b>Alberto Ballarta</b> | 2026<br>
+        <i>Soluciones en la Nube para Negocios Locales</i>
+    </div>
+    """, unsafe_allow_html=True)
