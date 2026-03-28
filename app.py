@@ -6,45 +6,19 @@ import pytz
 # 1. Configuración de Hora de Lima
 zona_horaria = pytz.timezone('America/Lima')
 
-st.set_page_config(
-    page_title="Inventario Dental Pro - Alberto Ballarta", 
-    layout="wide"
-)
+st.set_page_config(page_title="Inventario Dental Pro - Alberto Ballarta", layout="wide")
 
-# --- ESTILO CSS INTELIGENTE (ADAPTATIVO) ---
+# Estilo Adaptativo
 st.markdown("""
     <style>
-    /* Estilo para que las tablas se vean bien en AMBOS modos */
-    .stTable {
-        border: 1px solid #464b5d;
-        border-radius: 10px;
-        overflow: hidden;
-    }
-    
-    /* Forzar que el texto de las tablas SIEMPRE sea legible */
-    [data-testid="stTable"] td {
-        word-wrap: break-word;
-        max-width: 300px;
-    }
-
-    /* Estilo de tu firma con el Brazo de Fuerza */
+    .stDataFrame { border: 1px solid #464b5d; border-radius: 10px; }
     .footer-container {
-        text-align: center;
-        margin-top: 50px;
-        padding: 20px;
-        border-top: 2px solid #0056b3;
-        background-color: rgba(128, 128, 128, 0.1);
+        text-align: center; margin-top: 50px; padding: 20px;
+        border-top: 2px solid #0056b3; background-color: rgba(128, 128, 128, 0.1);
         border-radius: 15px 15px 0 0;
     }
-    .footer-name {
-        font-size: 20px;
-        font-weight: bold;
-        color: #0056b3;
-        margin-top: 5px;
-    }
-    .strength-icon {
-        font-size: 30px;
-    }
+    .footer-name { font-size: 20px; font-weight: bold; color: #0056b3; }
+    .strength-icon { font-size: 30px; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -64,13 +38,9 @@ if 'historial_ventas' not in st.session_state:
 if 'producto_anterior' not in st.session_state:
     st.session_state.producto_anterior = None
 
-# 3. Mostrar Inventario (Usamos dataframe que es más estable en colores)
+# 3. Mostrar Inventario
 st.subheader("📋 Stock Disponible")
-st.dataframe(
-    st.session_state.df_memoria[['Producto', 'Stock_Actual', 'Precio_Venta']], 
-    use_container_width=True,
-    hide_index=True
-)
+st.dataframe(st.session_state.df_memoria[['Producto', 'Stock_Actual', 'Precio_Venta']], use_container_width=True, hide_index=True)
 
 st.divider()
 
@@ -89,21 +59,25 @@ with c2:
     cant_sel = st.number_input("Cantidad:", min_value=1, key="cant_input")
 
 if st.button("➕ Agregar al Carrito", type="primary"):
+    # REGLA DE ORO: No dejar agregar al carrito más de lo que hay en stock actual
     idx = st.session_state.df_memoria[st.session_state.df_memoria['Producto'] == prod_sel].index[0]
-    precio_v = st.session_state.df_memoria.at[idx, 'Precio_Venta']
+    stock_disponible = st.session_state.df_memoria.at[idx, 'Stock_Actual']
     
-    st.session_state.carrito.append({
-        "Producto": prod_sel,
-        "Cant": cant_sel,
-        "Subtotal": cant_sel * precio_v
-    })
-    st.rerun()
+    if cant_sel <= stock_disponible:
+        precio_v = st.session_state.df_memoria.at[idx, 'Precio_Venta']
+        st.session_state.carrito.append({
+            "Producto": prod_sel,
+            "Cant": cant_sel,
+            "Subtotal": cant_sel * precio_v
+        })
+        st.rerun()
+    else:
+        st.error(f"❌ No puedes agregar {cant_sel}. Solo quedan {stock_disponible} en stock.")
 
 # --- GESTIÓN DEL CARRITO ---
 if st.session_state.carrito:
     st.write("### 📝 Artículos en el Carrito:")
     df_carrito = pd.DataFrame(st.session_state.carrito)
-    # Usamos st.dataframe aquí también porque maneja mejor el modo oscuro/claro automático
     st.dataframe(df_carrito, use_container_width=True, hide_index=True)
     
     total_carrito = df_carrito['Subtotal'].sum()
@@ -123,6 +97,7 @@ if st.session_state.carrito:
             st.rerun()
 
     if st.button("🚀 REGISTRAR VENTA FINAL", type="primary", use_container_width=True):
+        # Doble verificación antes de descontar
         for item in st.session_state.carrito:
             idx = st.session_state.df_memoria[st.session_state.df_memoria['Producto'] == item['Producto']].index[0]
             st.session_state.df_memoria.at[idx, 'Stock_Actual'] -= item['Cant']
@@ -136,7 +111,7 @@ if st.session_state.carrito:
             })
         
         st.session_state.carrito = []
-        st.success("¡Venta registrada!")
+        st.success("¡Venta registrada con éxito!")
         st.balloons()
         st.rerun()
 
@@ -157,7 +132,7 @@ if st.button("🔴 VER RECAUDACIÓN DEL DÍA", use_container_width=True):
     else:
         st.warning("No hay ventas aún.")
 
-# --- TU FIRMA FINAL CON EL BRAZO DE FUERZA 💪 ---
+# --- TU FIRMA FINAL 💪 ---
 st.markdown(f"""
     <div class="footer-container">
         <div class="strength-icon">💪</div>
