@@ -62,7 +62,7 @@ if st.button("➕ Agregar al Carrito", type="primary"):
     idx = st.session_state.df_memoria[st.session_state.df_memoria['Producto'] == prod_sel].index[0]
     stock_en_estante = st.session_state.df_memoria.at[idx, 'Stock_Actual']
     
-    # CALCULAR CUÁNTO YA HAY EN EL CARRITO DE ESTE PRODUCTO
+    # Calcular cuánto ya hay en el carrito
     cant_en_carrito = sum(item['Cant'] for item in st.session_state.carrito if item['Producto'] == prod_sel)
     stock_real_disponible = stock_en_estante - cant_en_carrito
     
@@ -76,7 +76,11 @@ if st.button("➕ Agregar al Carrito", type="primary"):
         st.toast(f"✅ Añadido: {prod_sel}")
         st.rerun()
     else:
-        st.error(f"❌ No puedes añadir {cant_sel}. Ya tienes {cant_en_carrito} en el carrito y solo quedan {stock_en_estante} en total.")
+        # MENSAJE SIMPLIFICADO Y DIRECTO PARA TU TÍO
+        if stock_real_disponible <= 0:
+            st.error(f"❌ Error: Ya no quedan más unidades de {prod_sel} disponibles.")
+        else:
+            st.error(f"❌ Error: Solo te quedan {stock_real_disponible} unidad(es) libres de {prod_sel}.")
 
 # --- GESTIÓN DEL CARRITO ---
 if st.session_state.carrito:
