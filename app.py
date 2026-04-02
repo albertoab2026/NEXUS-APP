@@ -10,7 +10,7 @@ st.markdown("""
     <p style='text-align: center; color: #666;'>Gestión Profesional Alberto Ballarta</p>
 """, unsafe_allow_html=True)
 
-# 2. Inicializar Memorias (Para que no se borre al hacer clic)
+# 2. Inicializar Memorias
 if 'df_memoria' not in st.session_state:
     st.session_state.df_memoria = pd.DataFrame({
         "Producto": ["Resina Z350", "Guantes Nitrilo", "Adhesivo Dental", "Algodón en rollo"],
@@ -30,21 +30,24 @@ st.dataframe(st.session_state.df_memoria, use_container_width=True, hide_index=T
 
 st.divider()
 
-# 4. Sección de Ventas (Con validación de negativo)
+# 4. Sección de Ventas (CON RESET DE CANTIDAD Y ERROR SIMPLIFICADO)
 st.subheader("🛒 Armar Pedido")
 col1, col2 = st.columns(2)
 
 with col1:
     prod_sel = st.selectbox("Selecciona producto:", st.session_state.df_memoria["Producto"])
+
 with col2:
-    cant_sel = st.number_input("Cantidad:", min_value=1, value=1)
+    # Usamos una clave (key) para poder resetear este número después
+    cant_sel = st.number_input("Cantidad:", min_value=1, value=1, key="input_cantidad")
 
 if st.button("➕ Agregar al Carrito", type="primary"):
     idx = st.session_state.df_memoria[st.session_state.df_memoria['Producto'] == prod_sel].index[0]
     stock_disponible = st.session_state.df_memoria.at[idx, 'Stock_Actual']
     
     if cant_sel > stock_disponible:
-        st.error(f"❌ Error: No puedes vender {cant_sel}. Solo quedan {stock_disponible} unidades.")
+        # MENSAJE DE ERROR MÁS FÁCIL Y DIRECTO
+        st.error(f"⚠️ No hay stock suficiente. Solo quedan {stock_disponible} unidades de {prod_sel}.")
     else:
         precio = st.session_state.df_memoria.at[idx, 'Precio_Venta']
         st.session_state.carrito.append({
@@ -53,8 +56,12 @@ if st.button("➕ Agregar al Carrito", type="primary"):
             "Subtotal": cant_sel * precio
         })
         st.success(f"✅ {prod_sel} añadido.")
+        
+        # EL TRUCO PARA QUE EL NÚMERO VUELVA A 1
+        st.session_state.input_cantidad = 1 
+        st.rerun()
 
-# 5. Gestión del Carrito y Métodos de Pago
+# 5. Gestión del Carrito
 if st.session_state.carrito:
     st.subheader("📝 Artículos en el Carrito")
     df_car = pd.DataFrame(st.session_state.carrito)
@@ -66,30 +73,25 @@ if st.session_state.carrito:
     metodo = st.selectbox("Método de Pago:", ["Efectivo", "Yape", "Plin", "Transferencia"])
     
     if st.button("🚀 REGISTRAR VENTA FINAL"):
-        # Restar del stock real
         for item in st.session_state.carrito:
             idx = st.session_state.df_memoria[st.session_state.df_memoria['Producto'] == item['Producto']].index[0]
             st.session_state.df_memoria.at[idx, 'Stock_Actual'] -= item['Cant']
         
-        # Guardar en recaudación
-        st.session_state.ventas_dia.append({"Total": total, "Metodo": metodo})
-        st.session_state.carrito = [] # Limpiar carrito
+        st.session_state.ventas_dia.append({"Total": total, "Metodo": metodo, "Fecha": datetime.now().strftime("%H:%M")})
+        st.session_state.carrito = [] 
         st.balloons()
         st.rerun()
 
 st.divider()
 
-# 6. Recaudación del Día (El "Brazito")
+# 6. Recaudación y Firma
 st.subheader("💰 Recaudación del Día")
 if st.session_state.ventas_dia:
     df_ventas = pd.DataFrame(st.session_state.ventas_dia)
     total_dia = df_ventas['Total'].sum()
     st.metric("GANANCIA TOTAL", f"S/ {total_dia}")
     st.table(df_ventas)
-else:
-    st.info("Aún no hay ventas registradas hoy.")
 
-# Firma con el brazito
 st.markdown(f"""
     <div style='text-align: center; color: #00796b;'>
         <p>💪 Desarrollado con esfuerzo por</p>
