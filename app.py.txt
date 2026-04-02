@@ -1,0 +1,20 @@
+import streamlit as st
+import pandas as pd
+
+st.set_page_config(page_title="Inventario Dental Pro", layout="wide")
+
+st.title("🦷 Sistema Dental - Alberto Ballarta")
+
+# Datos básicos para probar
+data = {
+    "Producto": ["Resina Z350", "Guantes Nitrilo", "Adhesivo Dental", "Algodon"],
+    "Stock": [10, 40, 5, 30],
+    "Precio": [85.0, 25.0, 120.0, 10.0]
+}
+df = pd.DataFrame(data)
+
+st.subheader("📋 Inventario Actual")
+st.table(df)
+
+st.divider()
+st.info("Página actualizada correctamente.")
