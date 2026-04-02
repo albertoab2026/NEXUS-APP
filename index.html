@@ -1,120 +1,149 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistema Dental Pro - Alberto Ballarta</title>
+import streamlit as st
+import pandas as pd
+from datetime import datetime
+import pytz
+
+# 1. Configuración de Hora de Lima
+zona_horaria = pytz.timezone('America/Lima')
+
+st.set_page_config(page_title="Inventario Dental Pro - Alberto Ballarta", layout="wide")
+
+# Estilo Adaptativo
+st.markdown("""
     <style>
-        body {
-            background-color: #000; /* Fondo Negro como el que te gustó */
-            color: #fff;
-            font-family: Arial, sans-serif;
-            padding: 20px;
-            text-align: center;
-        }
-        .container {
-            max-width: 500px;
-            margin: auto;
-            background: #111;
-            padding: 20px;
-            border-radius: 15px;
-            border: 1px solid #333;
-        }
-        h2 { color: #00acc1; }
-        .stats {
-            background: #222;
-            padding: 10px;
-            margin-bottom: 20px;
-            border-radius: 10px;
-            color: #ffc107;
-            font-weight: bold;
-        }
-        table {
-            width: 100%;
-            margin-top: 20px;
-            border-collapse: collapse;
-            font-size: 14px;
-        }
-        th, td {
-            border: 1px solid #333;
-            padding: 10px;
-            text-align: center;
-        }
-        th { background-color: #00acc1; color: #000; }
-        input {
-            width: 90%;
-            padding: 10px;
-            margin: 5px 0;
-            background: #222;
-            border: 1px solid #444;
-            color: #fff;
-            border-radius: 5px;
-        }
-        .btn {
-            width: 100%;
-            padding: 12px;
-            margin-top: 10px;
-            border: none;
-            border-radius: 5px;
-            font-weight: bold;
-            cursor: pointer;
-        }
-        .btn-add { background-color: #2e7d32; color: white; }
-        .btn-sell { background-color: #ff9800; color: white; }
+    .stDataFrame { border: 1px solid #464b5d; border-radius: 10px; }
+    .footer-container {
+        text-align: center; margin-top: 50px; padding: 20px;
+        border-top: 2px solid #0056b3; background-color: rgba(128, 128, 128, 0.1);
+        border-radius: 15px 15px 0 0;
+    }
+    .footer-name { font-size: 20px; font-weight: bold; color: #0056b3; }
+    .strength-icon { font-size: 30px; }
     </style>
-</head>
-<body>
+    """, unsafe_allow_html=True)
 
-<div class="container">
-    <h2>🦷 DENTAL STOCK PRO</h2>
-    <p>Gestión de Alberto Ballarta</p>
+st.title("🦷 Sistema Dental - Control de Ventas")
 
-    <div class="stats">
-        💰 VENTAS DEL DÍA: S/ <span id="totalDia">0.00</span>
+# 2. Inicializar memorias
+if 'df_memoria' not in st.session_state:
+    st.session_state.df_memoria = pd.read_csv('inventario.csv')
+    st.session_state.df_memoria['Stock_Actual'] = st.session_state.df_memoria['Stock_Inicial']
+
+if 'carrito' not in st.session_state:
+    st.session_state.carrito = []
+
+if 'historial_ventas' not in st.session_state:
+    st.session_state.historial_ventas = []
+
+if 'producto_anterior' not in st.session_state:
+    st.session_state.producto_anterior = None
+
+# 3. Mostrar Inventario
+st.subheader("📋 Stock Disponible")
+st.dataframe(st.session_state.df_memoria[['Producto', 'Stock_Actual', 'Precio_Venta']], use_container_width=True, hide_index=True)
+
+st.divider()
+
+# 4. SECCIÓN: ARMAR EL PEDIDO
+st.subheader("🛒 Armar Pedido")
+c1, c2 = st.columns(2)
+
+with c1:
+    prod_sel = st.selectbox("Selecciona producto:", st.session_state.df_memoria['Producto'])
+
+if prod_sel != st.session_state.producto_anterior:
+    st.session_state.cant_input = 1
+    st.session_state.producto_anterior = prod_sel
+
+with c2:
+    cant_sel = st.number_input("Cantidad:", min_value=1, key="cant_input")
+
+if st.button("➕ Agregar al Carrito", type="primary"):
+    idx = st.session_state.df_memoria[st.session_state.df_memoria['Producto'] == prod_sel].index[0]
+    stock_en_estante = st.session_state.df_memoria.at[idx, 'Stock_Actual']
+    
+    # Calcular cuánto ya hay en el carrito
+    cant_en_carrito = sum(item['Cant'] for item in st.session_state.carrito if item['Producto'] == prod_sel)
+    stock_real_disponible = stock_en_estante - cant_en_carrito
+    
+    if cant_sel <= stock_real_disponible:
+        precio_v = st.session_state.df_memoria.at[idx, 'Precio_Venta']
+        st.session_state.carrito.append({
+            "Producto": prod_sel,
+            "Cant": cant_sel,
+            "Subtotal": cant_sel * precio_v
+        })
+        st.toast(f"✅ Añadido: {prod_sel}")
+        st.rerun()
+    else:
+        # MENSAJE SIMPLIFICADO Y DIRECTO PARA TU TÍO
+        if stock_real_disponible <= 0:
+            st.error(f"❌ Error: Ya no quedan más unidades de {prod_sel} disponibles.")
+        else:
+            st.error(f"❌ Error: Solo te quedan {stock_real_disponible} unidad(es) libres de {prod_sel}.")
+
+# --- GESTIÓN DEL CARRITO ---
+if st.session_state.carrito:
+    st.write("### 📝 Artículos en el Carrito:")
+    df_carrito = pd.DataFrame(st.session_state.carrito)
+    st.dataframe(df_carrito, use_container_width=True, hide_index=True)
+    
+    total_carrito = df_carrito['Subtotal'].sum()
+    st.write(f"### **Total a Cobrar: S/ {total_carrito:,.2f}**")
+    
+    col_btn1, col_btn2, col_btn3 = st.columns([2, 1, 1])
+    with col_btn1:
+        metodo_pago = st.selectbox("Método de Pago:", ["Efectivo", "Yape", "Plin", "Transferencia"])
+    with col_btn2:
+        if st.button("↩️ Borrar último", use_container_width=True):
+            if st.session_state.carrito:
+                st.session_state.carrito.pop()
+                st.rerun()
+    with col_btn3:
+        if st.button("🗑️ Vaciar todo", use_container_width=True):
+            st.session_state.carrito = []
+            st.rerun()
+
+    if st.button("🚀 REGISTRAR VENTA FINAL", type="primary", use_container_width=True):
+        for item in st.session_state.carrito:
+            idx = st.session_state.df_memoria[st.session_state.df_memoria['Producto'] == item['Producto']].index[0]
+            st.session_state.df_memoria.at[idx, 'Stock_Actual'] -= item['Cant']
+            
+            st.session_state.historial_ventas.append({
+                "Hora": datetime.now(zona_horaria).strftime("%H:%M:%S"),
+                "Producto": item['Producto'],
+                "Cant": item['Cant'],
+                "Total": item['Subtotal'],
+                "Pago": metodo_pago
+            })
+        
+        st.session_state.carrito = []
+        st.success("¡Venta registrada con éxito!")
+        st.balloons()
+        st.rerun()
+
+st.divider()
+
+# 5. CIERRE DE CAJA
+if st.button("🔴 VER RECAUDACIÓN DEL DÍA", use_container_width=True):
+    if st.session_state.historial_ventas:
+        st.header("💰 Resumen de Caja")
+        df_final = pd.DataFrame(st.session_state.historial_ventas)
+        st.dataframe(df_final, use_container_width=True, hide_index=True)
+        resumen_pago = df_final.groupby('Pago')['Total'].sum().reset_index()
+        st.dataframe(resumen_pago, use_container_width=True, hide_index=True)
+        st.metric("TOTAL GENERAL", f"S/ {df_final['Total'].sum():,.2f}")
+    else:
+        st.warning("No hay ventas aún.")
+
+# --- TU FIRMA FINAL 💪 ---
+st.markdown(f"""
+    <div class="footer-container">
+        <div class="strength-icon">💪</div>
+        <div style="color: #6c757d; font-size: 14px;">Desarrollado con esfuerzo por</div>
+        <div class="footer-name">Alberto Ballarta</div>
+        <div style="color: #6c757d; font-size: 13px; font-style: italic; margin-top: 5px;">
+            Soluciones Cloud para Negocios Locales | 2026
+        </div>
     </div>
-
-    <div style="text-align: left; margin-bottom: 20px;">
-        <label>Ingresar Nuevo Stock:</label>
-        <input type="text" id="i_nombre" placeholder="Producto (ej: Guantes)">
-        <input type="number" id="i_cant" placeholder="Cantidad">
-        <input type="number" id="i_precio" placeholder="Precio Venta S/">
-        <button class="btn btn-add" onclick="agregarProducto()">+ AGREGAR A PLANILLA</button>
-    </div>
-
-    <table>
-        <thead>
-            <tr>
-                <th>Producto</th>
-                <th>Stock</th>
-                <th>Precio</th>
-                <th>Acción</th>
-            </tr>
-        </thead>
-        <tbody id="tablaCuerpo">
-            <tr>
-                <td>Resina A2</td>
-                <td>10</td>
-                <td>S/ 45</td>
-                <td><button onclick="vender(45)">Vender</button></td>
-            </tr>
-        </tbody>
-    </table>
-</div>
-
-<script>
-    let totalCaja = 0;
-
-    function agregarProducto() {
-        // Esta función luego enviará los datos a AWS DynamoDB
-        alert("Enviando a AWS...");
-    }
-
-    function vender(precio) {
-        totalCaja += precio;
-        document.getElementById('totalDia').innerText = totalCaja.toFixed(2);
-        alert("Venta registrada en AWS");
-    }
-</script>
-
-</body>
-</html>
+    """, unsafe_allow_html=True)
