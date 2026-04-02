@@ -7,7 +7,6 @@ st.set_page_config(page_title="Inventario Dental Pro", layout="wide")
 st.markdown("<h1 style='text-align: center; color: #00acc1;'>🦷 SISTEMA DENTAL - ALBERTO BALLARTA</h1>", unsafe_allow_html=True)
 
 def obtener_hora_peru():
-    # Ajuste manual para el servidor de Streamlit (UTC-5)
     return (datetime.utcnow() - timedelta(hours=5)).strftime("%H:%M:%S")
 
 # 2. Inicializar Datos
@@ -20,96 +19,98 @@ if 'df_memoria' not in st.session_state:
 if 'carrito' not in st.session_state: st.session_state.carrito = []
 if 'ventas_dia' not in st.session_state: st.session_state.ventas_dia = []
 
-# 3. Mostrar Stock (Fijo y ordenado)
+# 3. Mostrar Stock (Siempre Real)
 st.subheader("📋 Control de Stock Actual")
 df_vis = st.session_state.df_memoria.copy()
-# Evitar negativos visuales en la tabla principal
-df_vis['Stock_Actual'] = df_vis['Stock_Actual'].apply(lambda x: x if x > 0 else 0)
 df_vis['Precio_Venta'] = df_vis['Precio_Venta'].map('S/ {:,.2f}'.format)
 st.table(df_vis)
 
 st.divider()
 
-# 4. Armar Pedido del Cliente
+# 4. Armar Pedido (CON RESET DE CANTIDAD FORZADO)
 st.subheader("🛒 Armar Pedido del Cliente")
 c1, c2 = st.columns(2)
+
 with c1:
     prod_sel = st.selectbox("Selecciona Producto:", st.session_state.df_memoria["Producto"])
+
 with c2:
-    if 'c_reset' not in st.session_state: st.session_state.c_reset = 1
-    cant_sel = st.number_input("Cantidad:", min_value=1, value=st.session_state.c_reset, key="input_c")
+    # Usamos una clave dinámica para forzar que el número vuelva a 1
+    if "contador_reset" not in st.session_state:
+        st.session_state.contador_reset = 0
+    
+    cant_sel = st.number_input(
+        "Cantidad:", 
+        min_value=1, 
+        value=1, 
+        key=f"input_cant_{st.session_state.contador_reset}"
+    )
 
 if st.button("➕ Agregar al Carrito", type="primary"):
     idx = st.session_state.df_memoria[st.session_state.df_memoria['Producto'] == prod_sel].index[0]
-    stock_real = st.session_state.df_memoria.at[idx, 'Stock_Actual']
     
-    if cant_sel > stock_real:
-        st.error(f"❌ No puedes agregar esto. Solo quedan {stock_real} unidades en stock.")
+    # Calculamos cuánto stock queda "libre" (Stock real menos lo que ya está en el carrito)
+    ya_en_carrito = sum(item['Cant'] for item in st.session_state.carrito if item['Producto'] == prod_sel)
+    stock_disponible_real = st.session_state.df_memoria.at[idx, 'Stock_Actual'] - ya_en_carrito
+    
+    if cant_sel > stock_disponible_real:
+        st.error(f"❌ ¡ERROR! No puedes agregar {cant_sel}. En el estante quedan {st.session_state.df_memoria.at[idx, 'Stock_Actual']} y ya tienes {ya_en_carrito} en el carrito.")
     else:
         precio = st.session_state.df_memoria.at[idx, 'Precio_Venta']
         st.session_state.carrito.append({"Producto": prod_sel, "Cant": cant_sel, "Subtotal": cant_sel * precio})
-        st.success(f"✅ {prod_sel} añadido al carrito.")
-        st.session_state.c_reset = 1
+        st.success(f"✅ {prod_sel} añadido.")
+        # FORZAMOS EL RESET DE LA CANTIDAD A 1
+        st.session_state.contador_reset += 1
         st.rerun()
 
-# 5. Venta del Cliente (Sección Detalle)
+# 5. Venta del Cliente
 if st.session_state.carrito:
     st.divider()
-    st.subheader("📝 Detalle de Compra del Cliente")
+    st.subheader("📝 VENTA ACTUAL DEL CLIENTE")
     df_car = pd.DataFrame(st.session_state.carrito)
-    # Formato soles en el carrito
-    df_car_soles = df_car.copy()
-    df_car_soles['Subtotal'] = df_car_soles['Subtotal'].map('S/ {:,.2f}'.format)
-    st.dataframe(df_car_soles, use_container_width=True, hide_index=True)
     
-    total_pedido = df_car['Subtotal'].sum()
-    st.info(f"### TOTAL VENTA CLIENTE: S/ {total_pedido:,.2f}")
+    # Formato soles en tabla de cliente
+    df_car_v = df_car.copy()
+    df_car_v['Subtotal'] = df_car_v['Subtotal'].map('S/ {:,.2f}'.format)
+    st.dataframe(df_car_v, use_container_width=True, hide_index=True)
     
-    metodo = st.selectbox("Método de Pago:", ["Efectivo", "Yape", "Plin"])
+    total_ped = df_car['Subtotal'].sum()
+    st.info(f"### TOTAL A COBRAR: S/ {total_ped:,.2f}")
+    
+    metodo = st.selectbox("Pago:", ["Efectivo", "Yape", "Plin"])
 
-    if st.button("🚀 FINALIZAR VENTA DEL CLIENTE", type="primary", use_container_width=True):
-        # VALIDACIÓN FINAL DE STOCK (Seguro anti-negativos)
-        puedo_vender = True
+    if st.button("🚀 REGISTRAR VENTA FINAL", type="primary", use_container_width=True):
+        # Descontar stock de la memoria
         for item in st.session_state.carrito:
             idx = st.session_state.df_memoria[st.session_state.df_memoria['Producto'] == item['Producto']].index[0]
-            if st.session_state.df_memoria.at[idx, 'Stock_Actual'] < item['Cant']:
-                st.error(f"❌ Error crítico: El producto {item['Producto']} se agotó mientras armabas el pedido.")
-                puedo_vender = False
-                break
+            st.session_state.df_memoria.at[idx, 'Stock_Actual'] -= item['Cant']
         
-        if puedo_vender:
-            # Descontar de verdad
-            for item in st.session_state.carrito:
-                idx = st.session_state.df_memoria[st.session_state.df_memoria['Producto'] == item['Producto']].index[0]
-                st.session_state.df_memoria.at[idx, 'Stock_Actual'] -= item['Cant']
-            
-            # Guardar en histórico
-            st.session_state.ventas_dia.append({
-                "Venta N°": len(st.session_state.ventas_dia) + 1,
-                "Hora": obtener_hora_peru(),
-                "Total": total_pedido,
-                "Pago": metodo
-            })
-            st.session_state.carrito = [] # Limpiar carrito para el siguiente cliente
-            st.balloons()
-            st.rerun()
+        # Guardar en histórico con Soles
+        st.session_state.ventas_dia.append({
+            "Venta N°": len(st.session_state.ventas_dia) + 1,
+            "Hora": obtener_hora_peru(),
+            "Total": total_ped,
+            "Pago": metodo
+        })
+        st.session_state.carrito = []
+        st.balloons()
+        st.rerun()
 
-    if st.button("🗑️ Borrar Pedido Actual"):
+    if st.button("🗑️ Vaciar Carrito"):
         st.session_state.carrito = []
         st.rerun()
 
-# 6. Recaudación Total del Día (Botón Grande)
+# 6. Recaudación del Día
 st.divider()
-if st.button("💰 VER RECAUDACIÓN TOTAL DEL DÍA", use_container_width=True):
+if st.button("💰 MOSTRAR RECAUDACIÓN TOTAL DEL DÍA", use_container_width=True):
     if st.session_state.ventas_dia:
         df_v = pd.DataFrame(st.session_state.ventas_dia)
-        total_ganancia = df_v['Total'].sum()
-        st.success(f"## GANANCIA TOTAL DEL DÍA: S/ {total_ganancia:,.2f}")
-        # Formatear la tabla de recaudación
-        df_v_soles = df_v.copy()
-        df_v_soles['Total'] = df_v_soles['Total'].map('S/ {:,.2f}'.format)
-        st.dataframe(df_v_soles, use_container_width=True, hide_index=True)
+        st.success(f"## TOTAL GANADO HOY: S/ {df_v['Total'].sum():,.2f}")
+        
+        df_v_v = df_v.copy()
+        df_v_v['Total'] = df_v_v['Total'].map('S/ {:,.2f}'.format)
+        st.dataframe(df_v_v, use_container_width=True, hide_index=True)
     else:
-        st.warning("Todavía no se han cerrado ventas el día de hoy.")
+        st.warning("No hay ventas registradas todavía.")
 
-st.markdown("<p style='text-align: center; color: #666;'>💪 Desarrollado por Alberto Ballarta | Carabayllo Cloud 2026</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align: center; color: #666;'>💪 Desarrollado por Alberto Ballarta | Carabayllo - Cloud 2026</p>", unsafe_allow_html=True)
