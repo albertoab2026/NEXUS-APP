@@ -2,157 +2,117 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Inventario Dental - Alberto Ballarta</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema Dental Pro - Alberto Ballarta</title>
     <style>
         body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            margin: 0;
-            padding: 15px;
-            background: linear-gradient(180deg, #00acc1 0%, #e0f7fa 100%);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-        }
-
-        .card {
-            background: #ffffff;
-            width: 100%;
-            max-width: 380px;
-            padding: 25px;
-            border-radius: 30px;
-            box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+            background-color: #000; /* Fondo Negro como el que te gustó */
+            color: #fff;
+            font-family: Arial, sans-serif;
+            padding: 20px;
             text-align: center;
-            border: 3px solid #ffffff;
         }
-
-        .diente-principal {
-            font-size: 60px;
-            margin-bottom: 10px;
-            display: inline-block;
-            animation: bounce 2s infinite ease-in-out;
+        .container {
+            max-width: 500px;
+            margin: auto;
+            background: #111;
+            padding: 20px;
+            border-radius: 15px;
+            border: 1px solid #333;
         }
-
-        @keyframes bounce {
-            0%, 100% { transform: translateY(0); }
-            50% { transform: translateY(-15px); }
+        h2 { color: #00acc1; }
+        .stats {
+            background: #222;
+            padding: 10px;
+            margin-bottom: 20px;
+            border-radius: 10px;
+            color: #ffc107;
+            font-weight: bold;
         }
-
-        h2 { color: #00796b; margin: 10px 0; font-size: 24px; font-weight: bold; }
-        h4 { color: #00acc1; margin: 15px 0 5px 0; font-size: 16px; border-top: 1px solid #eee; padding-top: 10px; }
-
+        table {
+            width: 100%;
+            margin-top: 20px;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        th, td {
+            border: 1px solid #333;
+            padding: 10px;
+            text-align: center;
+        }
+        th { background-color: #00acc1; color: #000; }
         input {
+            width: 90%;
+            padding: 10px;
+            margin: 5px 0;
+            background: #222;
+            border: 1px solid #444;
+            color: #fff;
+            border-radius: 5px;
+        }
+        .btn {
             width: 100%;
             padding: 12px;
-            margin-top: 8px;
-            border: 2px solid #b2dfdb;
-            border-radius: 12px;
-            box-sizing: border-box;
-            font-size: 14px;
-            background-color: #f9f9f9;
-        }
-
-        .btn-vender {
-            width: 100%;
-            background: linear-gradient(45deg, #ffc107, #ff9800);
-            color: white;
-            border: none;
-            padding: 15px;
-            border-radius: 15px;
-            font-size: 16px;
-            font-weight: bold;
-            margin-top: 15px;
-            cursor: pointer;
-            box-shadow: 0 5px 15px rgba(255, 152, 0, 0.4);
-        }
-
-        .btn-ingreso {
-            width: 100%;
-            background: linear-gradient(45deg, #00acc1, #00796b);
-            color: white;
-            border: none;
-            padding: 15px;
-            border-radius: 15px;
-            font-size: 16px;
-            font-weight: bold;
             margin-top: 10px;
+            border: none;
+            border-radius: 5px;
+            font-weight: bold;
             cursor: pointer;
         }
-
-        .seccion-pagos {
-            margin-top: 20px;
-            border-top: 2px dashed #00acc1;
-            padding-top: 15px;
-        }
-
-        .btn-pago {
-            width: 100%;
-            padding: 12px;
-            margin-bottom: 10px;
-            border-radius: 12px;
-            border: none;
-            color: white;
-            font-weight: bold;
-            font-size: 14px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 12px;
-        }
-
-        .plin { background-color: #00a8e1; }
-        .yape { background-color: #6a1b9a; }
-        .efectivo { background-color: #2e7d32; }
-
-        .firma {
-            font-size: 12px;
-            color: #00796b;
-            margin-top: 20px;
-            font-weight: bold;
-        }
+        .btn-add { background-color: #2e7d32; color: white; }
+        .btn-sell { background-color: #ff9800; color: white; }
     </style>
 </head>
 <body>
 
-<div class="card">
-    <div class="diente-principal">🦷</div>
-    <h2>Inventario Dental</h2>
-    <p style="color: #666; font-size: 14px; margin-top: -5px;">Gestión de Alberto Ballarta</p>
+<div class="container">
+    <h2>🦷 DENTAL STOCK PRO</h2>
+    <p>Gestión de Alberto Ballarta</p>
 
-    <h4>🛒 REGISTRAR VENTA</h4>
-    <input type="text" id="v_codigo" placeholder="Código del producto">
-    <input type="number" id="v_cantidad" placeholder="Cantidad a vender">
-    <button class="btn-vender" onclick="vender()">REGISTRAR VENTA</button>
-
-    <h4>📦 INGRESO DE MERCADERÍA</h4>
-    <input type="text" id="i_nombre" placeholder="Nombre: Ej: Resina 3M">
-    <input type="number" id="i_stock" placeholder="Cantidad que llega">
-    <input type="number" id="i_precio" placeholder="Precio de Costo S/">
-    <button class="btn-ingreso" onclick="guardarNuevo()">GUARDAR EN NUBE</button>
-
-    <div class="seccion-pagos">
-        <p style="font-weight: bold; color: #00796b; margin-bottom: 10px;">MÉTODOS DE PAGO</p>
-        <button class="btn-pago plin"><span>🔵</span> Cobrar con PLIN</button>
-        <button class="btn-pago yape"><span>🟣</span> Cobrar con YAPE</button>
-        <button class="btn-pago efectivo"><span>💵</span> Cobrar en EFECTIVO</button>
+    <div class="stats">
+        💰 VENTAS DEL DÍA: S/ <span id="totalDia">0.00</span>
     </div>
 
-    <div class="firma">Creado por Alberto Ballarta - 2026</div>
+    <div style="text-align: left; margin-bottom: 20px;">
+        <label>Ingresar Nuevo Stock:</label>
+        <input type="text" id="i_nombre" placeholder="Producto (ej: Guantes)">
+        <input type="number" id="i_cant" placeholder="Cantidad">
+        <input type="number" id="i_precio" placeholder="Precio Venta S/">
+        <button class="btn btn-add" onclick="agregarProducto()">+ AGREGAR A PLANILLA</button>
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Producto</th>
+                <th>Stock</th>
+                <th>Precio</th>
+                <th>Acción</th>
+            </tr>
+        </thead>
+        <tbody id="tablaCuerpo">
+            <tr>
+                <td>Resina A2</td>
+                <td>10</td>
+                <td>S/ 45</td>
+                <td><button onclick="vender(45)">Vender</button></td>
+            </tr>
+        </tbody>
+    </table>
 </div>
 
 <script>
-    function vender() {
-        alert("Procesando venta... Conectando a AWS");
+    let totalCaja = 0;
+
+    function agregarProducto() {
+        // Esta función luego enviará los datos a AWS DynamoDB
+        alert("Enviando a AWS...");
     }
 
-    function guardarNuevo() {
-        const nombre = document.getElementById('i_nombre').value;
-        if(nombre === "") {
-            alert("Escribe el nombre del producto");
-            return;
-        }
-        alert("Guardando " + nombre + " en el inventario de AWS...");
+    function vender(precio) {
+        totalCaja += precio;
+        document.getElementById('totalDia').innerText = totalCaja.toFixed(2);
+        alert("Venta registrada en AWS");
     }
 </script>
 
