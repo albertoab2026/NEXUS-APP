@@ -21,7 +21,6 @@ st.markdown("""
     <style>
     .titulo-seccion { font-size:30px !important; font-weight: bold; color: #00acc1; margin-bottom: 20px; }
     [data-testid="stMetricValue"] { color: #00acc1 !important; font-size: 45px !important; }
-    [data-testid="stMetricLabel"] { color: grey !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -71,7 +70,7 @@ with c2:
 
 if st.button("➕ AGREGAR AL CARRITO", use_container_width=True):
     if cant_sel > disponible_ahora:
-        st.warning(f"⚠️ No se puede agregar: Solo quedan {disponible_ahora} unidades.")
+        st.warning(f"⚠️ No hay stock suficiente de {prod_sel}.")
     else:
         precio = float(fila_prod['Precio_Venta'])
         st.session_state.carrito.append({"Producto": prod_sel, "Cant": cant_sel, "Subtotal": cant_sel * precio})
@@ -93,18 +92,31 @@ if st.session_state.carrito:
     col_v1, col_v2, col_v3 = st.columns(3)
     with col_v1:
         metodo_pago = st.radio("Medio de Pago:", ["Efectivo", "Yape", "Plin"], horizontal=True)
+        
+        # BOTÓN DE PRIMER NIVEL
         if st.button("🚀 FINALIZAR VENTA", type="primary", use_container_width=True):
-            for item in st.session_state.carrito:
-                st.session_state.df_memoria.loc[st.session_state.df_memoria['Producto'] == item['Producto'], 'Stock_Actual'] -= item['Cant']
-            st.session_state.ventas_dia.append({"Hora": obtener_hora_peru(), "Total": total_venta, "Pago": metodo_pago})
-            st.session_state.carrito = []
-            st.balloons()
-            st.rerun()
+            st.session_state.confirmar = True # Activa el modo confirmación
+
+        # SECCIÓN DE CONFIRMACIÓN (Solo aparece si presionaste finalizar)
+        if st.session_state.get('confirmar', False):
+            st.warning("⚠️ ¿ESTÁS SEGURO? Se descontará del stock real.")
+            if st.button("✅ SÍ, CONFIRMAR COMPRA", use_container_width=True):
+                for item in st.session_state.carrito:
+                    st.session_state.df_memoria.loc[st.session_state.df_memoria['Producto'] == item['Producto'], 'Stock_Actual'] -= item['Cant']
+                st.session_state.ventas_dia.append({"Hora": obtener_hora_peru(), "Total": total_venta, "Pago": metodo_pago})
+                st.session_state.carrito = []
+                st.session_state.confirmar = False
+                st.balloons()
+                st.rerun()
+            if st.button("❌ No, corregir"):
+                st.session_state.confirmar = False
+                st.rerun()
+
     with col_v2:
         st.write("")
         st.write("")
         if st.button("⬅️ BORRAR ÚLTIMO", use_container_width=True):
-            st.session_state.carrito.pop() # Borra el último elemento
+            st.session_state.carrito.pop()
             st.rerun()
     with col_v3:
         st.write("")
