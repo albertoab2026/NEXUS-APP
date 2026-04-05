@@ -22,7 +22,6 @@ st.markdown("""
     <style>
     .titulo-seccion { font-size:30px !important; font-weight: bold; color: #00acc1; margin-bottom: 20px; }
     [data-testid="stMetricValue"] { color: #00acc1 !important; font-size: 45px !important; font-weight: bold; }
-    [data-testid="stMetricLabel"] { color: grey !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -42,7 +41,7 @@ def cargar_datos_aws():
         return df.sort_values(by="ID_Producto").reset_index(drop=True)
     except: return pd.DataFrame()
 
-# Inicializar estados de sesión
+# Inicializar estados
 if 'df_memoria' not in st.session_state: st.session_state.df_memoria = cargar_datos_aws()
 if 'carrito' not in st.session_state: st.session_state.carrito = []
 if 'ventas_dia' not in st.session_state: st.session_state.ventas_dia = []
@@ -74,7 +73,7 @@ with c2:
 
 if st.button("➕ AGREGAR AL CARRITO", use_container_width=True):
     if cant_sel > disponible_ahora:
-        st.warning(f"⚠️ No se puede agregar: Solo quedan {disponible_ahora} unidades de {prod_sel}.")
+        st.warning(f"⚠️ No hay stock suficiente.")
     else:
         precio = float(fila_prod['Precio_Venta'])
         st.session_state.carrito.append({"Producto": prod_sel, "Cant": cant_sel, "Subtotal": cant_sel * precio})
@@ -96,13 +95,12 @@ if st.session_state.carrito:
     col_v1, col_v2, col_v3 = st.columns(3)
     with col_v1:
         metodo_pago = st.radio("Medio de Pago:", ["Efectivo", "Yape", "Plin"], horizontal=True)
-        
         if st.button("🚀 FINALIZAR VENTA", type="primary", use_container_width=True):
             st.session_state.confirmar_proceso = True
 
         if st.session_state.get('confirmar_proceso', False):
-            st.warning("⚠️ ¿CONFIRMAR PEDIDO? Se descontará del stock de AWS.")
-            if st.button("✅ SÍ, FINALIZAR COMPRA", use_container_width=True):
+            st.warning("⚠️ ¿CONFIRMAR VENTA?")
+            if st.button("✅ SÍ, FINALIZAR", use_container_width=True):
                 for item in st.session_state.carrito:
                     st.session_state.df_memoria.loc[st.session_state.df_memoria['Producto'] == item['Producto'], 'Stock_Actual'] -= item['Cant']
                 st.session_state.ventas_dia.append({"Hora": obtener_hora_peru(), "Total": total_venta, "Pago": metodo_pago})
@@ -118,8 +116,7 @@ if st.session_state.carrito:
         st.write("")
         st.write("")
         if st.button("⬅️ BORRAR ÚLTIMO", use_container_width=True):
-            if st.session_state.carrito:
-                st.session_state.carrito.pop()
+            if st.session_state.carrito: st.session_state.carrito.pop()
             st.rerun()
     with col_v3:
         st.write("")
@@ -132,24 +129,28 @@ if st.session_state.carrito:
 st.divider()
 with st.expander("🔐 PANEL DE ADMINISTRADOR"):
     if not st.session_state.admin_autenticado:
-        clave_input = st.text_input("Contraseña de Seguridad:", type="password")
+        clave_input = st.text_input("Contraseña:", type="password")
         if clave_input == "admin123":
             st.session_state.admin_autenticado = True
             st.rerun()
-        elif clave_input != "":
-            st.error("Clave incorrecta")
     else:
         st.success("✅ Sesión de Administrador Activa")
         if st.session_state.ventas_dia:
-            df_recaudacion = pd.DataFrame(st.session_state.ventas_dia)
-            st.write(f"### 💰 CAJA DEL DÍA: S/ {df_recaudacion['Total'].sum():,.2f}")
-            st.table(df_recaudacion)
-            if st.button("🗑️ LIMPIAR CAJA Y CERRAR SESIÓN"):
+            df_caja = pd.DataFrame(st.session_state.ventas_dia)
+            total_caja = df_caja['Total'].sum()
+            st.write(f"### 💰 CAJA DEL DÍA: S/ {total_caja:,.2f}")
+            
+            # Formateamos la tabla de la caja para que el total se vea en Soles
+            df_caja_vis = df_caja.copy()
+            df_caja_vis['Total'] = df_caja_vis['Total'].map('S/ {:,.2f}'.format)
+            st.table(df_caja_vis)
+            
+            if st.button("🗑️ LIMPIAR CAJA Y SALIR"):
                 st.session_state.ventas_dia = []
                 st.session_state.admin_autenticado = False
                 st.rerun()
         else:
-            st.info("No hay ventas registradas.")
+            st.info("No hay ventas.")
         
         if st.button("Cerrar Sesión"):
             st.session_state.admin_autenticado = False
