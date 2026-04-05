@@ -15,12 +15,21 @@ try:
 except Exception as e:
     st.error(f"Error de conexión con AWS: {e}")
 
-# --- 2. CONFIGURACIÓN VISUAL ---
+# --- 2. CONFIGURACIÓN VISUAL (COMPATIBLE CON CLARO/OSCURO) ---
 st.set_page_config(page_title="Inventario Dental Pro", layout="wide")
+
+# CSS para arreglar el color del Total y los títulos
 st.markdown("""
     <style>
     .titulo-seccion { font-size:30px !important; font-weight: bold; color: #00acc1; margin-bottom: 20px; }
-    .stMetric { background-color: #f0f2f6; padding: 20px; border-radius: 10px; border: 2px solid #00acc1; }
+    /* Forzamos que el total se vea bien en cualquier modo */
+    [data-testid="stMetricValue"] {
+        color: #00acc1 !important;
+        font-size: 45px !important;
+    }
+    [data-testid="stMetricLabel"] {
+        color: grey !important;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -66,12 +75,18 @@ with c2:
     stock_real = int(fila_prod['Stock_Actual'])
     en_carrito = sum(item['Cant'] for item in st.session_state.carrito if item['Producto'] == prod_sel)
     disponible_ahora = stock_real - en_carrito
-    cant_sel = st.number_input(f"Cantidad (Quedan {disponible_ahora}):", min_value=1, max_value=max(1, disponible_ahora), value=1)
+    
+    # Quitamos el max_value para manejar nosotros el error con un mensaje personalizado
+    cant_sel = st.number_input(f"Cantidad (Disponible: {disponible_ahora}):", min_value=1, value=1)
 
 if st.button("➕ AGREGAR AL CARRITO", use_container_width=True):
-    if disponible_ahora > 0:
+    # VALIDACIÓN PERSONALIZADA DE STOCK
+    if cant_sel > disponible_ahora:
+        st.warning(f"⚠️ No se puede agregar: Solo quedan {disponible_ahora} unidades de {prod_sel} en stock.")
+    else:
         precio = float(fila_prod['Precio_Venta'])
         st.session_state.carrito.append({"Producto": prod_sel, "Cant": cant_sel, "Subtotal": cant_sel * precio})
+        st.success(f"Añadido: {cant_sel} {prod_sel}")
         st.rerun()
 
 # --- 5. CARRITO Y COBRO ---
@@ -82,8 +97,7 @@ if st.session_state.carrito:
     df_c = pd.DataFrame(st.session_state.carrito)
     total_venta = df_c['Subtotal'].sum()
 
-    # Muestra el total bien grande
-    st.metric(label="TOTAL A PAGAR", value=f"S/ {total_venta:,.2f}")
+    st.metric(label="TOTAL NETO A COBRAR", value=f"S/ {total_venta:,.2f}")
 
     df_c_vista = df_c.copy()
     df_c_vista['Subtotal'] = df_c_vista['Subtotal'].map('S/ {:,.2f}'.format)
@@ -91,24 +105,21 @@ if st.session_state.carrito:
     
     col_v1, col_v2 = st.columns(2)
     with col_v1:
-        # AQUÍ REGRESARON LOS MÉTODOS DE PAGO
-        metodo_pago = st.radio("Seleccione Medio de Pago:", ["Efectivo", "Yape", "Plin"], horizontal=True)
-        
-        if st.button("🚀 FINALIZAR VENTA Y DESCONTAR AWS", type="primary", use_container_width=True):
+        metodo_pago = st.radio("Medio de Pago:", ["Efectivo", "Yape", "Plin"], horizontal=True)
+        if st.button("🚀 FINALIZAR VENTA", type="primary", use_container_width=True):
             for item in st.session_state.carrito:
                 st.session_state.df_memoria.loc[st.session_state.df_memoria['Producto'] == item['Producto'], 'Stock_Actual'] -= item['Cant']
             
             st.session_state.ventas_dia.append({
                 "Hora": obtener_hora_peru(), 
                 "Total": total_venta,
-                "Pago": metodo_pago,
-                "Detalle": f"{len(df_c)} productos"
+                "Pago": metodo_pago
             })
             st.session_state.carrito = []
             st.balloons()
             st.rerun()
     with col_v2:
-        st.write("") # Espacio estético
+        st.write("")
         st.write("") 
         if st.button("🗑️ CANCELAR PEDIDO", use_container_width=True):
             st.session_state.carrito = []
@@ -121,8 +132,7 @@ with st.expander("🔐 PANEL DE ADMINISTRADOR"):
     if clave == "admin123":
         if st.session_state.ventas_dia:
             df_recaudacion = pd.DataFrame(st.session_state.ventas_dia)
-            total_dia = df_recaudacion['Total'].sum()
-            st.success(f"### 💰 CAJA TOTAL: S/ {total_dia:,.2f}")
+            st.success(f"### 💰 CAJA TOTAL: S/ {df_recaudacion['Total'].sum():,.2f}")
             st.table(df_recaudacion)
             if st.button("Limpiar Caja"):
                 st.session_state.ventas_dia = []
