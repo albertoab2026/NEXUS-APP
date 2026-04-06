@@ -36,39 +36,27 @@ def cargar_datos_aws():
         items = respuesta.get('Items', [])
         if not items: return pd.DataFrame()
         df = pd.DataFrame(items)
-        
-        # Asegurar que los datos sean números para poder operar
         df["Stock_Actual"] = pd.to_numeric(df["Stock_Actual"])
         df["Precio_Venta"] = pd.to_numeric(df["Precio_Venta"])
-        
-        # Ordenamos por ID por defecto internamente
         return df.sort_values(by="ID_Producto").reset_index(drop=True)
-    except: 
-        return pd.DataFrame()
+    except: return pd.DataFrame()
 
-# Inicializar estados de la sesión
+# Inicializar estados
 if 'df_memoria' not in st.session_state: st.session_state.df_memoria = cargar_datos_aws()
 if 'carrito' not in st.session_state: st.session_state.carrito = []
 if 'ventas_dia' not in st.session_state: st.session_state.ventas_dia = []
+if 'resumen_productos' not in st.session_state: st.session_state.resumen_productos = []
 if 'admin_autenticado' not in st.session_state: st.session_state.admin_autenticado = False
 
-# --- 3. TABLA DE STOCK (ORDENADA SEGÚN TU PEDIDO) ---
+# --- 3. TABLA DE STOCK ---
 st.markdown("<p class='titulo-seccion'>📋 Inventario en Tiempo Real (AWS)</p>", unsafe_allow_html=True)
 df_vis = st.session_state.df_memoria.copy()
-
 if not df_vis.empty:
-    # REORDENAR COLUMNAS: ID -> Producto -> Stock -> Precio
     columnas_ordenadas = ['ID_Producto', 'Producto', 'Stock_Actual', 'Precio_Venta']
     df_vis = df_vis[columnas_ordenadas]
-    
-    # Formatear para la vista del usuario
     df_vis['Stock_Actual'] = df_vis['Stock_Actual'].astype(int)
     df_vis['Precio_Venta'] = df_vis['Precio_Venta'].map('S/ {:,.2f}'.format)
-    
-    # Mostrar tabla limpia sin índices raros
     st.table(df_vis)
-else:
-    st.warning("No se encontraron productos en la base de datos.")
 
 # --- 4. REGISTRAR VENTA ---
 st.divider()
@@ -98,7 +86,6 @@ if st.button("➕ AGREGAR AL CARRITO", use_container_width=True):
 if st.session_state.carrito:
     st.divider()
     st.markdown("<p class='titulo-seccion'>📝 Resumen de Cobro</p>", unsafe_allow_html=True)
-    
     df_c = pd.DataFrame(st.session_state.carrito)
     total_venta = df_c['Subtotal'].sum()
     st.metric(label="TOTAL NETO A COBRAR", value=f"S/ {total_venta:,.2f}")
@@ -116,30 +103,26 @@ if st.session_state.carrito:
         if st.session_state.get('confirmar_proceso', False):
             st.warning("⚠️ ¿CONFIRMAR VENTA?")
             if st.button("✅ SÍ, FINALIZAR", use_container_width=True):
-                # Descontar del stock en memoria (luego lo pasaremos a Lambda)
+                hora_actual = obtener_hora_peru()
                 for item in st.session_state.carrito:
                     st.session_state.df_memoria.loc[st.session_state.df_memoria['Producto'] == item['Producto'], 'Stock_Actual'] -= item['Cant']
+                    # Guardamos qué se vendió para el gráfico
+                    st.session_state.resumen_productos.append({"Producto": item['Producto'], "Cant": item['Cant']})
                 
-                # Registrar en la caja del día
-                st.session_state.ventas_dia.append({"Hora": obtener_hora_peru(), "Total": total_venta, "Pago": metodo_pago})
+                st.session_state.ventas_dia.append({"Hora": hora_actual, "Total": total_venta, "Pago": metodo_pago})
                 st.session_state.carrito = []
                 st.session_state.confirmar_proceso = False
                 st.balloons()
                 st.rerun()
-            
             if st.button("❌ Cancelar", use_container_width=True):
                 st.session_state.confirmar_proceso = False
                 st.rerun()
 
     with col_v2:
-        st.write("")
-        st.write("")
         if st.button("⬅️ BORRAR ÚLTIMO", use_container_width=True):
             if st.session_state.carrito: st.session_state.carrito.pop()
             st.rerun()
     with col_v3:
-        st.write("")
-        st.write("")
         if st.button("🗑️ VACIAR TODO", use_container_width=True):
             st.session_state.carrito = []
             st.rerun()
@@ -162,13 +145,30 @@ with st.expander("🔐 PANEL DE ADMINISTRADOR"):
             df_caja_vis = df_caja.copy()
             df_caja_vis['Total'] = df_caja_vis['Total'].map('S/ {:,.2f}'.format)
             st.table(df_caja_vis)
+
+            # --- NUEVA SECCIÓN DE GRÁFICOS ---
+            st.markdown("---")
+            st.write("### 📊 Gráficos de Rendimiento")
+            g1, g2 = st.columns(2)
             
+            with g1:
+                st.write("**Ventas por Hora (S/)**")
+                st.line_chart(df_caja.set_index('Hora')['Total'])
+            
+            with g2:
+                st.write("**Productos más Vendidos (Unidades)**")
+                if st.session_state.resumen_productos:
+                    df_res = pd.DataFrame(st.session_state.resumen_productos)
+                    resumen_final = df_res.groupby('Producto')['Cant'].sum().reset_index()
+                    st.bar_chart(data=resumen_final, x='Producto', y='Cant')
+
             if st.button("🗑️ LIMPIAR CAJA Y SALIR"):
                 st.session_state.ventas_dia = []
+                st.session_state.resumen_productos = []
                 st.session_state.admin_autenticado = False
                 st.rerun()
         else:
-            st.info("No hay ventas registradas aún.")
+            st.info("No hay ventas registradas.")
         
         if st.button("Cerrar Sesión"):
             st.session_state.admin_autenticado = False
