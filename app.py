@@ -99,10 +99,14 @@ if st.session_state.carrito:
             })
             for i in st.session_state.carrito:
                 tabla_inventario.update_item(Key={"ID_Producto": i["id"]}, UpdateExpression="SET Stock_Actual = Stock_Actual - :q", ExpressionAttributeValues={":q": int(i["cantidad"])})
+            
+            # --- MEJORA GLOBITO ---
             st.balloons()
+            st.success("¡Venta completada!")
             st.session_state.carrito = []
             st.session_state.confirmar_venta = False
             st.session_state.df = cargar_datos()
+            time.sleep(2) # Damos 2 segundos para ver los globos antes de reiniciar
             st.rerun()
         
         if cc2.button("❌ CANCELAR", use_container_width=True):
@@ -139,7 +143,7 @@ with st.expander("🔐 PANEL DE ADMINISTRADOR"):
                     })
                     st.success("¡Stock actualizado!")
                     st.session_state.df = cargar_datos()
-                    time.sleep(1); st.rerun()
+                    time.sleep(1.5); st.rerun()
                 except: st.error("Error en AWS.")
 
         with c_adm2:
@@ -153,64 +157,50 @@ with st.expander("🔐 PANEL DE ADMINISTRADOR"):
                 except: st.info("Sin historial.")
 
         st.divider()
-        # CIERRE DE CAJA Y EXCEL
+        # CIERRE DE CAJA (ACTUALIZACIÓN REAL-TIME)
         st.subheader("💰 Cierre de Caja del Día")
         fecha_hoy, _ = obtener_tiempo_peru()
         
-        if st.button("Generar Reporte de Hoy"):
+        if st.button("🔄 ACTUALIZAR Y GENERAR REPORTE"):
+            # Escaneo fresco cada vez que se pulsa el botón
             ventas_lista = tabla_ventas.scan().get("Items", [])
             ventas_hoy = [v for v in ventas_lista if v['Fecha'] == fecha_hoy]
             
             if ventas_hoy:
                 total_recaudado = sum([float(v['Total']) for v in ventas_hoy])
-                st.metric("TOTAL RECAUDADO", f"S/ {total_recaudado:.2f}")
+                st.metric("TOTAL RECAUDADO HOY", f"S/ {total_recaudado:.2f}")
                 
-                filas_para_tabla = []
-                filas_para_excel = [] # Excel lleva todos los datos en cada fila para que sea útil
+                filas_tabla = []
+                filas_excel = []
                 
                 for v in sorted(ventas_hoy, key=lambda x: x['Hora'], reverse=True):
-                    es_primero = True
+                    primero = True
                     for p in v['Productos']:
-                        # Para la tabla visual (bonita)
-                        filas_para_tabla.append({
-                            "Hora": v['Hora'] if es_primero else "",
-                            "Producto": p['nombre'],
-                            "Cant": p['cantidad'],
-                            "Pago": v.get('Metodo', 'Efectivo') if es_primero else "",
-                            "Total Cliente": f"S/ {float(v['Total']):.2f}" if es_primero else ""
+                        filas_tabla.append({
+                            "Hora": v['Hora'] if primero else "",
+                            "Producto": p['nombre'], "Cant": p['cantidad'],
+                            "Pago": v.get('Metodo', 'Efectivo') if primero else "",
+                            "Total Cliente": f"S/ {float(v['Total']):.2f}" if primero else ""
                         })
-                        # Para el Excel (completo para contabilidad)
-                        filas_para_excel.append({
-                            "Fecha": v['Fecha'],
-                            "Hora": v['Hora'],
-                            "Producto": p['nombre'],
-                            "Cantidad": p['cantidad'],
-                            "Precio Unit": float(p['precio']),
-                            "Subtotal": float(p['precio'] * p['cantidad']),
-                            "Total Venta": float(v['Total']),
-                            "Metodo": v.get('Metodo', 'Efectivo')
+                        filas_excel.append({
+                            "Fecha": v['Fecha'], "Hora": v['Hora'], "Producto": p['nombre'],
+                            "Cantidad": p['cantidad'], "Total Venta": float(v['Total']), "Metodo": v.get('Metodo', 'Efectivo')
                         })
-                        es_primero = False
+                        primero = False
                 
-                st.table(pd.DataFrame(filas_para_tabla))
+                st.table(pd.DataFrame(filas_tabla))
                 
-                # --- LÓGICA DE EXCEL ---
-                df_excel = pd.DataFrame(filas_para_excel)
+                # Excel
                 output = io.BytesIO()
                 with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                    df_excel.to_excel(writer, index=False, sheet_name='Ventas_Hoy')
-                    # Auto-ajustar columnas
-                    worksheet = writer.sheets['Ventas_Hoy']
-                    for i, col in enumerate(df_excel.columns):
-                        column_len = max(df_excel[col].astype(str).map(len).max(), len(col)) + 2
-                        worksheet.set_column(i, i, column_len)
+                    pd.DataFrame(filas_excel).to_excel(writer, index=False, sheet_name='Ventas')
                 
                 st.download_button(
-                    label="📥 DESCARGAR REPORTE EXCEL",
+                    label="📥 DESCARGAR EXCEL DE HOY",
                     data=output.getvalue(),
-                    file_name=f"Reporte_Dental_{fecha_hoy.replace('/','_')}.xlsx",
+                    file_name=f"Reporte_{fecha_hoy.replace('/','_')}.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     use_container_width=True
                 )
             else:
-                st.warning("No hay ventas registradas para hoy.")
+                st.warning("No hay ventas registradas aún para el día de hoy.")
