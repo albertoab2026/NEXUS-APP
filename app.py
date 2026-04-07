@@ -47,7 +47,7 @@ def cargar_datos():
     except:
         return pd.DataFrame()
 
-# --- 4. ESTADO DE SESIÓN (Control de flujo) ---
+# --- 4. ESTADO DE SESIÓN ---
 if "df" not in st.session_state: st.session_state.df = cargar_datos()
 if "carrito" not in st.session_state: st.session_state.carrito = []
 if "admin_logueado" not in st.session_state: st.session_state.admin_logueado = False
@@ -92,7 +92,7 @@ if not df.empty:
             })
             st.rerun()
 
-# --- 7. PROCESAR COMPRA (Lógica Limpia) ---
+# --- 7. PROCESAR COMPRA ---
 if st.session_state.carrito:
     st.divider()
     df_c = pd.DataFrame(st.session_state.carrito)
@@ -118,20 +118,17 @@ if st.session_state.carrito:
         if st.button("✅ SÍ, GRABAR VENTA", use_container_width=True):
             f, h = obtener_tiempo_peru()
             try:
-                # 1. Grabar Venta
                 tabla_ventas.put_item(Item={
                     "ID_Venta": f"V-{int(time.time())}",
                     "Fecha": f, "Hora": h, "Total": Decimal(str(total)),
                     "Metodo": metodo, "Productos": st.session_state.carrito
                 })
-                # 2. Descontar Stock
                 for item in st.session_state.carrito:
                     tabla_inventario.update_item(
                         Key={"ID_Producto": item["id"]},
                         UpdateExpression="SET Stock_Actual = Stock_Actual - :q",
                         ExpressionAttributeValues={":q": item["cantidad"]}
                     )
-                # 3. Limpiar TODO y Refrescar
                 st.session_state.carrito = []
                 st.session_state.confirmar_final = False
                 st.session_state.df = cargar_datos()
@@ -139,22 +136,21 @@ if st.session_state.carrito:
                 time.sleep(1)
                 st.rerun()
             except Exception as e:
-                st.error(f"Hubo un problema con AWS: {e}")
+                st.error(f"Error AWS: {e}")
 
-# --- 8. PANEL ADMIN (Seguridad Corregida) ---
+# --- 8. PANEL ADMIN (CON EXCEL PROFESIONAL RECUPERADO) ---
 st.divider()
 with st.expander("🔐 PANEL DE CONTROL"):
     if not st.session_state.admin_logueado:
-        clave = st.text_input("Contraseña de acceso:", type="password")
+        clave = st.text_input("Contraseña:", type="password")
         if st.button("Ingresar"):
-            if clave == "admin123": # Cambia esto si quieres otra clave
+            if clave == "admin123":
                 st.session_state.admin_logueado = True
                 st.rerun()
             else:
                 st.error("Clave incorrecta")
     else:
-        # BOTÓN PARA CERRAR SESIÓN (Importante para que vuelva a pedir clave)
-        if st.button("🔒 Cerrar Sesión Admin"):
+        if st.button("🔒 Cerrar Sesión Admin", use_container_width=True):
             st.session_state.admin_logueado = False
             st.rerun()
             
@@ -164,11 +160,7 @@ with st.expander("🔐 PANEL DE CONTROL"):
             c_abast = st.number_input("Cantidad recibida:", min_value=1, value=10)
             if st.form_submit_button("✅ CARGAR STOCK"):
                 id_p = df[df["Producto"] == p_abast].iloc[0]["ID_Producto"]
-                tabla_inventario.update_item(
-                    Key={"ID_Producto": id_p},
-                    UpdateExpression="SET Stock_Actual = Stock_Actual + :q",
-                    ExpressionAttributeValues={":q": int(c_abast)}
-                )
+                tabla_inventario.update_item(Key={"ID_Producto": id_p}, UpdateExpression="SET Stock_Actual = Stock_Actual + :q", ExpressionAttributeValues={":q": int(c_abast)})
                 st.session_state.df = cargar_datos()
                 st.success(f"Stock de {p_abast} actualizado.")
                 time.sleep(1)
@@ -185,24 +177,55 @@ with st.expander("🔐 PANEL DE CONTROL"):
                 df_h['Sort'] = pd.to_datetime(df_h['Fecha'] + ' ' + df_h['Hora'], dayfirst=True)
                 df_h = df_h.sort_values(by='Sort', ascending=False)
 
-                st.write(f"**Ventas totales hoy:** S/ {df_h['Total'].sum():,.2f}")
+                st.write(f"**Caja Total:** S/ {df_h['Total'].sum():,.2f}")
                 
-                # Excel Detallado
-                filas = []
+                # --- LÓGICA DE EXCEL PRO (BORDES, COLORES Y TOTAL ÚNICO) ---
+                filas_ex = []
                 for _, v in df_h.iterrows():
-                    primero = True
+                    first = True
                     for p in v['Productos']:
-                        filas.append({
-                            "Fecha": v['Fecha'], "Hora": v['Hora'], "Producto": p['nombre'],
-                            "Cant": int(p['cantidad']), "Subtotal": float(p['precio']) * int(p['cantidad']),
-                            "TOTAL CLIENTE": float(v['Total']) if primero else "", "Metodo": v['Metodo']
+                        filas_ex.append({
+                            "ID": v['ID_Venta'], "Fecha": v['Fecha'], "Hora": v['Hora'],
+                            "Producto": p['nombre'], "Cant": int(p['cantidad']),
+                            "Subtotal": float(p['precio']) * int(p['cantidad']),
+                            "TOTAL CLIENTE": float(v['Total']) if first else "",
+                            "Metodo": v['Metodo']
                         })
-                        primero = False
+                        first = False
                 
+                df_ex = pd.DataFrame(filas_ex)
                 buf = io.BytesIO()
-                pd.DataFrame(filas).to_excel(buf, index=False, engine='xlsxwriter')
-                st.download_button("📥 DESCARGAR REPORTE", buf.getvalue(), "Reporte.xlsx", "application/vnd.ms-excel")
+                with pd.ExcelWriter(buf, engine='xlsxwriter') as wr:
+                    df_ex.to_excel(wr, index=False, sheet_name='Ventas')
+                    workbook, worksheet = wr.book, wr.sheets['Ventas']
+                    
+                    # Formatos
+                    header_fmt = workbook.add_format({'bold': True, 'bg_color': '#00acc1', 'font_color': 'white', 'border': 1})
+                    money_fmt = workbook.add_format({'num_format': '"S/" #,##0.00', 'border': 1})
+                    total_fmt = workbook.add_format({'bold': True, 'bg_color': '#E0F7FA', 'border': 1, 'num_format': '"S/" #,##0.00'})
+                    
+                    for i, col in enumerate(df_ex.columns):
+                        worksheet.write(0, i, col, header_fmt)
+                        worksheet.set_column(i, i, 18)
+
+                    toggle, last_id = True, ""
+                    for row in range(1, len(df_ex) + 1):
+                        curr_id = df_ex.iloc[row-1]['ID']
+                        if curr_id != last_id:
+                            toggle, last_id = not toggle, curr_id
+                        
+                        fmt = workbook.add_format({'border': 1, 'bg_color': '#F9F9F9' if toggle else '#FFFFFF'})
+                        for col in range(len(df_ex.columns)):
+                            val = df_ex.iloc[row-1, col]
+                            if col == 6 and val != "": # TOTAL CLIENTE
+                                worksheet.write(row, col, val, total_fmt)
+                            elif col == 5: # Subtotal
+                                worksheet.write(row, col, val, money_fmt)
+                            else:
+                                worksheet.write(row, col, val, fmt)
+
+                st.download_button("📥 DESCARGAR EXCEL PRO", buf.getvalue(), "Reporte_Ventas.xlsx", "application/vnd.ms-excel", use_container_width=True)
             else:
-                st.info("Aún no hay ventas registradas.")
+                st.info("Sin ventas.")
         except:
-            st.warning("No se pudo cargar el historial completo aún.")
+            st.warning("Cargando...")
