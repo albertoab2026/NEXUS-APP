@@ -122,7 +122,7 @@ with st.expander("🔐 PANEL DE ADMINISTRADOR"):
         if st.button("🔒 CERRAR SESIÓN ADMIN", use_container_width=True): 
             st.session_state.admin_auth = False; st.rerun()
 
-        # ABASTECIMIENTO (REGISTRO DE ENTRADAS)
+        # ABASTECIMIENTO
         st.subheader("📦 Abastecimiento")
         c_adm1, c_adm2 = st.columns(2)
         with c_adm1:
@@ -132,19 +132,15 @@ with st.expander("🔐 PANEL DE ADMINISTRADOR"):
                 try:
                     id_a = df[df["Producto"] == p_abast].iloc[0]["ID_Producto"]
                     f_ing, h_ing = obtener_tiempo_peru()
-                    # 1. Update Stock
                     tabla_inventario.update_item(Key={"ID_Producto": id_a}, UpdateExpression="SET Stock_Actual = Stock_Actual + :q", ExpressionAttributeValues={":q": int(c_abast)})
-                    # 2. Log Entry
                     tabla_ingresos.put_item(Item={
                         "ID_Ingreso": f"IN-{int(time.time())}", "Fecha": f_ing, "Hora": h_ing,
                         "Producto": p_abast, "Cantidad": int(c_abast)
                     })
                     st.success("¡Stock actualizado!")
                     st.session_state.df = cargar_datos()
-                    time.sleep(1)
-                    st.rerun()
-                except Exception:
-                    st.error("Error al registrar. Verifica la tabla 'EntradasInventario' en AWS.")
+                    time.sleep(1); st.rerun()
+                except: st.error("Error en AWS.")
 
         with c_adm2:
             st.subheader("📜 Historial de Ingresos")
@@ -154,28 +150,67 @@ with st.expander("🔐 PANEL DE ADMINISTRADOR"):
                     if ingresos:
                         df_ingresos = pd.DataFrame(ingresos).sort_values(by=["Fecha", "Hora"], ascending=False)
                         st.dataframe(df_ingresos[["Fecha", "Hora", "Producto", "Cantidad"]], use_container_width=True, hide_index=True)
-                except: st.info("No hay historial disponible.")
+                except: st.info("Sin historial.")
 
         st.divider()
-        # CIERRE DE CAJA
-        st.subheader("💰 Cierre de Caja")
+        # CIERRE DE CAJA Y EXCEL
+        st.subheader("💰 Cierre de Caja del Día")
         fecha_hoy, _ = obtener_tiempo_peru()
-        if st.button("Ver Ventas de Hoy"):
+        
+        if st.button("Generar Reporte de Hoy"):
             ventas_lista = tabla_ventas.scan().get("Items", [])
             ventas_hoy = [v for v in ventas_lista if v['Fecha'] == fecha_hoy]
+            
             if ventas_hoy:
-                total_dia = sum([float(v['Total']) for v in ventas_hoy])
-                st.metric("TOTAL RECAUDADO", f"S/ {total_dia:.2f}")
-                filas = []
+                total_recaudado = sum([float(v['Total']) for v in ventas_hoy])
+                st.metric("TOTAL RECAUDADO", f"S/ {total_recaudado:.2f}")
+                
+                filas_para_tabla = []
+                filas_para_excel = [] # Excel lleva todos los datos en cada fila para que sea útil
+                
                 for v in sorted(ventas_hoy, key=lambda x: x['Hora'], reverse=True):
-                    primero = True
+                    es_primero = True
                     for p in v['Productos']:
-                        filas.append({
-                            "Hora": v['Hora'] if primero else "",
-                            "Producto": p['nombre'], "Cant": p['cantidad'],
-                            "Pago": v.get('Metodo','') if primero else "",
-                            "Total Cliente": f"S/ {float(v['Total']):.2f}" if primero else ""
+                        # Para la tabla visual (bonita)
+                        filas_para_tabla.append({
+                            "Hora": v['Hora'] if es_primero else "",
+                            "Producto": p['nombre'],
+                            "Cant": p['cantidad'],
+                            "Pago": v.get('Metodo', 'Efectivo') if es_primero else "",
+                            "Total Cliente": f"S/ {float(v['Total']):.2f}" if es_primero else ""
                         })
-                        primero = False
-                st.table(pd.DataFrame(filas))
-            else: st.warning("Sin ventas hoy.")
+                        # Para el Excel (completo para contabilidad)
+                        filas_para_excel.append({
+                            "Fecha": v['Fecha'],
+                            "Hora": v['Hora'],
+                            "Producto": p['nombre'],
+                            "Cantidad": p['cantidad'],
+                            "Precio Unit": float(p['precio']),
+                            "Subtotal": float(p['precio'] * p['cantidad']),
+                            "Total Venta": float(v['Total']),
+                            "Metodo": v.get('Metodo', 'Efectivo')
+                        })
+                        es_primero = False
+                
+                st.table(pd.DataFrame(filas_para_tabla))
+                
+                # --- LÓGICA DE EXCEL ---
+                df_excel = pd.DataFrame(filas_para_excel)
+                output = io.BytesIO()
+                with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                    df_excel.to_excel(writer, index=False, sheet_name='Ventas_Hoy')
+                    # Auto-ajustar columnas
+                    worksheet = writer.sheets['Ventas_Hoy']
+                    for i, col in enumerate(df_excel.columns):
+                        column_len = max(df_excel[col].astype(str).map(len).max(), len(col)) + 2
+                        worksheet.set_column(i, i, column_len)
+                
+                st.download_button(
+                    label="📥 DESCARGAR REPORTE EXCEL",
+                    data=output.getvalue(),
+                    file_name=f"Reporte_Dental_{fecha_hoy.replace('/','_')}.xlsx",
+                    mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                    use_container_width=True
+                )
+            else:
+                st.warning("No hay ventas registradas para hoy.")
