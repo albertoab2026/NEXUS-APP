@@ -119,8 +119,12 @@ with st.expander("🔐 PANEL DE ADMINISTRADOR"):
         with st.form("login"):
             clave = st.text_input("Contraseña:", type="password")
             if st.form_submit_button("Ingresar"):
-                if clave == "admin123": st.session_state.admin_auth = True; st.rerun()
-                else: st.error("Incorrecto")
+                # MEJORA SEGURIDAD: Ya no sale el texto "admin123" en el código
+                if clave == st.secrets["auth"]["admin_password"]: 
+                    st.session_state.admin_auth = True
+                    st.rerun()
+                else: 
+                    st.error("Contraseña incorrecta")
     else:
         if st.button("🔒 CERRAR SESIÓN ADMIN", use_container_width=True): 
             st.session_state.admin_auth = False; st.rerun()
@@ -131,28 +135,22 @@ with st.expander("🔐 PANEL DE ADMINISTRADOR"):
         with c_adm1:
             p_abast = st.selectbox("Elegir producto:", df["Producto"].tolist(), key="sel_admin")
             c_abast = st.number_input("Cantidad:", min_value=1, value=1, key="cant_admin")
-            
-            # Usamos un contenedor vacío para los mensajes, así no se acumulan
             placeholder_msg = st.empty()
             
             if st.button("Registrar Entrada", use_container_width=True):
                 try:
                     id_a = df[df["Producto"] == p_abast].iloc[0]["ID_Producto"]
                     f_ing, h_ing = obtener_tiempo_peru()
-                    
                     tabla_inventario.update_item(Key={"ID_Producto": id_a}, UpdateExpression="SET Stock_Actual = Stock_Actual + :q", ExpressionAttributeValues={":q": int(c_abast)})
-                    
                     tabla_ingresos.put_item(Item={
                         "ID_Ingreso": f"IN-{int(time.time())}", "Fecha": f_ing, "Hora": h_ing,
                         "Producto": p_abast, "Cantidad": int(c_abast)
                     })
-                    
                     placeholder_msg.success("¡Stock actualizado!")
                     st.session_state.df = cargar_datos()
-                    time.sleep(1.5)
-                    st.rerun()
+                    time.sleep(1.5); st.rerun()
                 except Exception:
-                    placeholder_msg.error("Error en AWS. Verifica la tabla 'EntradasInventario'.")
+                    placeholder_msg.error("Error en AWS.")
 
         with c_adm2:
             st.subheader("📜 Historial de Ingresos")
@@ -165,22 +163,25 @@ with st.expander("🔐 PANEL DE ADMINISTRADOR"):
                 except: st.info("Sin historial.")
 
         st.divider()
-        # CIERRE DE CAJA
-        st.subheader("💰 Cierre de Caja del Día")
-        fecha_hoy, _ = obtener_tiempo_peru()
+        # --- MEJORA: BUSCADOR POR FECHA ---
+        st.subheader("💰 Consulta y Cierre de Caja")
         
-        if st.button("🔄 ACTUALIZAR Y GENERAR REPORTE"):
+        # Selector de fecha estilo calendario
+        fecha_buscar = st.date_input("Selecciona una fecha para el reporte:", value=datetime.now() - timedelta(hours=5))
+        fecha_str = fecha_buscar.strftime("%d/%m/%Y")
+        
+        if st.button(f"🔍 BUSCAR VENTAS DEL {fecha_str}", use_container_width=True):
             ventas_lista = tabla_ventas.scan().get("Items", [])
-            ventas_hoy = [v for v in ventas_lista if v['Fecha'] == fecha_hoy]
+            ventas_dia = [v for v in ventas_lista if v['Fecha'] == fecha_str]
             
-            if ventas_hoy:
-                total_recaudado = sum([float(v['Total']) for v in ventas_hoy])
-                st.metric("TOTAL RECAUDADO HOY", f"S/ {total_recaudado:.2f}")
+            if ventas_dia:
+                total_recaudado = sum([float(v['Total']) for v in ventas_dia])
+                st.metric(f"TOTAL RECAUDADO ({fecha_str})", f"S/ {total_recaudado:.2f}")
                 
                 filas_tabla = []
                 filas_excel = []
                 
-                for v in sorted(ventas_hoy, key=lambda x: x['Hora'], reverse=True):
+                for v in sorted(ventas_dia, key=lambda x: x['Hora'], reverse=True):
                     primero = True
                     for p in v['Productos']:
                         filas_tabla.append({
@@ -197,16 +198,17 @@ with st.expander("🔐 PANEL DE ADMINISTRADOR"):
                 
                 st.table(pd.DataFrame(filas_tabla))
                 
+                # Excel
                 output = io.BytesIO()
                 with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
                     pd.DataFrame(filas_excel).to_excel(writer, index=False, sheet_name='Ventas')
                 
                 st.download_button(
-                    label="📥 DESCARGAR EXCEL DE HOY",
+                    label=f"📥 DESCARGAR EXCEL DEL {fecha_str}",
                     data=output.getvalue(),
-                    file_name=f"Reporte_{fecha_hoy.replace('/','_')}.xlsx",
+                    file_name=f"Reporte_{fecha_str.replace('/','_')}.xlsx",
                     mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                     use_container_width=True
                 )
             else:
-                st.warning("No hay ventas hoy.")
+                st.warning(f"No hay ventas registradas el {fecha_str}.")
