@@ -76,8 +76,14 @@ if st.session_state.carrito:
     df_car = pd.DataFrame(st.session_state.carrito)
     st.table(df_car)
     total_car = df_car['Subtotal'].sum()
-    st.markdown(f"### **TOTAL: S/ {total_car:.2f}**")
-    v_metodo = st.radio("Pago:", ["Yape", "Plin", "Efectivo"], horizontal=True)
+    st.markdown(f"### **TOTAL A COBRAR: S/ {total_car:.2f}**")
+    
+    # --- ORDEN DE PAGOS PERSONALIZADO ---
+    v_metodo = st.radio(
+        "Seleccione Método de Pago:",
+        ["💵 Efectivo", "🟢 Yape", "🟣 Plin"], 
+        horizontal=True
+    )
     
     cv1, cv2 = st.columns(2)
     with cv1:
@@ -86,7 +92,7 @@ if st.session_state.carrito:
         if st.button("🗑️ VACÍAR", use_container_width=True): st.session_state.carrito = []; st.rerun()
 
     if st.session_state.confirmar:
-        st.warning(f"¿Confirmar cobro de S/ {total_car:.2f}?")
+        st.warning(f"¿Confirmar cobro en {v_metodo} por S/ {total_car:.2f}?")
         if st.button("✅ SÍ, FINALIZAR"):
             f, h, _ = obtener_tiempo_peru()
             for item in st.session_state.carrito:
@@ -116,7 +122,6 @@ else:
     t1, t2 = st.tabs(["💰 Consultar Ventas", "📥 Mercadería e Ingresos"])
     
     with t1:
-        # FILTRO DE FECHA PARA VENTAS
         _, _, ahora = obtener_tiempo_peru()
         fecha_busqueda = st.date_input("Seleccionar fecha para ver ventas:", ahora)
         f_formateada = fecha_busqueda.strftime("%d/%m/%Y")
@@ -134,7 +139,6 @@ else:
             st.info(f"No se encontraron ventas el {f_formateada}")
 
     with t2:
-        # REGISTRO
         st.write("### Registrar nueva llegada")
         with st.form("abastecer"):
             p_ab = st.selectbox("Producto:", df_stock['Producto'].tolist()) if not df_stock.empty else st.text_input("Nombre")
@@ -149,7 +153,6 @@ else:
                 st.success("Inventario actualizado"); time.sleep(1); st.rerun()
 
         st.divider()
-        # FILTRO DE FECHA PARA AUDITORÍA
         st.write("### Historial de Ingresos")
         fecha_ing_busqueda = st.date_input("Ver ingresos de esta fecha:", ahora)
         f_ing_formateada = fecha_ing_busqueda.strftime("%d/%m/%Y")
