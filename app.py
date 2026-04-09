@@ -39,9 +39,18 @@ def cargar_datos():
         df.columns = df.columns.str.strip()
         return df
     except:
-        return pd.DataFrame(columns=['Producto', 'Precio', 'Stock'])
+        return pd.DataFrame(columns=['Producto', 'Precio_Venta', 'Stock'])
 
 df = cargar_datos()
+
+# --- DETECCIÓN DINÁMICA DE COLUMNAS ---
+# Esto evita el error de "IndexError" si las columnas cambian de nombre
+try:
+    col_prod_list = [c for c in df.columns if 'producto' in c.lower()][0]
+    col_precio_list = [c for c in df.columns if 'precio' in c.lower()][0]
+except IndexError:
+    st.error("Error: No se encontraron las columnas 'Producto' o 'Precio' en el CSV.")
+    st.stop()
 
 # --- INTERFAZ DE USUARIO ---
 st.title("🦷 Suministros Dentales")
@@ -52,11 +61,9 @@ st.dataframe(df, use_container_width=True, hide_index=True)
 
 st.divider()
 
-# SECCIÓN B: REGISTRO DE VENTAS (Hacia AWS)
+# SECCIÓN B: REGISTRO DE VENTAS
 st.subheader("🛒 Realizar Venta")
 col1, col2 = st.columns(2)
-col_prod_list = [c for c in df.columns if c.lower() == 'producto'][0]
-col_precio_list = [c for c in df.columns if c.lower() == 'precio'][0]
 
 with col1:
     v_prod = st.selectbox("Selecciona producto:", df[col_prod_list].tolist(), key="v_prod")
@@ -90,8 +97,7 @@ if st.button("Confirmar Venta 🚀"):
     except Exception as e:
         st.error(f"Error al guardar venta en AWS: {e}")
 
-# SECCIÓN C: PANEL DE ADMINISTRADOR (Al final)
-st.write("##")
+# SECCIÓN C: PANEL DE ADMINISTRADOR
 st.write("##")
 st.divider()
 
@@ -126,28 +132,33 @@ with st.expander("🔐 ACCESO ADMINISTRADOR"):
                     st.error(f"Error en AWS: {e}")
 
         with c2:
-            st.subheader("📜 Historial Reciente")
+            st.subheader("📜 Historial de Ingresos")
             if st.button("Ver Ingresos"):
-                items = tabla_ingresos.scan().get("Items", [])
-                if items:
-                    st.dataframe(pd.DataFrame(items).sort_values('Hora', ascending=False), hide_index=True)
+                try:
+                    items = tabla_ingresos.scan().get("Items", [])
+                    if items:
+                        st.dataframe(pd.DataFrame(items), hide_index=True)
+                    else:
+                        st.info("Sin registros aún.")
+                except: st.error("Error al conectar con AWS")
         
         st.divider()
         
         # REPORTE DE CIERRE
         st.subheader("💰 Cierre de Caja")
         if st.button("🔄 GENERAR REPORTE DE HOY"):
-            fecha_hoy, _ = obtener_tiempo_peru()
-            ventas = tabla_ventas.scan().get("Items", [])
-            ventas_hoy = [v for v in ventas if v['Fecha'] == fecha_hoy]
-            
-            if ventas_hoy:
-                df_ventas = pd.DataFrame(ventas_hoy)
-                total = sum([float(v['Total']) for v in ventas_hoy])
-                st.metric("RECAUDADO HOY", f"S/ {total:.2f}")
-                st.table(df_ventas[['Hora', 'Producto', 'Cantidad', 'Total', 'Metodo']])
-            else:
-                st.warning("No hay ventas registradas hoy.")
+            try:
+                fecha_hoy, _ = obtener_tiempo_peru()
+                ventas = tabla_ventas.scan().get("Items", [])
+                ventas_hoy = [v for v in ventas if v['Fecha'] == fecha_hoy]
+                
+                if ventas_hoy:
+                    total = sum([float(v['Total']) for v in ventas_hoy])
+                    st.metric("RECAUDADO HOY", f"S/ {total:.2f}")
+                    st.table(pd.DataFrame(ventas_hoy)[['Hora', 'Producto', 'Cantidad', 'Total', 'Metodo']])
+                else:
+                    st.warning("No hay ventas hoy.")
+            except: st.error("Error al generar reporte")
 
         if st.button("Cerrar Sesión"):
             st.rerun()
