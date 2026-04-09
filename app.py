@@ -1,20 +1,19 @@
 import streamlit as st
 import pandas as pd
 import boto3
-import time
-import io
 from datetime import datetime
 import pytz
+import time
 
 # 1. CONFIGURACIÓN Y TIEMPO PERÚ
-st.set_page_config(page_title="Inventario Dental Tío", layout="wide")
+st.set_page_config(page_title="Gestión Dental Tío - PRO", layout="wide")
 
 def obtener_tiempo_peru():
     tz_peru = pytz.timezone('America/Lima')
     ahora = datetime.now(tz_peru)
     return ahora.strftime("%d/%m/%Y"), ahora.strftime("%H:%M:%S")
 
-# 2. CONEXIÓN A AWS (Secretos)
+# 2. CONEXIÓN AWS
 try:
     aws_id = st.secrets["aws"]["aws_access_key_id"]
     aws_key = st.secrets["aws"]["aws_secret_access_key"]
@@ -26,139 +25,97 @@ try:
                               aws_secret_access_key=aws_key)
     
     tabla_ventas = dynamodb.Table('VentasInventario')
-    tabla_ingresos = dynamodb.Table('EntradasInventario')
+    tabla_stock = dynamodb.Table('StockProductos') 
 except Exception as e:
-    st.error(f"Error de configuración en AWS: {e}")
+    st.error(f"Error de conexión: {e}")
     st.stop()
 
-# 3. CARGA DE DATOS LOCALES (CSV)
-@st.cache_data
-def cargar_datos():
-    try:
-        df = pd.read_csv("inventario.csv")
-        df.columns = df.columns.str.strip()
-        return df
-    except:
-        return pd.DataFrame(columns=['Producto', 'Precio_Venta', 'Stock'])
+# 3. INTERFAZ PRINCIPAL
+st.title("🦷 Sistema de Ventas e Inventario")
 
-df = cargar_datos()
-
-# --- DETECCIÓN DINÁMICA DE COLUMNAS ---
-# Esto evita el error de "IndexError" si las columnas cambian de nombre
+# Cargar Stock desde AWS
 try:
-    col_prod_list = [c for c in df.columns if 'producto' in c.lower()][0]
-    col_precio_list = [c for c in df.columns if 'precio' in c.lower()][0]
-except IndexError:
-    st.error("Error: No se encontraron las columnas 'Producto' o 'Precio' en el CSV.")
-    st.stop()
+    res = tabla_stock.scan()
+    items = res.get('Items', [])
+    df_stock = pd.DataFrame(items) if items else pd.DataFrame(columns=['Producto', 'Stock', 'Precio'])
+except:
+    df_stock = pd.DataFrame(columns=['Producto', 'Stock', 'Precio'])
 
-# --- INTERFAZ DE USUARIO ---
-st.title("🦷 Suministros Dentales")
-
-# SECCIÓN A: STOCK ACTUAL
-st.subheader("📦 Stock Disponible")
-st.dataframe(df, use_container_width=True, hide_index=True)
+# A. VISTA DE INVENTARIO
+st.subheader("📦 Stock en la Nube")
+if not df_stock.empty:
+    # Convertir a numérico para ordenar bien
+    df_stock['Stock'] = pd.to_numeric(df_stock['Stock'])
+    st.dataframe(df_stock[['Producto', 'Stock', 'Precio']], use_container_width=True, hide_index=True)
+else:
+    st.info("La base de datos está vacía. Agregue productos en el Panel Admin.")
 
 st.divider()
 
-# SECCIÓN B: REGISTRO DE VENTAS
-st.subheader("🛒 Realizar Venta")
-col1, col2 = st.columns(2)
+# B. REALIZAR VENTA (CON DESCUENTO REAL)
+st.subheader("🛒 Registrar Nueva Venta")
+if not df_stock.empty:
+    c1, c2 = st.columns(2)
+    with c1:
+        v_prod = st.selectbox("Producto:", df_stock['Producto'].tolist())
+        v_cant = st.number_input("Cantidad a vender:", min_value=1, value=1)
+    with c2:
+        v_metodo = st.radio("Pago:", ["Yape", "Plin", "Efectivo"], horizontal=True)
 
-with col1:
-    v_prod = st.selectbox("Selecciona producto:", df[col_prod_list].tolist(), key="v_prod")
-    v_cant = st.number_input("Cantidad:", min_value=1, value=1, key="v_cant")
-with col2:
-    v_metodo = st.radio("Método de Pago:", ["Yape", "Plin", "Efectivo"], horizontal=True)
+    if st.button("Finalizar Venta 💰"):
+        try:
+            # Obtener datos actuales
+            prod_data = tabla_stock.get_item(Key={'Producto': v_prod}).get('Item')
+            stock_actual = int(prod_data['Stock'])
+            precio = float(prod_data['Precio'])
 
-if st.button("Confirmar Venta 🚀"):
-    try:
-        fecha, hora = obtener_tiempo_peru()
-        id_v = f"V-{fecha.replace('/', '')}-{hora.replace(':', '')}"
-        
-        # Obtener precio para el total
-        precio_unit = df.loc[df[col_prod_list] == v_prod, col_precio_list].values[0]
-        total_venta = float(precio_unit) * v_cant
-        
-        # GUARDAR EN AWS
-        tabla_ventas.put_item(Item={
-            'ID_Venta': id_v,
-            'Fecha': fecha,
-            'Hora': hora,
-            'Producto': v_prod,
-            'Cantidad': int(v_cant),
-            'Metodo': v_metodo,
-            'Total': str(total_venta)
-        })
-        
-        st.balloons()
-        st.success(f"✅ Venta registrada: {v_prod} x{v_cant}. Total: S/ {total_venta:.2f}")
-        st.info(f"Cobrar mediante {v_metodo}")
-    except Exception as e:
-        st.error(f"Error al guardar venta en AWS: {e}")
+            if stock_actual >= v_cant:
+                nuevo_stock = stock_actual - v_cant
+                fecha, hora = obtener_tiempo_peru()
+                id_v = f"V-{fecha.replace('/','')}-{hora.replace(':','')}"
 
-# SECCIÓN C: PANEL DE ADMINISTRADOR
+                # 1. DESCONTAR EN AWS
+                tabla_stock.update_item(
+                    Key={'Producto': v_prod},
+                    UpdateExpression="set Stock = :s",
+                    ExpressionAttributeValues={':s': nuevo_stock}
+                )
+
+                # 2. REGISTRAR VENTA
+                tabla_ventas.put_item(Item={
+                    'ID_Venta': id_v,
+                    'Fecha': fecha,
+                    'Hora': hora,
+                    'Producto': v_prod,
+                    'Cantidad': v_cant,
+                    'Total': str(round(precio * v_cant, 2)),
+                    'Metodo': v_metodo
+                })
+
+                st.balloons()
+                st.success(f"Venta registrada. Nuevo stock de {v_prod}: {nuevo_stock}")
+                time.sleep(2)
+                st.rerun()
+            else:
+                st.error(f"¡Error! Solo quedan {stock_actual} unidades.")
+        except Exception as e:
+            st.error(f"Error en la transacción: {e}")
+
+# C. PANEL ADMINISTRADOR
 st.write("##")
-st.divider()
-
-with st.expander("🔐 ACCESO ADMINISTRADOR"):
+with st.expander("🔐 PANEL DE CONTROL (ADMIN)"):
     password = st.text_input("Contraseña:", type="password")
-    
     if password == admin_pass:
-        st.success("Panel de Gestión Activado")
-        c1, c2 = st.columns(2)
-        
-        with c1:
-            st.subheader("📥 Abastecer Stock")
-            p_add = st.selectbox("Producto:", df[col_prod_list].tolist(), key="p_add")
-            q_add = st.number_input("Cantidad a ingresar:", min_value=1, value=1)
-            
-            if st.button("Actualizar Stock en AWS"):
-                try:
-                    fecha, hora = obtener_tiempo_peru()
-                    id_i = f"I-{fecha.replace('/', '')}-{hora.replace(':', '')}"
-                    
-                    tabla_ingresos.put_item(Item={
-                        'ID_Ingreso': id_i,
-                        'Fecha': fecha,
-                        'Hora': hora,
-                        'Producto': p_add,
-                        'Cantidad': int(q_add)
-                    })
-                    st.success("¡Ingreso guardado en AWS!")
-                    time.sleep(1)
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"Error en AWS: {e}")
-
-        with c2:
-            st.subheader("📜 Historial de Ingresos")
-            if st.button("Ver Ingresos"):
-                try:
-                    items = tabla_ingresos.scan().get("Items", [])
-                    if items:
-                        st.dataframe(pd.DataFrame(items), hide_index=True)
-                    else:
-                        st.info("Sin registros aún.")
-                except: st.error("Error al conectar con AWS")
-        
-        st.divider()
-        
-        # REPORTE DE CIERRE
-        st.subheader("💰 Cierre de Caja")
-        if st.button("🔄 GENERAR REPORTE DE HOY"):
-            try:
-                fecha_hoy, _ = obtener_tiempo_peru()
-                ventas = tabla_ventas.scan().get("Items", [])
-                ventas_hoy = [v for v in ventas if v['Fecha'] == fecha_hoy]
-                
-                if ventas_hoy:
-                    total = sum([float(v['Total']) for v in ventas_hoy])
-                    st.metric("RECAUDADO HOY", f"S/ {total:.2f}")
-                    st.table(pd.DataFrame(ventas_hoy)[['Hora', 'Producto', 'Cantidad', 'Total', 'Metodo']])
-                else:
-                    st.warning("No hay ventas hoy.")
-            except: st.error("Error al generar reporte")
-
-        if st.button("Cerrar Sesión"):
-            st.rerun()
+        st.subheader("Cargar/Actualizar Productos")
+        with st.form("form_admin"):
+            f_prod = st.text_input("Nombre del Producto")
+            f_stock = st.number_input("Stock Inicial", min_value=0)
+            f_precio = st.number_input("Precio de Venta (S/)", min_value=0.0)
+            if st.form_submit_button("Guardar en Nube"):
+                tabla_stock.put_item(Item={
+                    'Producto': f_prod, 
+                    'Stock': int(f_stock), 
+                    'Precio': str(f_precio)
+                })
+                st.success("Producto guardado correctamente.")
+                st.rerun()
