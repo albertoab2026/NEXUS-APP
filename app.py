@@ -64,8 +64,20 @@ tab_ventas, tab_admin = st.tabs(["🛒 Punto de Venta", "⚙️ Administración"
 with tab_ventas:
     if not df_stock.empty:
         df_stock['Stock'] = pd.to_numeric(df_stock['Stock'])
+        
+        # --- LÓGICA DE ALERTAS (STOCK BAJO < 5) ---
+        stock_bajo = df_stock[df_stock['Stock'] < 5]
+        if not stock_bajo.empty:
+            for _, fila in stock_bajo.iterrows():
+                st.error(f"⚠️ **STOCK CRÍTICO:** El producto **{fila['Producto']}** tiene solo **{fila['Stock']}** unidades.")
+
         with st.expander("Ver Stock Disponible"):
-            st.dataframe(df_stock[['Producto', 'Stock', 'Precio']], use_container_width=True, hide_index=True)
+            # Colorear filas de stock bajo en la tabla
+            def resaltar_bajo_stock(s):
+                return ['background-color: #ff4b4b; color: white' if s.Stock < 5 else '' for _ in s]
+            
+            st.dataframe(df_stock[['Producto', 'Stock', 'Precio']].style.apply(resaltar_bajo_stock, axis=None), 
+                         use_container_width=True, hide_index=True)
         
         c1, c2, c3 = st.columns([3, 1, 1])
         with c1: prod_sel = st.selectbox("Producto:", df_stock['Producto'].tolist())
@@ -109,11 +121,9 @@ with tab_ventas:
                 if st.button("✅ SÍ, FINALIZAR", use_container_width=True):
                     f, h, _ = obtener_tiempo_peru()
                     for item in st.session_state.carrito:
-                        # Actualizar Stock
                         res = tabla_stock.get_item(Key={'Producto': item['Producto']})
                         n_s = int(res['Item']['Stock']) - item['Cantidad']
                         tabla_stock.update_item(Key={'Producto': item['Producto']}, UpdateExpression="set Stock = :s", ExpressionAttributeValues={':s': n_s})
-                        # Registrar Venta
                         tabla_ventas.put_item(Item={
                             'ID_Venta': f"V-{f}-{h}-{item['Producto'][:2]}", 
                             'Fecha': f, 'Hora': h, 'Producto': item['Producto'], 
