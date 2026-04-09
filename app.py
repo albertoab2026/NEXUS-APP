@@ -85,11 +85,15 @@ with tab_ventas:
         total_v = df_car['Subtotal'].sum()
         m_pago = st.radio("Pago:", ["💵 Efectivo", "🟢 Yape", "🟣 Plin"], horizontal=True)
         
-        if st.button("🚀 PROCESAR VENTA S/ " + str(total_v), type="primary"):
+        # --- MONTO RESALTADO ANTES DE CONFIRMAR ---
+        st.metric(label="Total de Venta", value=f"S/ {total_v:.2f}")
+
+        if st.button("🚀 PROCESAR VENTA", type="primary", use_container_width=True):
             st.session_state.confirmar = True
         
         if st.session_state.confirmar:
-            if st.button("✅ CONFIRMAR"):
+            st.warning("¿Confirmar transacción?")
+            if st.button("✅ SÍ, FINALIZAR"):
                 f, h, _ = obtener_tiempo_peru()
                 for item in st.session_state.carrito:
                     res = tabla_stock.get_item(Key={'Producto': item['Producto']})
@@ -113,7 +117,7 @@ with tab_admin:
             df_v = df_v.sort_values(by='Hora', ascending=False)
             st.dataframe(df_v[['Hora', 'Producto', 'Cantidad', 'Total', 'Metodo']], use_container_width=True, hide_index=True)
             
-            # --- DESCARGA EXCEL ---
+            # DESCARGA EXCEL
             output = io.BytesIO()
             with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
                 df_v.to_excel(writer, index=False, sheet_name='Ventas')
