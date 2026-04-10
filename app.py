@@ -78,20 +78,29 @@ with tabs[0]:
     if st.session_state.boleta:
         st.balloons()
         b = st.session_state.boleta
+        # BOLETA CON NEGRO INTENSO
         ticket = f"""
-        <div style="background-color: white; color: black; padding: 20px; border: 2px solid #333; border-radius: 10px; max-width: 400px; margin: auto; font-family: 'Courier New', Courier, monospace;">
+        <div style="background-color: white; color: #000000; padding: 25px; border: 3px solid #000; border-radius: 10px; max-width: 400px; margin: auto; font-family: 'Courier New', Courier, monospace;">
             <center>
-                <p style="margin:0; font-size: 14px; letter-spacing: 2px; color: #555;">TIENDA DENTAL</p>
-                <h1 style="margin:0; color: #2E86C1; font-size: 35px; font-weight: bold;">BALLARTA</h1>
+                <p style="margin:0; font-size: 16px; letter-spacing: 2px; color: #000000; font-weight: bold;">TIENDA DENTAL</p>
+                <h1 style="margin:0; color: #2E86C1; font-size: 40px; font-weight: 900;">BALLARTA</h1>
             </center>
-            <hr style="border: 1px dashed #333;">
-            <p style="font-size: 13px;"><b>FECHA:</b> {b['fecha']} | {b['hora']}</p>
-            <table style="width: 100%; font-size: 14px;">
+            <hr style="border: 1px dashed #000;">
+            <p style="font-size: 14px; color: #000000;"><b>FECHA:</b> {b['fecha']} | {b['hora']}</p>
+            <table style="width: 100%; font-size: 16px; color: #000000; border-collapse: collapse;">
         """
-        for i in b['items']: ticket += f"<tr><td>{i['Cantidad']} x {i['Producto']}</td><td style='text-align: right;'>S/ {float(i['Subtotal']):.2f}</td></tr>"
-        ticket += f"</table><hr style='border: 1px dashed #333;'><h2 style='text-align: right; margin: 5px 0;'>TOTAL: S/ {b['total']:.2f}</h2><p style='font-size: 13px;'><b>PAGO:</b> {b['metodo']}</p></div>"
+        for i in b['items']: 
+            ticket += f"<tr><td style='padding: 5px 0;'><b>{i['Cantidad']} x {i['Producto']}</b></td><td style='text-align: right;'><b>S/ {float(i['Subtotal']):.2f}</b></td></tr>"
+        
+        ticket += f"""
+            </table>
+            <hr style='border: 1px dashed #000;'>
+            <h2 style='text-align: right; margin: 10px 0; color: #000000; font-size: 30px; font-weight: 900;'>TOTAL: S/ {b['total']:.2f}</h2>
+            <p style='font-size: 14px; color: #000000;'><b>METODO DE PAGO:</b> {b['metodo']}</p>
+        </div>
+        """
         st.markdown(ticket, unsafe_allow_html=True)
-        if st.button("⬅️ NUEVA VENTA"):
+        if st.button("⬅️ NUEVA VENTA", use_container_width=True):
             st.session_state.boleta = None
             st.rerun()
     else:
@@ -132,7 +141,7 @@ with tabs[0]:
                 st.session_state.carrito = []
                 st.rerun()
 
-# --- TAB 2: STOCK (TEXTO ROJO PARA STOCK BAJO Y PRECIOS LIMPIOS) ---
+# --- TAB 2: STOCK (ROJO PARA STOCK BAJO Y PRECIOS LIMPIOS) ---
 with tabs[1]:
     st.subheader("📦 Stock en Almacén")
     if not df_stock.empty:
@@ -170,46 +179,40 @@ with tabs[2]:
 
 # --- TAB 4: HISTORIAL ---
 with tabs[3]:
-    st.subheader("📋 Historial")
+    st.subheader("📋 Historial de Entradas y Bajas")
     h_data = tabla_auditoria.scan().get('Items', [])
     if h_data:
         df_h = pd.DataFrame(h_data)
         df_h['Sort'] = pd.to_datetime(df_h['Fecha'] + ' ' + df_h['Hora'], format='%d/%m/%Y %H:%M:%S', errors='coerce')
         df_h = df_h.sort_values(by='Sort', ascending=False)
-        c1, c2 = st.columns(2)
-        with c1:
-            st.write("### 📥 Entradas")
-            st.dataframe(df_h[df_h.get('Tipo') != 'ELIMINADO'][['Fecha', 'Hora', 'Producto', 'Cantidad_Entrante', 'Stock_Resultante']], use_container_width=True, hide_index=True)
-        with c2:
-            st.write("### 🗑️ Eliminados")
-            st.dataframe(df_h[df_h.get('Tipo') == 'ELIMINADO'][['Fecha', 'Hora', 'Producto', 'Stock_Resultante']], use_container_width=True, hide_index=True)
+        st.dataframe(df_h[['Fecha', 'Hora', 'Producto', 'Cantidad_Entrante', 'Stock_Resultante', 'Tipo']], use_container_width=True, hide_index=True)
 
 # --- TAB 5: CARGAR STOCK ---
 with tabs[4]:
     st.subheader("📥 Cargar Stock")
     with st.form(key=f"c_{st.session_state.form_contador}"):
-        p_ex = st.selectbox("Existente:", [""] + df_stock['Producto'].tolist())
-        p_nu = st.text_input("Nuevo:").upper().strip()
+        p_ex = st.selectbox("Producto Existente:", [""] + df_stock['Producto'].tolist())
+        p_nu = st.text_input("Nuevo Producto (Nombre):").upper().strip()
         p_f = p_ex if p_ex != "" else p_nu
-        c_i = st.number_input("Cantidad:", min_value=1)
-        pr_i = st.number_input("Precio Venta:", min_value=0.1)
-        if st.form_submit_button("💾 REGISTRAR"):
+        c_i = st.number_input("Cantidad que ingresa:", min_value=1)
+        pr_i = st.number_input("Precio de Venta:", min_value=0.1)
+        if st.form_submit_button("💾 REGISTRAR INGRESO"):
             if p_f:
                 f, h, _, uid = obtener_tiempo_peru()
                 s_ant = int(df_stock[df_stock['Producto'] == p_f]['Stock'].values[0]) if p_f in df_stock['Producto'].values else 0
                 tabla_stock.put_item(Item={'Producto': p_f, 'Stock': s_ant + c_i, 'Precio': str(round(pr_i, 2))})
                 tabla_auditoria.put_item(Item={'ID_Ingreso': f"I-{uid}", 'Fecha': f, 'Hora': h, 'Producto': p_f, 'Cantidad_Entrante': int(c_i), 'Stock_Resultante': int(s_ant + c_i), 'Tipo': 'INGRESO'})
-                st.success("Guardado."); st.session_state.form_contador += 1
+                st.success(f"Stock de {p_f} actualizado."); st.session_state.form_contador += 1
                 time.sleep(1); st.rerun()
 
 # --- TAB 6: MANTENIMIENTO ---
 with tabs[5]:
-    st.subheader("🛠️ Mant.")
+    st.subheader("🛠️ Mantenimiento")
     if not df_stock.empty:
-        p_d = st.selectbox("Borrar producto:", df_stock['Producto'].tolist())
-        if st.button("🗑️ ELIMINAR PERMANENTE"):
+        p_d = st.selectbox("Seleccionar producto para ELIMINAR:", df_stock['Producto'].tolist())
+        if st.button("🗑️ ELIMINAR PERMANENTEMENTE", type="primary"):
             f, h, _, uid = obtener_tiempo_peru()
             s_d = int(df_stock[df_stock['Producto'] == p_d]['Stock'].values[0])
             tabla_stock.delete_item(Key={'Producto': p_d})
             tabla_auditoria.put_item(Item={'ID_Ingreso': f"D-{uid}", 'Fecha': f, 'Hora': h, 'Producto': p_d, 'Cantidad_Entrante': 0, 'Stock_Resultante': s_d, 'Tipo': 'ELIMINADO'})
-            st.success("Eliminado."); time.sleep(1); st.rerun()
+            st.success("Producto eliminado del sistema."); time.sleep(1); st.rerun()
