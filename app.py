@@ -29,7 +29,7 @@ try:
     tabla_stock = dynamodb.Table('StockProductos')
     tabla_auditoria = dynamodb.Table('EntradasInventario') 
 except Exception as e:
-    st.error(f"Error de conexión (Revisa Secrets en Streamlit): {e}")
+    st.error(f"Error de conexión: {e}")
     st.stop()
 
 def convertir_a_excel(df, nombre_hoja):
@@ -42,7 +42,6 @@ def convertir_a_excel(df, nombre_hoja):
 if 'sesion_iniciada' not in st.session_state: st.session_state.sesion_iniciada = False
 if 'carrito' not in st.session_state: st.session_state.carrito = []
 if 'boleta' not in st.session_state: st.session_state.boleta = None
-if 'form_contador' not in st.session_state: st.session_state.form_contador = 0
 
 # --- LOGIN ---
 if not st.session_state.sesion_iniciada:
@@ -70,7 +69,7 @@ def get_df_stock():
             df = pd.DataFrame(items)
             for col in ['Stock', 'Precio', 'Producto']:
                 if col not in df.columns: df[col] = 0 if col != 'Producto' else "Sin Nombre"
-            df['Stock'] = pd.to_numeric(df['Stock'], errors='coerce').fillna(0)
+            df['Stock'] = pd.to_numeric(df['Stock'], errors='coerce').fillna(0).astype(int)
             df['Precio'] = pd.to_numeric(df['Precio'], errors='coerce').fillna(0.0)
             return df[['Producto', 'Stock', 'Precio']].sort_values(by='Producto')
     except: pass
@@ -80,131 +79,111 @@ df_stock = get_df_stock()
 
 tabs = st.tabs(["🛒 Venta", "📦 Stock", "📊 Reportes", "📋 Historial", "📥 Cargar", "🛠️ Mant."])
 
-# --- TAB 1: VENTA (CON REBAJAS Y FRACCIONAMIENTO) ---
+# --- TAB 1: VENTA (CON REBAJA MANUAL) ---
 with tabs[0]:
     if st.session_state.boleta:
         st.balloons()
         b = st.session_state.boleta
         ticket = f"""
-        <div style="background-color: white; color: #000; padding: 20px; border: 2px solid #000; border-radius: 10px; max-width: 350px; margin: auto; font-family: monospace;">
-            <center><h2 style="margin:0;">BALLARTA</h2><p>TIENDA DENTAL</p></center>
-            <hr>
-            <p><b>FECHA:</b> {b['fecha']} {b['hora']}</p>
-            <table style="width:100%">
+        <div style="background-color: white; color: #000; padding: 25px; border: 3px solid #000; border-radius: 10px; max-width: 400px; margin: auto; font-family: monospace;">
+            <center><h2 style="margin:0;">BALLARTA</h2><p>DENTAL CARABAYLLO</p></center>
+            <hr style="border: 1px dashed #000;">
+            <p><b>FECHA:</b> {b['fecha']} | {b['hora']}</p>
+            <table style="width: 100%; font-size: 16px;">
         """
-        for i in b['items']:
-            ticket += f"<tr><td>{i['Cantidad']} {i['Producto']}</td><td style='text-align:right'>S/ {i['Subtotal']:.2f}</td></tr>"
-        ticket += f"</table><hr><h3 style='text-align:right'>TOTAL: S/ {b['total']:.2f}</h3><p>Pago: {b['metodo']}</p></div>"
+        for i in b['items']: 
+            ticket += f"<tr><td><b>{i['Cantidad']} x {i['Producto']}</b></td><td style='text-align: right;'>S/ {float(i['Subtotal']):.2f}</td></tr>"
+        ticket += f"</table><hr style='border: 1px dashed #000;'><h2 style='text-align: right;'>TOTAL: S/ {b['total']:.2f}</h2><p>PAGO: {b['metodo']}</p></div>"
         st.markdown(ticket, unsafe_allow_html=True)
-        if st.button("⬅️ NUEVA VENTA"):
+        if st.button("⬅️ NUEVA VENTA", use_container_width=True):
             st.session_state.boleta = None
             st.rerun()
     else:
         if not df_stock.empty:
-            col1, col2, col3 = st.columns([2, 1, 1])
-            with col1:
-                p_sel = st.selectbox("Producto:", df_stock['Producto'].tolist())
+            c1, c2, c3 = st.columns([2, 1, 1])
+            with c1:
+                p_sel = st.selectbox("Elegir Producto:", df_stock['Producto'].tolist())
                 info = df_stock[df_stock['Producto'] == p_sel].iloc[0]
-                st.caption(f"Stock actual: {info['Stock']}")
-            with col2:
-                # PRECIO EDITABLE PARA REBAJAS
-                precio_final = st.number_input("Precio S/:", value=float(info['Precio']), step=0.1)
-            with col3:
-                # CANTIDAD CON DECIMALES PARA COSAS SUELTAS
-                cant = st.number_input("Cantidad:", min_value=0.01, value=1.0, step=0.1)
+                st.info(f"Stock: {info['Stock']} | Normal: S/ {float(info['Precio']):.2f}")
+            with c2:
+                # AQUÍ SE HACE LA REBAJA: El precio se puede cambiar
+                precio_venda = st.number_input("Precio Cobrar:", value=float(info['Precio']), step=1.0)
+            with c3:
+                cant = st.number_input("Cant:", min_value=1, value=1)
             
-            nota = st.text_input("Nota (opcional: 'Suelto', 'Rebaja', etc.)")
+            nota = st.text_input("Nota (ej: Rebaja, Suelto, Cliente)")
 
-            if st.button("➕ AÑADIR AL CARRITO", use_container_width=True):
+            if st.button("➕ AÑADIR A LA LISTA", use_container_width=True):
                 if cant <= info['Stock']:
-                    nombre_prod = f"{p_sel} ({nota})" if nota else p_sel
-                    st.session_state.carrito.append({
-                        'Producto': nombre_prod, 
-                        'Original': p_sel,
-                        'Cantidad': cant, 
-                        'Precio': precio_final, 
-                        'Subtotal': round(precio_final * cant, 2)
-                    })
+                    nombre_final = f"{p_sel} ({nota})" if nota else p_sel
+                    st.session_state.carrito.append({'Producto': nombre_final, 'Original': p_sel, 'Cantidad': int(cant), 'Precio': float(precio_venda), 'Subtotal': round(precio_venda * cant, 2)})
                     st.rerun()
-                else: st.error("Stock insuficiente")
+                else: st.error("No hay suficiente stock")
 
         if st.session_state.carrito:
             df_car = pd.DataFrame(st.session_state.carrito)
             st.table(df_car[['Producto', 'Cantidad', 'Precio', 'Subtotal']])
             total_v = sum(i['Subtotal'] for i in st.session_state.carrito)
-            st.subheader(f"Total a Cobrar: S/ {total_v:.2f}")
+            st.markdown(f"<h2 style='text-align: center; color: #2ECC71;'>TOTAL A COBRAR: S/ {total_v:.2f}</h2>", unsafe_allow_html=True)
             
-            if st.button("🗑️ VACÍAR"):
-                st.session_state.carrito = []
-                st.rerun()
-
-            metodo = st.radio("Método:", ["💵 Efectivo", "🟢 Yape", "🟣 Plin"], horizontal=True)
-            if st.button("🚀 FINALIZAR VENTA", type="primary"):
+            metodo = st.radio("Pago:", ["💵 Efectivo", "🟢 Yape", "🟣 Plin"], horizontal=True)
+            if st.button("🚀 FINALIZAR VENTA", type="primary", use_container_width=True):
                 f, h, _, uid = obtener_tiempo_peru()
                 st.session_state.boleta = {'fecha': f, 'hora': h, 'items': list(st.session_state.carrito), 'total': total_v, 'metodo': metodo}
                 for item in st.session_state.carrito:
-                    s_actual = float(df_stock[df_stock['Producto'] == item['Original']]['Stock'].values[0])
-                    # Actualiza stock (soporta decimales)
-                    tabla_stock.update_item(Key={'Producto': item['Original']}, UpdateExpression="set Stock = :s", ExpressionAttributeValues={':s': str(round(s_actual - item['Cantidad'], 2))})
-                    tabla_ventas.put_item(Item={'ID_Venta': f"V-{uid}", 'Fecha': f, 'Hora': h, 'Producto': item['Producto'], 'Cantidad': str(item['Cantidad']), 'Total': str(item['Subtotal']), 'Metodo': metodo})
+                    s_act = int(df_stock[df_stock['Producto'] == item['Original']]['Stock'].values[0])
+                    tabla_stock.update_item(Key={'Producto': item['Original']}, UpdateExpression="set Stock = :s", ExpressionAttributeValues={':s': s_act - item['Cantidad']})
+                    tabla_ventas.put_item(Item={'ID_Venta': f"V-{uid}", 'Fecha': f, 'Hora': h, 'Producto': item['Producto'], 'Cantidad': int(item['Cantidad']), 'Total': str(item['Subtotal']), 'Metodo': metodo})
                 st.session_state.carrito = []
                 st.rerun()
 
 # --- TAB 2: STOCK ---
 with tabs[1]:
-    st.subheader("📦 Inventario Actual")
-    if not df_stock.empty:
-        st.dataframe(df_stock, use_container_width=True, hide_index=True)
-        excel_s = convertir_a_excel(df_stock, "Stock")
-        st.download_button("📥 Descargar Excel Stock", excel_s, "Stock_Dental.xlsx")
+    st.subheader("📦 Almacén")
+    st.dataframe(df_stock, use_container_width=True, hide_index=True)
 
 # --- TAB 3: REPORTES ---
 with tabs[2]:
-    st.subheader("📊 Reporte de Ventas")
+    st.subheader("📊 Ventas de Hoy")
     _, _, ahora_dt, _ = obtener_tiempo_peru()
-    f_bus = st.date_input("Ver día:", ahora_dt).strftime("%d/%m/%Y")
+    f_bus = st.date_input("Fecha:", ahora_dt).strftime("%d/%m/%Y")
     v_data = tabla_ventas.scan().get('Items', [])
     if v_data:
         df_v = pd.DataFrame(v_data)
         df_dia = df_v[df_v['Fecha'] == f_bus].copy()
         if not df_dia.empty:
-            df_dia['Total'] = pd.to_numeric(df_dia['Total'])
-            st.metric("VENTA TOTAL", f"S/ {df_dia['Total'].sum():.2f}")
-            st.dataframe(df_dia[['Hora', 'Producto', 'Cantidad', 'Total', 'Metodo']], use_container_width=True)
-            excel_v = convertir_a_excel(df_dia, "Ventas")
-            st.download_button("📥 Descargar Ventas del Día", excel_v, f"Ventas_{f_bus}.xlsx")
+            df_dia = df_dia.sort_values(by='Hora', ascending=False)
+            st.metric("TOTAL DEL DÍA", f"S/ {pd.to_numeric(df_dia['Total']).sum():.2f}")
+            st.dataframe(df_dia[['Hora', 'Producto', 'Cantidad', 'Total', 'Metodo']], use_container_width=True, hide_index=True)
 
 # --- TAB 4: HISTORIAL ---
 with tabs[3]:
-    st.subheader("📋 Historial de Movimientos")
+    st.subheader("📋 Movimientos")
     h_data = tabla_auditoria.scan().get('Items', [])
     if h_data:
         df_h = pd.DataFrame(h_data)
-        if 'Fecha' in df_h.columns:
-            df_h['TS'] = pd.to_datetime(df_h['Fecha'] + ' ' + df_h['Hora'], format='%d/%m/%Y %H:%M:%S', errors='coerce')
-            df_h = df_h.sort_values('TS', ascending=False)
-        st.dataframe(df_h[['Fecha', 'Hora', 'Producto', 'Cantidad_Entrante', 'Stock_Resultante', 'Tipo']], use_container_width=True)
+        df_h['TS'] = pd.to_datetime(df_h['Fecha'] + ' ' + df_h['Hora'], format='%d/%m/%Y %H:%M:%S', errors='coerce')
+        st.dataframe(df_h.sort_values('TS', ascending=False)[['Fecha', 'Hora', 'Producto', 'Cantidad_Entrante', 'Stock_Resultante', 'Tipo']], use_container_width=True, hide_index=True)
 
-# --- TAB 5: CARGAR ---
+# --- TAB 5: CARGAR STOCK ---
 with tabs[4]:
-    st.subheader("📥 Cargar Nuevo Stock")
+    st.subheader("📥 Cargar Mercadería")
     with st.form("carga"):
-        p_n = st.text_input("Producto:").upper().strip()
-        c_n = st.number_input("Cantidad:", min_value=0.1, step=0.1)
-        pr_n = st.number_input("Precio Venta:", min_value=0.1, step=0.1)
+        p_n = st.text_input("Producto (ej: RESINA A1 UNIDAD):").upper().strip()
+        c_n = st.number_input("Cantidad:", min_value=1)
+        pr_n = st.number_input("Precio Venta Normal:", min_value=1.0)
         if st.form_submit_button("💾 GUARDAR"):
-            if p_n:
-                f, h, _, uid = obtener_tiempo_peru()
-                s_ant = float(df_stock[df_stock['Producto'] == p_n]['Stock'].values[0]) if p_n in df_stock['Producto'].values else 0
-                tabla_stock.put_item(Item={'Producto': p_n, 'Stock': str(s_ant + c_n), 'Precio': str(pr_n)})
-                tabla_auditoria.put_item(Item={'ID_Ingreso': f"I-{uid}", 'Fecha': f, 'Hora': h, 'Producto': p_n, 'Cantidad_Entrante': str(c_n), 'Stock_Resultante': str(s_ant + c_n), 'Tipo': 'INGRESO'})
-                st.success("Registrado"); time.sleep(1); st.rerun()
+            f, h, _, uid = obtener_tiempo_peru()
+            s_ant = int(df_stock[df_stock['Producto'] == p_n]['Stock'].values[0]) if p_n in df_stock['Producto'].values else 0
+            tabla_stock.put_item(Item={'Producto': p_n, 'Stock': s_ant + c_n, 'Precio': str(pr_n)})
+            tabla_auditoria.put_item(Item={'ID_Ingreso': f"I-{uid}", 'Fecha': f, 'Hora': h, 'Producto': p_n, 'Cantidad_Entrante': int(c_n), 'Stock_Resultante': int(s_ant + c_n), 'Tipo': 'INGRESO'})
+            st.success("Guardado!"); time.sleep(1); st.rerun()
 
 # --- TAB 6: MANTENIMIENTO ---
 with tabs[5]:
-    st.subheader("🛠️ Eliminar Producto")
+    st.subheader("🛠️ Eliminar")
     if not df_stock.empty:
-        p_del = st.selectbox("Seleccione para borrar:", df_stock['Producto'].tolist())
-        if st.button("🗑️ ELIMINAR PERMANENTE"):
+        p_del = st.selectbox("Borrar:", df_stock['Producto'].tolist())
+        if st.button("🗑️ ELIMINAR"):
             tabla_stock.delete_item(Key={'Producto': p_del})
-            st.success(f"{p_del} eliminado"); time.sleep(1); st.rerun()
+            st.success("Eliminado"); time.sleep(1); st.rerun()
