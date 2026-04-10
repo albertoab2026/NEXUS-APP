@@ -4,7 +4,6 @@ import boto3
 from datetime import datetime
 import pytz
 import time
-import io
 
 # 1. CONFIGURACIÓN INICIAL
 st.set_page_config(page_title="Sistema Dental BALLARTA", layout="wide")
@@ -81,11 +80,7 @@ with tabs[0]:
         b = st.session_state.boleta
         ticket = f"""
         <div style="background-color: white; color: black; padding: 20px; border: 2px solid #333; border-radius: 10px; max-width: 400px; margin: auto; font-family: 'Courier New', Courier, monospace;">
-            <center>
-                <p style="margin:0; font-size: 14px; letter-spacing: 3px; color: #555;">TIENDA DENTAL</p>
-                <h1 style="margin:0; color: #2E86C1; font-size: 35px; font-weight: bold;">BALLARTA</h1>
-                <p style="margin-bottom: 10px; font-size: 12px;">Insumos Profesionales</p>
-            </center>
+            <center><h1 style="margin:0; color: #2E86C1; font-size: 35px; font-weight: bold;">BALLARTA</h1></center>
             <hr style="border: 1px dashed #333;">
             <p style="font-size: 13px;"><b>FECHA:</b> {b['fecha']} | {b['hora']}</p>
             <table style="width: 100%; font-size: 14px;">
@@ -116,10 +111,8 @@ with tabs[0]:
             st.table(pd.DataFrame(st.session_state.carrito))
             total_v = sum(i['Subtotal'] for i in st.session_state.carrito)
             st.markdown(f"<h1 style='color: #2ECC71; text-align: center; border: 2px solid #2ECC71; border-radius: 10px; padding: 10px;'>TOTAL: S/ {total_v:.2f}</h1>", unsafe_allow_html=True)
-            
             metodo = st.radio("Método de Pago:", ["💵 Efectivo", "🟢 Yape", "🟣 Plin"], horizontal=True)
             confirmar_pago = st.checkbox("✅ Confirmo que recibí el pago")
-            
             if st.button("🚀 FINALIZAR VENTA", type="primary", use_container_width=True, disabled=not confirmar_pago):
                 f, h, _, uid = obtener_tiempo_peru()
                 st.session_state.boleta = {'fecha': f, 'hora': h, 'items': list(st.session_state.carrito), 'total': total_v, 'metodo': metodo}
@@ -130,40 +123,40 @@ with tabs[0]:
                 st.session_state.carrito = []
                 st.rerun()
 
-# --- TAB 2: STOCK (VERSION ESTABLE SIN COLORES CONFLICTIVOS) ---
+# --- TAB 2: STOCK (COLOR DE LETRA ROJO SEGURO) ---
 with tabs[1]:
     st.subheader("📦 Stock en Almacén")
     if not df_stock.empty:
+        # Función que solo cambia el color del TEXTO si es 5 o menos
+        def color_texto_rojo(val):
+            color = 'red' if val <= 5 else 'white'
+            return f'color: {color}; font-weight: bold'
+
         st.dataframe(
-            df_stock,
+            df_stock.style.map(color_texto_rojo, subset=['Stock']),
             use_container_width=True, 
             hide_index=True
         )
 
-# --- TAB 3: REPORTES (RESTABLECIDO CON MÉTRICAS) ---
+# --- TAB 3: REPORTES ---
 with tabs[2]:
     st.subheader("📊 Reporte Diario")
     _, _, ahora_dt, _ = obtener_tiempo_peru()
     f_bus = st.date_input("Fecha:", ahora_dt).strftime("%d/%m/%Y")
-    
     v_data = tabla_ventas.scan().get('Items', [])
     if v_data:
         df_v = pd.DataFrame(v_data)
         df_dia = df_v[df_v['Fecha'] == f_bus].copy() if not df_v.empty else pd.DataFrame()
-        
         if not df_dia.empty:
             df_dia['Total'] = pd.to_numeric(df_dia['Total'], errors='coerce').fillna(0)
-            
             t_efe = df_dia[df_dia['Metodo'] == "💵 Efectivo"]['Total'].sum()
             t_yap = df_dia[df_dia['Metodo'] == "🟢 Yape"]['Total'].sum()
             t_pli = df_dia[df_dia['Metodo'] == "🟣 Plin"]['Total'].sum()
-            
             c1, c2, c3, c4 = st.columns(4)
             c1.metric("💵 EFECTIVO", f"S/ {t_efe:.2f}")
             c2.metric("🟢 YAPE", f"S/ {t_yap:.2f}")
             c3.metric("🟣 PLIN", f"S/ {t_pli:.2f}")
             c4.metric("💰 TOTAL", f"S/ {df_dia['Total'].sum():.2f}")
-            
             st.dataframe(df_dia[['Hora', 'Producto', 'Cantidad', 'Total', 'Metodo']], use_container_width=True, hide_index=True)
         else: st.info("Sin ventas hoy.")
 
