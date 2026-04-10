@@ -80,7 +80,10 @@ with tabs[0]:
         b = st.session_state.boleta
         ticket = f"""
         <div style="background-color: white; color: black; padding: 20px; border: 2px solid #333; border-radius: 10px; max-width: 400px; margin: auto; font-family: 'Courier New', Courier, monospace;">
-            <center><h1 style="margin:0; color: #2E86C1; font-size: 35px; font-weight: bold;">BALLARTA</h1></center>
+            <center>
+                <p style="margin:0; font-size: 14px; letter-spacing: 2px; color: #555;">TIENDA DENTAL</p>
+                <h1 style="margin:0; color: #2E86C1; font-size: 35px; font-weight: bold;">BALLARTA</h1>
+            </center>
             <hr style="border: 1px dashed #333;">
             <p style="font-size: 13px;"><b>FECHA:</b> {b['fecha']} | {b['hora']}</p>
             <table style="width: 100%; font-size: 14px;">
@@ -129,7 +132,7 @@ with tabs[0]:
                 st.session_state.carrito = []
                 st.rerun()
 
-# --- TAB 2: STOCK (VERSION ESTABLE CON FORMATO DE PRECIO) ---
+# --- TAB 2: STOCK (TEXTO ROJO PARA STOCK BAJO Y PRECIOS LIMPIOS) ---
 with tabs[1]:
     st.subheader("📦 Stock en Almacén")
     if not df_stock.empty:
@@ -137,7 +140,6 @@ with tabs[1]:
             color = 'red' if val <= 5 else 'white'
             return f'color: {color}; font-weight: bold'
 
-        # .format limpia los ceros de más: {:.2f} deja solo 2 decimales
         st.dataframe(
             df_stock.style.map(color_texto_rojo, subset=['Stock']).format({"Precio": "S/ {:.2f}"}),
             use_container_width=True, 
