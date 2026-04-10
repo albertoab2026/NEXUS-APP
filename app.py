@@ -73,7 +73,6 @@ with tab_ventas:
                 st.error(f"⚠️ **STOCK BAJO:** {fila['Producto']} (Solo quedan {fila['Stock']})")
 
         with st.expander("Ver Stock Disponible"):
-            # En lugar de colores que rompen el app, usamos una columna de advertencia
             df_mostrar = df_stock.copy()
             df_mostrar['Estado'] = df_mostrar['Stock'].apply(lambda x: "🚨 CRÍTICO" if x < 5 else "✅ OK")
             st.dataframe(df_mostrar[['Estado', 'Producto', 'Stock', 'Precio']], use_container_width=True, hide_index=True)
@@ -90,12 +89,13 @@ with tab_ventas:
                     st.session_state.carrito.append({'Producto': prod_sel, 'Cantidad': cant_sel, 'Precio': p, 'Subtotal': round(p * cant_sel, 2)})
                     st.rerun()
                 else: st.error("No hay suficiente stock")
+    else:
+        st.info("No hay productos registrados en el inventario.")
 
     if st.session_state.carrito:
         st.write("### 🛒 Carrito")
         df_car = pd.DataFrame(st.session_state.carrito)
         st.table(df_car)
-        
         total_v = df_car['Subtotal'].sum()
         
         col_total, col_vaciar = st.columns([2, 1])
@@ -140,7 +140,7 @@ with tab_ventas:
                     st.rerun()
 
 with tab_admin:
-    t_ganancia, t_stock = st.tabs(["💰 Reporte de Ventas", "📥 Entrada de Mercadería"])
+    t_ganancia, t_stock, t_mant = st.tabs(["💰 Reporte de Ventas", "📥 Entrada de Mercadería", "🛠️ Mantenimiento"])
     
     with t_ganancia:
         _, _, ahora = obtener_tiempo_peru()
@@ -150,7 +150,21 @@ with tab_admin:
         
         if not df_v.empty:
             df_v['Total'] = pd.to_numeric(df_v['Total'])
-            st.metric("RECAUDACIÓN DEL DÍA", f"S/ {df_v['Total'].sum():.2f}")
+            
+            # --- NUEVA SECCIÓN: CIERRE DE CAJA POR MÉTODO ---
+            st.write("### 📊 Resumen de Caja")
+            c_efectivo = df_v[df_v['Metodo'] == "💵 Efectivo"]['Total'].sum()
+            c_digital = df_v[df_v['Metodo'].isin(["🟢 Yape", "🟣 Plin"])]['Total'].sum()
+            total_dia = df_v['Total'].sum()
+
+            m1, m2, m3 = st.columns(3)
+            m1.metric("💵 EFECTIVO", f"S/ {c_efectivo:.2f}")
+            m2.metric("📱 YAPE / PLIN", f"S/ {c_digital:.2f}")
+            m3.metric("TOTAL GENERAL", f"S/ {total_dia:.2f}", delta_color="normal")
+            
+            st.divider()
+            # -----------------------------------------------
+
             df_v = df_v.sort_values(by='Hora', ascending=False)
             st.dataframe(df_v[['Hora', 'Producto', 'Cantidad', 'Total', 'Metodo']], use_container_width=True, hide_index=True)
             
@@ -163,24 +177,65 @@ with tab_admin:
     with t_stock:
         with st.form("form_stock"):
             st.write("### Cargar Mercadería")
-            p_in = st.selectbox("Producto:", df_stock['Producto'].tolist()) if not df_stock.empty else st.text_input("Nombre")
+            p_in = st.selectbox("Producto Existente:", df_stock['Producto'].tolist()) if not df_stock.empty else None
+            p_nuevo = st.text_input("O escribir Producto Nuevo (si no está en la lista):")
+            
+            p_final = p_nuevo if p_nuevo else p_in
+            
             c_in = st.number_input("Cantidad entrante:", min_value=1)
             pr_in = st.number_input("Precio de venta:", min_value=0.0)
+            
             if st.form_submit_button("💾 Guardar"):
-                res = tabla_stock.get_item(Key={'Producto': p_in})
-                n_stock = (int(res['Item']['Stock']) if 'Item' in res else 0) + c_in
-                tabla_stock.put_item(Item={'Producto': p_in, 'Stock': n_stock, 'Precio': str(pr_in)})
-                f, h, _ = obtener_tiempo_peru()
-                tabla_auditoria.put_item(Item={'ID_Ingreso': f"I-{f}-{h}", 'Fecha': f, 'Hora': h, 'Producto': p_in, 'Cantidad_Entrante': int(c_in), 'Stock_Resultante': int(n_stock), 'Precio_Fijado': str(pr_in)})
-                st.success("Inventario actualizado")
-                time.sleep(1)
-                st.rerun()
+                if p_final:
+                    res = tabla_stock.get_item(Key={'Producto': p_final})
+                    n_stock = (int(res['Item']['Stock']) if 'Item' in res else 0) + c_in
+                    tabla_stock.put_item(Item={'Producto': p_final, 'Stock': n_stock, 'Precio': str(pr_in)})
+                    f, h, _ = obtener_tiempo_peru()
+                    tabla_auditoria.put_item(Item={'ID_Ingreso': f"I-{f}-{h}", 'Fecha': f, 'Hora': h, 'Producto': p_final, 'Cantidad_Entrante': int(c_in), 'Stock_Resultante': int(n_stock), 'Precio_Fijado': str(pr_in)})
+                    st.success(f"Inventario actualizado: {p_final}")
+                    time.sleep(1)
+                    st.rerun()
+                else:
+                    st.error("Debe seleccionar o escribir un nombre de producto.")
 
         st.divider()
         st.write("### Historial de Entradas")
-        f_st_bus = st.date_input("Ver ingresos de fecha:", ahora).strftime("%d/%m/%Y")
+        f_st_bus = st.date_input("Ver ingresos de fecha:", ahora, key="fecha_ingreso").strftime("%d/%m/%Y")
         ing_raw = tabla_auditoria.scan().get('Items', [])
         df_ing = pd.DataFrame([i for i in ing_raw if i['Fecha'] == f_st_bus])
         if not df_ing.empty:
             df_ing = df_ing.sort_values(by='Hora', ascending=False)
             st.dataframe(df_ing[['Hora', 'Producto', 'Cantidad_Entrante', 'Stock_Resultante', 'Precio_Fijado']], use_container_width=True, hide_index=True)
+
+    with t_mant:
+        st.write("### 🛠️ Corregir o Eliminar Productos")
+        if not df_stock.empty:
+            prod_a_editar = st.selectbox("Seleccione producto para modificar:", df_stock['Producto'].tolist(), key="sel_mant")
+            
+            col1, col2 = st.columns(2)
+            with col1:
+                if st.button("🗑️ Eliminar permanentemente", use_container_width=True):
+                    tabla_stock.delete_item(Key={'Producto': prod_a_editar})
+                    st.success(f"Eliminado: {prod_a_editar}")
+                    time.sleep(1)
+                    st.rerun()
+            
+            with col2:
+                nuevo_nombre = st.text_input("Corregir nombre a:")
+                if st.button("✏️ Actualizar Nombre", use_container_width=True):
+                    if nuevo_nombre:
+                        res = tabla_stock.get_item(Key={'Producto': prod_a_editar})
+                        if 'Item' in res:
+                            datos = res['Item']
+                            # Crear nuevo, borrar viejo
+                            tabla_stock.put_item(Item={
+                                'Producto': nuevo_nombre,
+                                'Stock': datos['Stock'],
+                                'Precio': datos['Precio']
+                            })
+                            tabla_stock.delete_item(Key={'Producto': prod_a_editar})
+                            st.success("Nombre corregido.")
+                            time.sleep(1)
+                            st.rerun()
+        else:
+            st.info("No hay productos en stock para gestionar.")
