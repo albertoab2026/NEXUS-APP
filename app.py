@@ -1,5 +1,5 @@
 import streamlit as st
-import pandas as pd
+import pd
 import boto3
 from datetime import datetime
 import pytz
@@ -74,7 +74,7 @@ df_stock = get_df_stock()
 
 tabs = st.tabs(["🛒 Venta", "📦 Stock", "📊 Reportes", "📋 Historial", "📥 Cargar", "🛠️ Mant."])
 
-# --- TAB 1: VENTA (CON CONFIRMACIÓN) ---
+# --- TAB 1: VENTA ---
 with tabs[0]:
     if st.session_state.boleta:
         st.balloons()
@@ -118,7 +118,7 @@ with tabs[0]:
             st.markdown(f"<h1 style='color: #2ECC71; text-align: center; border: 2px solid #2ECC71; border-radius: 10px; padding: 10px;'>TOTAL: S/ {total_v:.2f}</h1>", unsafe_allow_html=True)
             
             metodo = st.radio("Método de Pago:", ["💵 Efectivo", "🟢 Yape", "🟣 Plin"], horizontal=True)
-            confirmar_pago = st.checkbox("✅ Confirmo que recibí el pago del cliente")
+            confirmar_pago = st.checkbox("✅ Confirmo que recibí el pago")
             
             if st.button("🚀 FINALIZAR VENTA", type="primary", use_container_width=True, disabled=not confirmar_pago):
                 f, h, _, uid = obtener_tiempo_peru()
@@ -130,22 +130,19 @@ with tabs[0]:
                 st.session_state.carrito = []
                 st.rerun()
 
-# --- TAB 2: STOCK (FIJADO SIN ERRORES) ---
+# --- TAB 2: STOCK (VERSION ESTABLE SIN COLORES CONFLICTIVOS) ---
 with tabs[1]:
     st.subheader("📦 Stock en Almacén")
     if not df_stock.empty:
-        # Función moderna para el color
-        def resaltar_rojo(s):
-            is_low = s <= 5
-            return ['background-color: #ff4b4b; color: white; font-weight: bold' if is_low else '' for _ in s]
-
+        # Mostramos la tabla directa para evitar errores de compatibilidad de Pandas Styler
         st.dataframe(
-            df_stock.style.apply(resaltar_rojo, subset=['Stock']).format({"Precio": "S/ {:.2f}", "Stock": "{}"}),
+            df_stock,
             use_container_width=True, 
             hide_index=True
         )
+        st.caption("Nota: Si el stock es 5 o menos, aparecerá una alerta en la pestaña de Venta.")
 
-# --- TAB 3: REPORTES (CON SEPARACIÓN DE PAGOS) ---
+# --- TAB 3: REPORTES (RESTABLECIDO CON MÉTRICAS) ---
 with tabs[2]:
     st.subheader("📊 Reporte Diario")
     _, _, ahora_dt, _ = obtener_tiempo_peru()
@@ -159,7 +156,7 @@ with tabs[2]:
         if not df_dia.empty:
             df_dia['Total'] = pd.to_numeric(df_dia['Total'], errors='coerce').fillna(0)
             
-            # Totales por método
+            # Métricas separadas
             t_efe = df_dia[df_dia['Metodo'] == "💵 Efectivo"]['Total'].sum()
             t_yap = df_dia[df_dia['Metodo'] == "🟢 Yape"]['Total'].sum()
             t_pli = df_dia[df_dia['Metodo'] == "🟣 Plin"]['Total'].sum()
