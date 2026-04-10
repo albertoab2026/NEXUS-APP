@@ -1,5 +1,5 @@
 import streamlit as st
-import pd
+import pandas as pd
 import boto3
 from datetime import datetime
 import pytz
@@ -62,7 +62,6 @@ def get_df_stock():
         items = tabla_stock.scan().get('Items', [])
         if items:
             df = pd.DataFrame(items)
-            # Asegurar que existan las columnas necesarias
             for col in ['Stock', 'Precio', 'Producto']:
                 if col not in df.columns: df[col] = 0 if col != 'Producto' else "Sin Nombre"
             
@@ -129,12 +128,11 @@ with tabs[0]:
 with tabs[1]:
     st.subheader("📦 Stock Actual")
     if not df_stock.empty:
-        # Usamos try/except para evitar el error de applymap en versiones de pandas
         try:
-            def style_red(val): return 'background-color: #E74C3C; color: white;' if val <= 5 else ''
-            st.dataframe(df_stock.style.applymap(style_red, subset=['Stock']).format({"Precio": "S/ {:.2f}", "Stock": "{:.0f}"}), use_container_width=True, hide_index=True)
-        except:
+            # Usamos st.dataframe directamente para mayor estabilidad
             st.dataframe(df_stock, use_container_width=True, hide_index=True)
+        except:
+            st.table(df_stock)
 
 # --- TAB 3: REPORTES ---
 with tabs[2]:
@@ -148,10 +146,18 @@ with tabs[2]:
             df_dia = df_v[df_v['Fecha'] == f_bus].copy()
             if not df_dia.empty:
                 df_dia['Total'] = pd.to_numeric(df_dia['Total'], errors='coerce').fillna(0)
-                ce, cy, cp = df_dia[df_dia.get('Metodo', '') == "💵 Efectivo"]['Total'].sum(), df_dia[df_dia.get('Metodo', '') == "🟢 Yape"]['Total'].sum(), df_dia[df_dia.get('Metodo', '') == "🟣 Plin"]['Total'].sum()
+                ce = df_dia[df_dia.get('Metodo', '') == "💵 Efectivo"]['Total'].sum()
+                cy = df_dia[df_dia.get('Metodo', '') == "🟢 Yape"]['Total'].sum()
+                cp = df_dia[df_dia.get('Metodo', '') == "🟣 Plin"]['Total'].sum()
+                
                 c1, c2, c3, c4 = st.columns(4)
-                c1.metric("💵 EFECTIVO", f"S/ {ce:.2f}"); c2.metric("🟢 YAPE", f"S/ {cy:.2f}"); c3.metric("🟣 PLIN", f"S/ {cp:.2f}"); c4.metric("💰 TOTAL", f"S/ {df_dia['Total'].sum():.2f}")
+                c1.metric("💵 EFECTIVO", f"S/ {ce:.2f}")
+                c2.metric("🟢 YAPE", f"S/ {cy:.2f}")
+                c3.metric("🟣 PLIN", f"S/ {cp:.2f}")
+                c4.metric("💰 TOTAL", f"S/ {df_dia['Total'].sum():.2f}")
+                
                 st.dataframe(df_dia.sort_values(by='Hora', ascending=False)[['Hora', 'Producto', 'Cantidad', 'Total', 'Metodo']], use_container_width=True, hide_index=True)
+                
                 output = io.BytesIO()
                 with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
                     df_dia.to_excel(writer, index=False, sheet_name='Ventas')
