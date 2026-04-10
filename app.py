@@ -6,7 +6,7 @@ import pytz
 import time
 import io
 
-# 1. CONFIGURACIÓN
+# 1. CONFIGURACIÓN INICIAL
 st.set_page_config(page_title="Sistema Dental BALLARTA", layout="wide")
 
 def obtener_tiempo_peru():
@@ -55,7 +55,7 @@ if st.sidebar.button("🔴 CERRAR SESIÓN"):
     st.session_state.sesion_iniciada = False
     st.rerun()
 
-# CARGAR STOCK
+# CARGAR STOCK (CON MANEJO DE ERRORES)
 def get_df_stock():
     try:
         items = tabla_stock.scan().get('Items', [])
@@ -69,6 +69,7 @@ def get_df_stock():
 
 df_stock = get_df_stock()
 
+# PESTAÑAS
 tabs = st.tabs(["🛒 Venta", "📦 Stock", "📊 Reportes", "📋 Historial", "📥 Cargar", "🛠️ Mant."])
 
 # --- TAB 1: VENTA ---
@@ -117,15 +118,15 @@ with tabs[0]:
                 st.session_state.carrito = []
                 st.rerun()
 
-# --- TAB 2: STOCK (SIN ERRORES DE PANDAS) ---
+# --- TAB 2: STOCK (CORREGIDO COMANDO MAP) ---
 with tabs[1]:
     st.subheader("📦 Stock Actual")
     if not df_stock.empty:
-        # Forma segura de estilizar sin romper por versiones de Pandas
         def style_red(val):
             return 'background-color: #E74C3C; color: white; font-weight: bold' if val <= 5 else ''
         
-        st.dataframe(df_stock.style.applymap(style_red, subset=['Stock']).format({"Precio": "S/ {:.2f}", "Stock": "{:.0f}"}), use_container_width=True, hide_index=True)
+        # Se usa map() en lugar de applymap() para compatibilidad total
+        st.dataframe(df_stock.style.map(style_red, subset=['Stock']).format({"Precio": "S/ {:.2f}", "Stock": "{:.0f}"}), use_container_width=True, hide_index=True)
 
 # --- TAB 3: REPORTES ---
 with tabs[2]:
@@ -143,13 +144,13 @@ with tabs[2]:
             m1.metric("EFECTIVO", f"S/ {ce:.2f}"); m2.metric("YAPE", f"S/ {cy:.2f}"); m3.metric("PLIN", f"S/ {cp:.2f}"); m4.metric("TOTAL", f"S/ {df_dia['Total'].sum():.2f}")
             st.dataframe(df_dia.sort_values(by='Hora', ascending=False)[['Hora', 'Producto', 'Cantidad', 'Total', 'Metodo']], use_container_width=True, hide_index=True)
 
-# --- TAB 4: HISTORIAL (BLINDADO CONTRA KEYERROR) ---
+# --- TAB 4: HISTORIAL (BLINDADO TOTAL) ---
 with tabs[3]:
     st.subheader("📋 Historial de Movimientos")
     h_data = tabla_auditoria.scan().get('Items', [])
     if h_data:
         df_h = pd.DataFrame(h_data)
-        # BLINDAJE: Si no existe la columna 'Tipo', la creamos como 'INGRESO'
+        # Si la columna 'Tipo' no existe en registros viejos, se crea automáticamente
         if 'Tipo' not in df_h.columns:
             df_h['Tipo'] = 'INGRESO'
         
@@ -157,7 +158,7 @@ with tabs[3]:
         df_h = df_h.sort_values(by='Sort', ascending=False)
         
         st.markdown("### 📥 Ingresos")
-        ingresos = df_h[df_h['Tipo'] != 'ELIMINADO']
+        ingresos = df_h[df_h['Tipo'].fillna('INGRESO') != 'ELIMINADO']
         st.dataframe(ingresos[['Fecha', 'Hora', 'Producto', 'Cantidad_Entrante', 'Stock_Resultante']], use_container_width=True, hide_index=True)
         
         st.markdown("### 🗑️ Eliminados")
