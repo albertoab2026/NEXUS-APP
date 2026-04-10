@@ -74,17 +74,12 @@ tabs = st.tabs(["🛒 Venta", "📦 Stock", "📊 Reportes", "📋 Historial", "
 # --- TAB 1: VENTA ---
 with tabs[0]:
     if st.session_state.boleta:
-        st.balloons() # <--- ¡AQUÍ ESTÁN LOS GLOBOS DE VUELTA! 🎈
+        st.balloons()
         b = st.session_state.boleta
         ticket = f"""
         <div style="background-color: white; color: black; padding: 20px; border: 2px solid #333; border-radius: 10px; max-width: 400px; margin: auto; font-family: monospace;">
-            <center>
-                <h2 style="margin:0;">TIENDA DENTAL</h2>
-                <h1 style="margin:0; color: #2E86C1;">BALLARTA</h1>
-                <p>Insumos Profesionales</p>
-            </center>
-            <hr>
-            <p><b>FECHA:</b> {b['fecha']} | {b['hora']}</p>
+            <center><h2 style="margin:0;">TIENDA DENTAL</h2><h1 style="margin:0; color: #2E86C1;">BALLARTA</h1><p>Insumos Profesionales</p></center>
+            <hr><p><b>FECHA:</b> {b['fecha']} | {b['hora']}</p>
             <table style="width: 100%;">
         """
         for i in b['items']: ticket += f"<tr><td>{i['Cantidad']} x {i['Producto']}</td><td style='text-align: right;'>S/ {float(i['Subtotal']):.2f}</td></tr>"
@@ -112,10 +107,8 @@ with tabs[0]:
             st.table(pd.DataFrame(st.session_state.carrito))
             total_v = sum(i['Subtotal'] for i in st.session_state.carrito)
             st.markdown(f"<h1 style='color: #2ECC71; text-align: center; border: 2px solid #2ECC71; border-radius: 10px; padding: 10px;'>TOTAL: S/ {total_v:.2f}</h1>", unsafe_allow_html=True)
-            
             metodo = st.radio("Método de Pago:", ["💵 Efectivo", "🟢 Yape", "🟣 Plin"], horizontal=True)
             confirmar = st.checkbox("✅ Confirmo recepción del dinero")
-            
             if st.button("🚀 FINALIZAR VENTA", disabled=not confirmar, type="primary", use_container_width=True):
                 f, h, _, uid = obtener_tiempo_peru()
                 st.session_state.boleta = {'fecha': f, 'hora': h, 'items': list(st.session_state.carrito), 'total': total_v, 'metodo': metodo}
@@ -126,7 +119,7 @@ with tabs[0]:
                 st.session_state.carrito = []
                 st.rerun()
 
-# --- TAB 2: STOCK (CON MAP Y COLOR ROJO) ---
+# --- TAB 2: STOCK ---
 with tabs[1]:
     st.subheader("📦 Stock Actual")
     if not df_stock.empty:
@@ -134,7 +127,43 @@ with tabs[1]:
             return 'background-color: #E74C3C; color: white; font-weight: bold' if val <= 5 else ''
         st.dataframe(df_stock.style.map(style_red, subset=['Stock']).format({"Precio": "S/ {:.2f}", "Stock": "{:.0f}"}), use_container_width=True, hide_index=True)
 
-# --- TAB 4: HISTORIAL (BLINDADO) ---
+# --- TAB 3: REPORTES (CORREGIDO Y VISIBLE) ---
+with tabs[2]:
+    st.subheader("📊 Reporte de Ventas")
+    f_p, _, ahora_dt, _ = obtener_tiempo_peru()
+    f_bus = st.date_input("Seleccionar Fecha:", ahora_dt).strftime("%d/%m/%Y")
+    
+    v_data = tabla_ventas.scan().get('Items', [])
+    if v_data:
+        df_v = pd.DataFrame(v_data)
+        df_dia = df_v[df_v['Fecha'] == f_bus].copy()
+        
+        if not df_dia.empty:
+            df_dia['Total'] = pd.to_numeric(df_dia['Total'], errors='coerce').fillna(0)
+            
+            # Métricas
+            ce = df_dia[df_dia['Metodo'] == "💵 Efectivo"]['Total'].sum()
+            cy = df_dia[df_dia['Metodo'] == "🟢 Yape"]['Total'].sum()
+            cp = df_dia[df_dia['Metodo'] == "🟣 Plin"]['Total'].sum()
+            
+            c1, c2, c3, c4 = st.columns(4)
+            c1.metric("💵 EFECTIVO", f"S/ {ce:.2f}")
+            c2.metric("🟢 YAPE", f"S/ {cy:.2f}")
+            c3.metric("🟣 PLIN", f"S/ {cp:.2f}")
+            c4.metric("💰 TOTAL DÍA", f"S/ {df_dia['Total'].sum():.2f}")
+            
+            # Tabla Detallada
+            st.dataframe(df_dia.sort_values(by='Hora', ascending=False)[['Hora', 'Producto', 'Cantidad', 'Total', 'Metodo']], use_container_width=True, hide_index=True)
+            
+            # Exportar Excel
+            output = io.BytesIO()
+            with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                df_dia.to_excel(writer, index=False, sheet_name='Ventas')
+            st.download_button(label="📥 Descargar Reporte Excel", data=output.getvalue(), file_name=f"Ventas_{f_bus.replace('/','-')}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        else:
+            st.warning(f"No hay ventas registradas el {f_bus}")
+
+# --- TAB 4: HISTORIAL ---
 with tabs[3]:
     st.subheader("📋 Historial de Movimientos")
     h_data = tabla_auditoria.scan().get('Items', [])
@@ -144,14 +173,13 @@ with tabs[3]:
         df_h['Sort'] = pd.to_datetime(df_h['Fecha'] + ' ' + df_h['Hora'], format='%d/%m/%Y %H:%M:%S', errors='coerce')
         df_h = df_h.sort_values(by='Sort', ascending=False)
         
-        st.markdown("### 📥 Ingresos")
-        ingresos = df_h[df_h['Tipo'].fillna('INGRESO') != 'ELIMINADO']
-        st.dataframe(ingresos[['Fecha', 'Hora', 'Producto', 'Cantidad_Entrante', 'Stock_Resultante']], use_container_width=True, hide_index=True)
-        
-        st.markdown("### 🗑️ Eliminados")
-        eliminados = df_h[df_h['Tipo'] == 'ELIMINADO']
-        if not eliminados.empty:
-            st.dataframe(eliminados[['Fecha', 'Hora', 'Producto', 'Stock_Resultante']], use_container_width=True, hide_index=True)
+        col_ing, col_del = st.columns(2)
+        with col_ing:
+            st.markdown("### 📥 Ingresos")
+            st.dataframe(df_h[df_h['Tipo'].fillna('INGRESO') != 'ELIMINADO'][['Fecha', 'Hora', 'Producto', 'Cantidad_Entrante', 'Stock_Resultante']], use_container_width=True, hide_index=True)
+        with col_del:
+            st.markdown("### 🗑️ Eliminados")
+            st.dataframe(df_h[df_h['Tipo'] == 'ELIMINADO'][['Fecha', 'Hora', 'Producto', 'Stock_Resultante']], use_container_width=True, hide_index=True)
 
 # --- TAB 5: CARGAR STOCK ---
 with tabs[4]:
