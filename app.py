@@ -54,20 +54,23 @@ if items:
     df_stock = pd.DataFrame(items)
     df_stock['Stock'] = pd.to_numeric(df_stock['Stock'])
     df_stock['Precio'] = pd.to_numeric(df_stock['Precio'])
-    df_stock = df_stock.sort_values(by='Producto')
+    # Ordenar alfabéticamente por producto y reordenar columnas
+    df_stock = df_stock[['Producto', 'Stock', 'Precio']].sort_values(by='Producto')
 else:
     df_stock = pd.DataFrame(columns=['Producto', 'Stock', 'Precio'])
 
 # --- CUADRO DE INVENTARIO GENERAL ---
 with st.expander("📦 VER TODO MI INVENTARIO (Stock Actual)", expanded=True):
     if not df_stock.empty:
-        # CORRECCIÓN DE ERROR: Usamos .style.map en lugar de applymap
         def resaltar_bajo_stock(val):
-            color = 'background-color: #ff4b4b; color: white; font-weight: bold' if val <= 5 else ''
-            return color
+            return 'background-color: #ff4b4b; color: white; font-weight: bold' if val <= 5 else ''
+        
+        # Formatear para quitar ceros extras: Stock como entero, Precio con 2 decimales
+        df_format = df_stock.copy()
         
         st.dataframe(
-            df_stock.style.map(resaltar_bajo_stock, subset=['Stock']),
+            df_format.style.map(resaltar_bajo_stock, subset=['Stock'])
+            .format({"Precio": "S/ {:.2f}", "Stock": "{:,.0f}"}),
             use_container_width=True,
             hide_index=True
         )
@@ -114,9 +117,9 @@ with t1:
             p_disp = df_stock.loc[df_stock['Producto'] == p_sel, 'Precio'].values[0]
             
             if s_disp <= 5:
-                st.error(f"⚠️ ¡ALERTA! Stock Crítico: Quedan {s_disp} unidades.")
+                st.error(f"⚠️ ¡ALERTA! Quedan {s_disp:.0f} unidades.")
             else:
-                st.info(f"📦 Disponible: {s_disp} | 💰 Precio: S/ {p_disp:.2f}")
+                st.info(f"📦 Disponible: {s_disp:.0f} | 💰 Precio: S/ {p_disp:.2f}")
 
         with col2:
             cant = st.number_input("Cant:", min_value=1, value=1)
@@ -130,8 +133,9 @@ with t1:
 
     if st.session_state.carrito:
         st.subheader("Venta actual")
-        st.table(pd.DataFrame(st.session_state.carrito))
-        total_v = sum(i['Subtotal'] for i in st.session_state.carrito)
+        df_c = pd.DataFrame(st.session_state.carrito)
+        st.table(df_c)
+        total_v = df_c['Subtotal'].sum()
         metodo = st.radio("Método de Pago:", ["💵 Efectivo", "🟢 Yape", "🟣 Plin"], horizontal=True)
         
         st.warning(f"Total a cobrar: S/ {total_v:.2f}")
@@ -154,16 +158,22 @@ with t2:
     _, _, hoy_dt = obtener_tiempo_peru()
     f_ver = st.date_input("Día a consultar:", hoy_dt).strftime("%d/%m/%Y")
     
-    # Escaneo y filtrado
     vts_raw = tabla_ventas.scan().get('Items', [])
     if vts_raw:
         df_v = pd.DataFrame(vts_raw)
         df_v_dia = df_v[df_v['Fecha'] == f_ver].copy()
         
         if not df_v_dia.empty:
+            # Ordenar por Hora (de la más reciente a la más antigua)
+            df_v_dia = df_v_dia.sort_values(by='Hora', ascending=False)
             df_v_dia['Total'] = pd.to_numeric(df_v_dia['Total'])
+            
             st.metric("Venta del día", f"S/ {df_v_dia['Total'].sum():.2f}")
-            st.dataframe(df_v_dia[['Hora', 'Producto', 'Cantidad', 'Total', 'Metodo']], use_container_width=True, hide_index=True)
+            st.dataframe(
+                df_v_dia[['Hora', 'Producto', 'Cantidad', 'Total', 'Metodo']], 
+                use_container_width=True, 
+                hide_index=True
+            )
             
             output = io.BytesIO()
             with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
