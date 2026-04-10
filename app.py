@@ -110,7 +110,13 @@ with tabs[0]:
         if st.session_state.carrito:
             st.table(pd.DataFrame(st.session_state.carrito))
             total_v = sum(i['Subtotal'] for i in st.session_state.carrito)
+            
             st.markdown(f"<h1 style='color: #2ECC71; text-align: center; border: 2px solid #2ECC71; border-radius: 10px; padding: 10px;'>TOTAL: S/ {total_v:.2f}</h1>", unsafe_allow_html=True)
+            
+            if st.button("🗑️ VACÍAR CARRITO", type="secondary"):
+                st.session_state.carrito = []
+                st.rerun()
+
             metodo = st.radio("Método de Pago:", ["💵 Efectivo", "🟢 Yape", "🟣 Plin"], horizontal=True)
             confirmar_pago = st.checkbox("✅ Confirmo que recibí el pago")
             if st.button("🚀 FINALIZAR VENTA", type="primary", use_container_width=True, disabled=not confirmar_pago):
@@ -123,17 +129,17 @@ with tabs[0]:
                 st.session_state.carrito = []
                 st.rerun()
 
-# --- TAB 2: STOCK (COLOR DE LETRA ROJO SEGURO) ---
+# --- TAB 2: STOCK (VERSION ESTABLE CON FORMATO DE PRECIO) ---
 with tabs[1]:
     st.subheader("📦 Stock en Almacén")
     if not df_stock.empty:
-        # Función que solo cambia el color del TEXTO si es 5 o menos
         def color_texto_rojo(val):
             color = 'red' if val <= 5 else 'white'
             return f'color: {color}; font-weight: bold'
 
+        # .format limpia los ceros de más: {:.2f} deja solo 2 decimales
         st.dataframe(
-            df_stock.style.map(color_texto_rojo, subset=['Stock']),
+            df_stock.style.map(color_texto_rojo, subset=['Stock']).format({"Precio": "S/ {:.2f}"}),
             use_container_width=True, 
             hide_index=True
         )
