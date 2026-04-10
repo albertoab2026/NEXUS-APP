@@ -12,7 +12,6 @@ st.set_page_config(page_title="Sistema Dental BALLARTA", layout="wide")
 def obtener_tiempo_peru():
     tz_peru = pytz.timezone('America/Lima')
     ahora = datetime.now(tz_peru)
-    # UID con milisegundos para evitar errores de duplicado en DynamoDB
     return ahora.strftime("%d/%m/%Y"), ahora.strftime("%H:%M:%S"), ahora, ahora.strftime("%Y%m%d%H%M%S%f")
 
 # 2. CONEXIÓN AWS
@@ -52,24 +51,24 @@ if not st.session_state.sesion_iniciada:
             else: st.error("❌ Contraseña incorrecta")
     st.stop()
 
-# --- BOTÓN CERRAR SESIÓN (SIDEBAR) ---
+# SIDEBAR
 if st.sidebar.button("🔴 CERRAR SESIÓN"):
     st.session_state.sesion_iniciada = False
     st.rerun()
 
-# CARGAR STOCK
+# CARGAR STOCK (CON ORDEN DE COLUMNAS)
 def get_df_stock():
     items = tabla_stock.scan().get('Items', [])
     if items:
         df = pd.DataFrame(items)
         df['Stock'] = pd.to_numeric(df['Stock'])
         df['Precio'] = pd.to_numeric(df['Precio'])
-        return df.sort_values(by='Producto')
+        # REORDENAR: Producto, Stock, Precio
+        return df[['Producto', 'Stock', 'Precio']].sort_values(by='Producto')
     return pd.DataFrame(columns=['Producto', 'Stock', 'Precio'])
 
 df_stock = get_df_stock()
 
-# PESTAÑAS
 t1, t2, t3, t4, t5, t6 = st.tabs(["🛒 Venta", "📦 Stock", "📊 Reportes", "📋 Historial", "📥 Cargar", "🛠️ Mant."])
 
 # --- TAB 1: PUNTO DE VENTA ---
@@ -86,7 +85,7 @@ with t1:
                 <tr><td><b>Cant.</b></td><td><b>Producto</b></td><td style="text-align: right;"><b>Total</b></td></tr>
         """
         for i in b['items']:
-            ticket += f"<tr><td>{i['Cantidad']}</td><td>{i['Producto']}</td><td style='text-align: right;'>S/ {i['Subtotal']:.2f}</td></tr>"
+            ticket += f"<tr><td>{i['Cantidad']}</td><td>{i['Producto']}</td><td style='text-align: right;'>S/ {float(i['Subtotal']):.2f}</td></tr>"
         ticket += f"""
             </table>
             <hr>
@@ -110,7 +109,7 @@ with t1:
             
             if st.button("➕ AÑADIR AL CARRITO", use_container_width=True):
                 if cant <= info['Stock']:
-                    st.session_state.carrito.append({'Producto': p_sel, 'Cantidad': cant, 'Precio': info['Precio'], 'Subtotal': round(info['Precio'] * cant, 2)})
+                    st.session_state.carrito.append({'Producto': p_sel, 'Cantidad': int(cant), 'Precio': float(info['Precio']), 'Subtotal': round(float(info['Precio']) * cant, 2)})
                     st.rerun()
                 else: st.error("Stock insuficiente")
 
@@ -119,7 +118,6 @@ with t1:
             st.table(df_car.style.format({"Precio": "{:.2f}", "Subtotal": "{:.2f}"}))
             total_v = df_car['Subtotal'].sum()
             
-            # PRECIO GRANDE EN VERDE
             st.markdown(f"<div style='background-color: #1E1E1E; padding: 15px; border-radius: 10px; text-align: center;'><h1 style='color: #2ECC71;'>TOTAL: S/ {total_v:.2f}</h1></div>", unsafe_allow_html=True)
             
             metodo = st.radio("Método de Pago:", ["💵 Efectivo", "🟢 Yape", "🟣 Plin"], horizontal=True)
@@ -129,56 +127,64 @@ with t1:
                 f, h, _, uid = obtener_tiempo_peru()
                 st.session_state.boleta = {'fecha': f, 'hora': h, 'items': list(st.session_state.carrito), 'total': total_v, 'metodo': metodo}
                 for item in st.session_state.carrito:
-                    # Actualizar Stock en AWS
                     n_s = int(df_stock[df_stock['Producto'] == item['Producto']]['Stock'].values[0]) - item['Cantidad']
                     tabla_stock.update_item(Key={'Producto': item['Producto']}, UpdateExpression="set Stock = :s", ExpressionAttributeValues={':s': n_s})
-                    # Guardar Venta en AWS
                     tabla_ventas.put_item(Item={'ID_Venta': f"V-{uid}-{item['Producto'][:2]}", 'Fecha': f, 'Hora': h, 'Producto': item['Producto'], 'Cantidad': int(item['Cantidad']), 'Total': str(item['Subtotal']), 'Metodo': metodo})
                 st.session_state.carrito = []
                 st.rerun()
 
-# --- TAB 3: REPORTES (CON MÉTRICAS POR MÉTODO) ---
+# --- TAB 2: STOCK (LIMPIO Y ORDENADO) ---
+with t2:
+    st.subheader("📦 Inventario Actual")
+    st.dataframe(df_stock.style.format({"Precio": "S/ {:.2f}", "Stock": "{:.0f}"}), use_container_width=True, hide_index=True)
+
+# --- TAB 3: REPORTES (ORDENADO POR HORA) ---
 with t3:
     st.subheader("📊 Reporte de Ventas")
     _, _, ahora_dt, _ = obtener_tiempo_peru()
-    f_bus = st.date_input("Consultar fecha:", ahora_dt).strftime("%d/%m/%Y")
+    f_bus = st.date_input("Fecha:", ahora_dt).strftime("%d/%m/%Y")
     ventas = tabla_ventas.scan().get('Items', [])
     if ventas:
         df_v = pd.DataFrame(ventas)
         df_v_dia = df_v[df_v['Fecha'] == f_bus].copy()
         if not df_v_dia.empty:
             df_v_dia['Total'] = pd.to_numeric(df_v_dia['Total'])
+            # MÉTRICAS
             ce = df_v_dia[df_v_dia['Metodo'] == "💵 Efectivo"]['Total'].sum()
             cy = df_v_dia[df_v_dia['Metodo'] == "🟢 Yape"]['Total'].sum()
             cp = df_v_dia[df_v_dia['Metodo'] == "🟣 Plin"]['Total'].sum()
-            
             m1, m2, m3, m4 = st.columns(4)
-            m1.metric("💵 EFECTIVO", f"S/ {ce:.2f}")
-            m2.metric("🟢 YAPE", f"S/ {cy:.2f}")
-            m3.metric("🟣 PLIN", f"S/ {cp:.2f}")
-            m4.metric("💰 TOTAL", f"S/ {df_v_dia['Total'].sum():.2f}")
+            m1.metric("💵 EFECTIVO", f"S/ {ce:.2f}"); m2.metric("🟢 YAPE", f"S/ {cy:.2f}"); m3.metric("🟣 PLIN", f"S/ {cp:.2f}"); m4.metric("💰 TOTAL", f"S/ {df_v_dia['Total'].sum():.2f}")
             
-            st.dataframe(df_v_dia[['Hora', 'Producto', 'Cantidad', 'Total', 'Metodo']], use_container_width=True, hide_index=True)
+            # TABLA ORDENADA POR HORA DESCENDENTE
+            df_v_ord = df_v_dia.sort_values(by='Hora', ascending=False)
+            st.dataframe(df_v_ord[['Hora', 'Producto', 'Cantidad', 'Total', 'Metodo']].style.format({"Total": "{:.2f}"}), use_container_width=True, hide_index=True)
             
             output = io.BytesIO()
             with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                df_v_dia.to_excel(writer, index=False)
+                df_v_ord.to_excel(writer, index=False)
             st.download_button("📥 Descargar Reporte (Excel)", output.getvalue(), f"Ventas_{f_bus}.xlsx")
+        else: st.info("No hay ventas en esta fecha.")
 
-# --- TAB 4: HISTORIAL (CON BOTÓN EXCEL) ---
+# --- TAB 4: HISTORIAL (ORDENADO POR FECHA Y HORA) ---
 with t4:
-    st.subheader("📋 Historial de Entradas de Stock")
+    st.subheader("📋 Historial de Ingresos")
     historial = tabla_auditoria.scan().get('Items', [])
     if historial:
-        df_h = pd.DataFrame(historial).sort_values(by='Fecha', ascending=False)
-        st.dataframe(df_h[['Fecha', 'Hora', 'Producto', 'Cantidad_Entrante', 'Stock_Resultante']], use_container_width=True, hide_index=True)
+        df_h = pd.DataFrame(historial)
+        # Crear columna de tiempo para ordenar correctamente
+        df_h['Sort_Time'] = pd.to_datetime(df_h['Fecha'] + ' ' + df_h['Hora'], format='%d/%m/%Y %H:%M:%S')
+        df_h = df_h.sort_values(by='Sort_Time', ascending=False)
+        
+        st.dataframe(df_h[['Fecha', 'Hora', 'Producto', 'Cantidad_Entrante', 'Stock_Resultante']].style.format({"Cantidad_Entrante": "{:.0f}", "Stock_Resultante": "{:.0f}"}), use_container_width=True, hide_index=True)
         
         out_h = io.BytesIO()
         with pd.ExcelWriter(out_h, engine='xlsxwriter') as writer:
-            df_h.to_excel(writer, index=False)
+            df_h.drop(columns=['Sort_Time']).to_excel(writer, index=False)
         st.download_button("📥 Descargar Historial (Excel)", out_h.getvalue(), "Historial_Entradas.xlsx")
+    else: st.info("No hay ingresos registrados.")
 
-# --- TAB 5: CARGAR STOCK (CORREGIDO ID "ALA") ---
+# --- TAB 5: CARGAR STOCK ---
 with t5:
     st.subheader("📥 Cargar Mercadería")
     with st.form("f_carga"):
@@ -194,17 +200,13 @@ with t5:
                 nuevo_s = s_act + c_in
                 tabla_stock.put_item(Item={'Producto': p_fin, 'Stock': nuevo_s, 'Precio': str(pr_in)})
                 tabla_auditoria.put_item(Item={'ID_Ingreso': f"ING-{uid}", 'Fecha': f, 'Hora': h, 'Producto': p_fin, 'Cantidad_Entrante': int(c_in), 'Stock_Resultante': int(nuevo_s)})
-                st.success(f"Registrado con éxito: {p_fin}")
+                st.success(f"Registrado: {p_fin}")
                 time.sleep(1); st.rerun()
 
 # --- TAB 6: MANTENIMIENTO ---
 with t6:
     if not df_stock.empty:
         p_del = st.selectbox("Eliminar del sistema:", df_stock['Producto'].tolist())
-        if st.button("🗑️ ELIMINAR PERMANENTEMENTE", use_container_width=True):
+        if st.button("🗑️ ELIMINAR PERMANENTEMENTE"):
             tabla_stock.delete_item(Key={'Producto': p_del})
             st.rerun()
-
-# TAB 2: STOCK (MOSTRAR AL FINAL)
-with t2:
-    st.dataframe(df_stock.style.format({"Precio": "S/ {:.2f}"}), use_container_width=True, hide_index=True)
