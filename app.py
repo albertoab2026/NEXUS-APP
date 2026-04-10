@@ -66,7 +66,6 @@ with tab_ventas:
         df_stock['Stock'] = pd.to_numeric(df_stock['Stock'])
         df_stock['Precio'] = pd.to_numeric(df_stock['Precio'])
         
-        # Alertas de Stock Bajo
         stock_bajo = df_stock[df_stock['Stock'] < 5]
         if not stock_bajo.empty:
             for _, fila in stock_bajo.iterrows():
@@ -89,8 +88,7 @@ with tab_ventas:
                     st.session_state.carrito.append({'Producto': prod_sel, 'Cantidad': cant_sel, 'Precio': p, 'Subtotal': round(p * cant_sel, 2)})
                     st.rerun()
                 else: st.error("No hay suficiente stock")
-    else:
-        st.info("No hay productos registrados en el inventario.")
+    else: st.info("No hay productos registrados.")
 
     if st.session_state.carrito:
         st.write("### 🛒 Carrito")
@@ -99,8 +97,7 @@ with tab_ventas:
         total_v = df_car['Subtotal'].sum()
         
         col_total, col_vaciar = st.columns([2, 1])
-        with col_total:
-            st.metric(label="Total a Cobrar", value=f"S/ {total_v:.2f}")
+        with col_total: st.metric(label="Total a Cobrar", value=f"S/ {total_v:.2f}")
         with col_vaciar:
             st.write("##")
             if st.button("🗑️ Vaciar Carrito", use_container_width=True):
@@ -170,9 +167,12 @@ with tab_admin:
     with t_stock:
         with st.form("form_stock"):
             st.write("### Cargar Mercadería")
-            p_in = st.selectbox("Producto Existente:", df_stock['Producto'].tolist()) if not df_stock.empty else None
-            p_nuevo = st.text_input("O escribir Producto Nuevo:")
-            p_final = p_nuevo if p_nuevo else p_in
+            p_in = st.selectbox("Producto Existente:", df_stock['Producto'].tolist()) if not df_stock.empty else ""
+            p_nuevo = st.text_input("O escribir Producto Nuevo (Prioridad):")
+            
+            # Lógica de prioridad:
+            p_final = p_nuevo.strip() if p_nuevo.strip() else p_in
+            
             c_in = st.number_input("Cantidad entrante:", min_value=1)
             pr_in = st.number_input("Precio de venta (S/):", min_value=0.0, step=0.50)
             
@@ -180,7 +180,7 @@ with tab_admin:
                 if not p_final:
                     st.error("Debe indicar un nombre de producto.")
                 elif pr_in <= 0:
-                    st.error("🚨 ERROR: El precio de venta debe ser mayor a 0. No se puede regalar mercadería.")
+                    st.error("🚨 ERROR: El precio debe ser mayor a 0.")
                 else:
                     res = tabla_stock.get_item(Key={'Producto': p_final})
                     n_stock = (int(res['Item']['Stock']) if 'Item' in res else 0) + c_in
