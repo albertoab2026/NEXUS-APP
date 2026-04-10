@@ -1,5 +1,5 @@
 import streamlit as st
-import pandas as pd
+import pd
 import boto3
 from datetime import datetime
 import pytz
@@ -56,12 +56,16 @@ if st.sidebar.button("🔴 CERRAR SESIÓN"):
     st.session_state.sesion_iniciada = False
     st.rerun()
 
-# CARGAR STOCK (CON MANEJO DE ERRORES)
+# CARGAR STOCK (CON ESCUDO ANTIBUGS)
 def get_df_stock():
     try:
         items = tabla_stock.scan().get('Items', [])
         if items:
             df = pd.DataFrame(items)
+            # Asegurar que existan las columnas necesarias
+            for col in ['Stock', 'Precio', 'Producto']:
+                if col not in df.columns: df[col] = 0 if col != 'Producto' else "Sin Nombre"
+            
             df['Stock'] = pd.to_numeric(df['Stock'], errors='coerce').fillna(0)
             df['Precio'] = pd.to_numeric(df['Precio'], errors='coerce').fillna(0.0)
             return df[['Producto', 'Stock', 'Precio']].sort_values(by='Producto')
@@ -80,13 +84,8 @@ with tabs[0]:
         b = st.session_state.boleta
         ticket = f"""
         <div style="background-color: white; color: black; padding: 20px; border: 2px solid #333; border-radius: 10px; max-width: 400px; margin: auto; font-family: monospace;">
-            <center>
-                <h2 style="margin:0;">TIENDA DENTAL</h2>
-                <h1 style="margin:0; color: #2E86C1;">BALLARTA</h1>
-                <p>Insumos Profesionales</p>
-            </center>
-            <hr>
-            <p><b>FECHA:</b> {b['fecha']} | {b['hora']}</p>
+            <center><h2 style="margin:0;">TIENDA DENTAL</h2><h1 style="margin:0; color: #2E86C1;">BALLARTA</h1><p>Insumos Profesionales</p></center>
+            <hr><p><b>FECHA:</b> {b['fecha']} | {b['hora']}</p>
             <table style="width: 100%;">
         """
         for i in b['items']: ticket += f"<tr><td>{i['Cantidad']} x {i['Producto']}</td><td style='text-align: right;'>S/ {float(i['Subtotal']):.2f}</td></tr>"
@@ -130,9 +129,12 @@ with tabs[0]:
 with tabs[1]:
     st.subheader("📦 Stock Actual")
     if not df_stock.empty:
-        def style_red(val):
-            return 'background-color: #E74C3C; color: white; font-weight: bold' if val <= 5 else ''
-        st.dataframe(df_stock.style.map(style_red, subset=['Stock']).format({"Precio": "S/ {:.2f}", "Stock": "{:.0f}"}), use_container_width=True, hide_index=True)
+        # Usamos try/except para evitar el error de applymap en versiones de pandas
+        try:
+            def style_red(val): return 'background-color: #E74C3C; color: white;' if val <= 5 else ''
+            st.dataframe(df_stock.style.applymap(style_red, subset=['Stock']).format({"Precio": "S/ {:.2f}", "Stock": "{:.0f}"}), use_container_width=True, hide_index=True)
+        except:
+            st.dataframe(df_stock, use_container_width=True, hide_index=True)
 
 # --- TAB 3: REPORTES ---
 with tabs[2]:
@@ -142,37 +144,40 @@ with tabs[2]:
     v_data = tabla_ventas.scan().get('Items', [])
     if v_data:
         df_v = pd.DataFrame(v_data)
-        df_dia = df_v[df_v['Fecha'] == f_bus].copy()
-        if not df_dia.empty:
-            df_dia['Total'] = pd.to_numeric(df_dia['Total'], errors='coerce').fillna(0)
-            ce, cy, cp = df_dia[df_dia['Metodo'] == "💵 Efectivo"]['Total'].sum(), df_dia[df_dia['Metodo'] == "🟢 Yape"]['Total'].sum(), df_dia[df_dia['Metodo'] == "🟣 Plin"]['Total'].sum()
-            c1, c2, c3, c4 = st.columns(4)
-            c1.metric("💵 EFECTIVO", f"S/ {ce:.2f}"); c2.metric("🟢 YAPE", f"S/ {cy:.2f}"); c3.metric("🟣 PLIN", f"S/ {cp:.2f}"); c4.metric("💰 TOTAL", f"S/ {df_dia['Total'].sum():.2f}")
-            st.dataframe(df_dia.sort_values(by='Hora', ascending=False)[['Hora', 'Producto', 'Cantidad', 'Total', 'Metodo']], use_container_width=True, hide_index=True)
-            output = io.BytesIO()
-            with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                df_dia.to_excel(writer, index=False, sheet_name='Ventas')
-            st.download_button(label="📥 Descargar Excel", data=output.getvalue(), file_name=f"Ventas_{f_bus.replace('/','-')}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-        else: st.warning("No hay ventas este día.")
+        if 'Fecha' in df_v.columns:
+            df_dia = df_v[df_v['Fecha'] == f_bus].copy()
+            if not df_dia.empty:
+                df_dia['Total'] = pd.to_numeric(df_dia['Total'], errors='coerce').fillna(0)
+                ce, cy, cp = df_dia[df_dia.get('Metodo', '') == "💵 Efectivo"]['Total'].sum(), df_dia[df_dia.get('Metodo', '') == "🟢 Yape"]['Total'].sum(), df_dia[df_dia.get('Metodo', '') == "🟣 Plin"]['Total'].sum()
+                c1, c2, c3, c4 = st.columns(4)
+                c1.metric("💵 EFECTIVO", f"S/ {ce:.2f}"); c2.metric("🟢 YAPE", f"S/ {cy:.2f}"); c3.metric("🟣 PLIN", f"S/ {cp:.2f}"); c4.metric("💰 TOTAL", f"S/ {df_dia['Total'].sum():.2f}")
+                st.dataframe(df_dia.sort_values(by='Hora', ascending=False)[['Hora', 'Producto', 'Cantidad', 'Total', 'Metodo']], use_container_width=True, hide_index=True)
+                output = io.BytesIO()
+                with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                    df_dia.to_excel(writer, index=False, sheet_name='Ventas')
+                st.download_button(label="📥 Descargar Excel", data=output.getvalue(), file_name=f"Ventas_{f_bus.replace('/','-')}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+            else: st.warning("No hay ventas este día.")
 
-# --- TAB 4: HISTORIAL ---
+# --- TAB 4: HISTORIAL (CON FECHA Y HORA EN ELIMINADOS) ---
 with tabs[3]:
     st.subheader("📋 Historial de Movimientos")
     h_data = tabla_auditoria.scan().get('Items', [])
     if h_data:
         df_h = pd.DataFrame(h_data)
         if 'Tipo' not in df_h.columns: df_h['Tipo'] = 'INGRESO'
+        
         df_h['Sort'] = pd.to_datetime(df_h['Fecha'] + ' ' + df_h['Hora'], format='%d/%m/%Y %H:%M:%S', errors='coerce')
         df_h = df_h.sort_values(by='Sort', ascending=False)
+        
         col_i, col_e = st.columns(2)
         with col_i:
             st.markdown("### 📥 Ingresos")
-            st.dataframe(df_h[df_h['Tipo'].fillna('INGRESO') != 'ELIMINADO'][['Fecha', 'Hora', 'Producto', 'Cantidad_Entrante', 'Stock_Resultante']], use_container_width=True, hide_index=True)
+            st.dataframe(df_h[df_h['Tipo'] != 'ELIMINADO'][['Fecha', 'Hora', 'Producto', 'Cantidad_Entrante', 'Stock_Resultante']], use_container_width=True, hide_index=True)
         with col_e:
             st.markdown("### 🗑️ Eliminados")
             st.dataframe(df_h[df_h['Tipo'] == 'ELIMINADO'][['Fecha', 'Hora', 'Producto', 'Stock_Resultante']], use_container_width=True, hide_index=True)
 
-# --- TAB 5: CARGAR STOCK (CORRECCIÓN BUG "ALA") ---
+# --- TAB 5: CARGAR STOCK ---
 with tabs[4]:
     st.subheader("📥 Cargar Stock")
     with st.form(key=f"carga_stock_{st.session_state.form_contador}"):
@@ -191,13 +196,12 @@ with tabs[4]:
                 st.success(f"✅ ¡{p_f} registrado!")
                 st.session_state.form_contador += 1
                 time.sleep(1); st.rerun()
-            else: st.error("Escribe un nombre.")
 
 # --- TAB 6: MANTENIMIENTO ---
 with tabs[5]:
     st.subheader("🛠️ Mantenimiento")
     if not df_stock.empty:
-        p_b = st.selectbox("Producto a eliminar:", df_stock['Producto'].tolist())
+        p_b = st.selectbox("Eliminar del sistema:", df_stock['Producto'].tolist())
         if st.button("🗑️ ELIMINAR PERMANENTE", use_container_width=True):
             f, h, _, uid = obtener_tiempo_peru()
             s_borrar = int(df_stock[df_stock['Producto'] == p_b]['Stock'].values[0])
