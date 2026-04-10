@@ -56,65 +56,36 @@ if st.sidebar.button("🔴 CERRAR SISTEMA"):
 
 st.title("🦷 Gestión Dental BALLARTA")
 
-# CARGAR STOCK ACTUAL
+# CARGAR STOCK ACTUAL (Línea corregida aquí)
 items = tabla_stock.scan().get('Items', [])
-df_stock = pd.to_numeric(pd.DataFrame(items)) if items else pd.DataFrame(columns=['Producto', 'Stock', 'Precio'])
+if items:
+    df_stock = pd.DataFrame(items)
+    df_stock['Stock'] = pd.to_numeric(df_stock['Stock'])
+    df_stock['Precio'] = pd.to_numeric(df_stock['Precio'])
+else:
+    df_stock = pd.DataFrame(columns=['Producto', 'Stock', 'Precio'])
 
 tab_ventas, tab_admin = st.tabs(["🛒 Punto de Venta", "⚙️ Administración"])
 
 with tab_ventas:
-    # --- VISTA DE LA BOLETA (OPTIMIZADA PARA CAPTURA DE PANTALLA EN MODO OSCURO) ---
+    # --- VISTA DE LA BOLETA (BLINDADA CONTRA MODO OSCURO) ---
     if st.session_state.ultima_boleta:
         b = st.session_state.ultima_boleta
         
-        # Estilos CSS forzados para garantizar fondo blanco y texto negro en la captura
         st.markdown(f"""
-        <style>
-            .ticket-container {{
-                background-color: white !important;
-                color: black !important;
-                padding: 25px;
-                border-radius: 15px;
-                border: 2px solid #ddd;
-                max-width: 500px;
-                margin: auto;
-                font-family: 'Courier New', Courier, monospace;
-            }}
-            .ticket-header {{
-                text-align: center;
-                color: black !important;
-            }}
-            .ticket-header h1 {{
-                margin-bottom: 5px;
-                color: black !important;
-            }}
-            .ticket-body p, .ticket-body table, .ticket-body h3 {{
-                color: black !important;
-            }}
-            .ticket-body hr {{
-                border: 0.5px dashed #ccc !important;
-            }}
-            .ticket-table th {{
-                text-align: left;
-                color: black !important;
-            }}
-            .ticket-table td {{
-                color: black !important;
-            }}
-        </style>
-        <div class="ticket-container">
-            <div class="ticket-header">
-                <h1>🦷 BALLARTA</h1>
-                <p style="margin-top: 0; font-size: 14px; color: black !important;">Insumos y Suministros Dentales</p>
-                <p style="font-size: 12px; color: black !important;">Carabayllo, Lima</p>
-                <hr>
+        <div style="background-color: white !important; color: black !important; padding: 25px; border-radius: 15px; border: 2px solid #ddd; max-width: 500px; margin: auto; font-family: 'Courier New', Courier, monospace;">
+            <div style="text-align: center;">
+                <h1 style="color: black !important; margin-bottom: 5px;">🦷 BALLARTA</h1>
+                <p style="color: black !important; margin-top: 0; font-size: 14px;">Insumos y Suministros Dentales</p>
+                <p style="color: black !important; font-size: 12px;">Carabayllo, Lima</p>
+                <hr style="border: 0.5px dashed #ccc !important;">
             </div>
-            <div class="ticket-body">
+            <div style="color: black !important;">
                 <p><b>Fecha:</b> {b['fecha']}</p>
                 <p><b>Hora:</b> {b['hora']}</p>
-                <hr>
-                <table class="ticket-table" style="width: 100%;">
-                    <tr>
+                <hr style="border: 0.5px dashed #ccc !important;">
+                <table style="width: 100%; color: black !important;">
+                    <tr style="text-align: left;">
                         <th>Cant.</th>
                         <th>Producto</th>
                         <th style="text-align: right;">Total</th>
@@ -123,7 +94,7 @@ with tab_ventas:
 
         for item in b['items']:
             st.markdown(f"""
-                    <tr>
+                    <tr style="color: black !important;">
                         <td>{item['Cantidad']}</td>
                         <td>{item['Producto']}</td>
                         <td style="text-align: right;">S/ {float(item['Subtotal']):.2f}</td>
@@ -132,12 +103,12 @@ with tab_ventas:
 
         st.markdown(f"""
                 </table>
-                <hr>
-                <div style="text-align: right;">
-                    <h3 style="color: black !important;">TOTAL A PAGAR: S/ {b['total']:.2f}</h3>
+                <hr style="border: 0.5px dashed #ccc !important;">
+                <div style="text-align: right; color: black !important;">
+                    <h3>TOTAL A PAGAR: S/ {b['total']:.2f}</h3>
                 </div>
-                <p style="font-size: 14px;"><b>Método:</b> {b['metodo']}</p>
-                <div style="text-align: center; margin-top: 20px;">
+                <p style="color: black !important; font-size: 14px;"><b>Método:</b> {b['metodo']}</p>
+                <div style="text-align: center; margin-top: 20px; color: black !important;">
                     <p>¡Gracias por su preferencia!</p>
                 </div>
             </div>
@@ -152,9 +123,6 @@ with tab_ventas:
 
     # --- FLUJO NORMAL DE VENTA ---
     if not df_stock.empty:
-        df_stock['Stock'] = pd.to_numeric(df_stock['Stock'])
-        df_stock['Precio'] = pd.to_numeric(df_stock['Precio'])
-        
         bajos = df_stock[df_stock['Stock'] < 5]
         for _, r in bajos.iterrows():
             st.warning(f"🚨 Poco stock: {r['Producto']} ({r['Stock']} unid.)")
@@ -188,12 +156,10 @@ with tab_ventas:
 
         if st.button("✅ FINALIZAR VENTA", type="primary", use_container_width=True):
             f, h, _ = obtener_tiempo_peru()
-            # Guardamos los datos para la boleta antes de limpiar
             st.session_state.ultima_boleta = {
                 'fecha': f, 'hora': h, 'items': list(st.session_state.carrito),
                 'total': total, 'metodo': metodo
             }
-            # Actualizamos DynamoDB
             for item in st.session_state.carrito:
                 res = tabla_stock.get_item(Key={'Producto': item['Producto']})
                 n_s = int(res['Item']['Stock']) - item['Cantidad']
@@ -207,11 +173,11 @@ with tab_ventas:
             st.session_state.carrito = []
             st.rerun()
 
-# --- TAB ADMINISTRACIÓN (SE MANTIENE IGUAL) ---
+# --- TAB ADMINISTRACIÓN ---
 with tab_admin:
     t1, t2, t3 = st.tabs(["📊 Reportes", "📥 Stock", "🛠️ Ajustes"])
     
-    with t1: # REPORTE Y CIERRE DE CAJA
+    with t1:
         _, _, hoy = obtener_tiempo_peru()
         f_ver = st.date_input("Día:", hoy).strftime("%d/%m/%Y")
         vts = tabla_ventas.scan().get('Items', [])
@@ -229,10 +195,10 @@ with tab_admin:
             st.dataframe(df_vts[['Hora', 'Producto', 'Cantidad', 'Total', 'Metodo']], use_container_width=True, hide_index=True)
         else: st.info("Sin ventas.")
 
-    with t2: # ENTRADA DE MERCADERÍA
+    with t2:
         with st.form("add"):
             p_ex = st.selectbox("Existente:", df_stock['Producto'].tolist()) if not df_stock.empty else ""
-            p_nw = st.text_input("Nuevo (Si escribes aquí, manda este):")
+            p_nw = st.text_input("Nuevo:")
             final_p = p_nw.strip() if p_nw.strip() else p_ex
             cant_in = st.number_input("Cantidad:", min_value=1)
             prec_in = st.number_input("Precio Venta:", min_value=0.1)
@@ -245,7 +211,7 @@ with tab_admin:
                     time.sleep(1)
                     st.rerun()
 
-    with t3: # MANTENIMIENTO
+    with t3:
         if not df_stock.empty:
             p_borrar = st.selectbox("Producto a quitar/editar:", df_stock['Producto'].tolist())
             if st.button("🗑️ Eliminar Producto"):
