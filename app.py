@@ -149,21 +149,41 @@ with tabs[1]:
     if not df_stock.empty:
         st.dataframe(df_stock.style.map(lambda x: 'color: red; font-weight: bold' if x <= 5 else '', subset=['Stock']).format({"Precio": "S/ {:.2f}"}), use_container_width=True, hide_index=True)
 
-# 3. REPORTES (ORDENADOS)
+# 3. REPORTES (CON DESGLOSE DE PAGOS)
 with tabs[2]:
     st.subheader("📊 Ventas del Día")
-    f_bus = st.date_input("Fecha:").strftime("%d/%m/%Y")
+    f_bus = st.date_input("Fecha de consulta:").strftime("%d/%m/%Y")
     v_data = tabla_ventas.scan().get('Items', [])
+    
     if v_data:
         df_v = pd.DataFrame(v_data)
         df_hoy = df_v[df_v['Fecha'] == f_bus].copy() if not df_v.empty else pd.DataFrame()
+        
         if not df_hoy.empty:
+            df_hoy['Total'] = pd.to_numeric(df_hoy['Total'])
+            
+            # --- RESUMEN DE PAGOS ---
+            col_t1, col_t2, col_t3, col_t4 = st.columns(4)
+            with col_t1:
+                st.metric("TOTAL GENERAL", f"S/ {df_hoy['Total'].sum():.2f}")
+            with col_t2:
+                efectivo = df_hoy[df_hoy['Metodo'] == 'Efectivo']['Total'].sum()
+                st.metric("💵 EFECTIVO", f"S/ {efectivo:.2f}")
+            with col_t3:
+                yape = df_hoy[df_hoy['Metodo'] == 'Yape']['Total'].sum()
+                st.metric("📱 YAPE", f"S/ {yape:.2f}")
+            with col_t4:
+                plin = df_hoy[df_hoy['Metodo'] == 'Plin']['Total'].sum()
+                st.metric("💜 PLIN", f"S/ {plin:.2f}")
+            
+            st.divider()
+            # Tabla detallada
             df_hoy = df_hoy.sort_values(by='Hora', ascending=False)
-            st.metric("TOTAL RECAUDADO", f"S/ {pd.to_numeric(df_hoy['Total']).sum():.2f}")
             st.dataframe(df_hoy[['Hora', 'Producto', 'Cantidad', 'Total', 'Metodo']], hide_index=True, use_container_width=True)
-        else: st.warning("No hay ventas hoy")
+        else:
+            st.warning("No se registraron ventas en la fecha seleccionada.")
 
-# 4. HISTORIAL DE INGRESOS (ORDENADO)
+# 4. HISTORIAL DE INGRESOS
 with tabs[3]:
     st.subheader("📋 Historial de Cargas")
     h_data = tabla_auditoria.scan().get('Items', [])
@@ -196,7 +216,8 @@ with tabs[4]:
 
 # 6. MANTENIMIENTO
 with tabs[5]:
-    p_b = st.selectbox("Eliminar:", [""] + df_stock['Producto'].tolist())
+    st.subheader("🛠️ Eliminar Productos")
+    p_b = st.selectbox("Elegir producto a borrar:", [""] + df_stock['Producto'].tolist())
     if st.button("🗑️ ELIMINAR") and p_b != "":
         tabla_stock.delete_item(Key={'Producto': p_b})
         st.rerun()
