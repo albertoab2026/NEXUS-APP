@@ -1,11 +1,9 @@
 import streamlit as st
-import pd as pd
 import pandas as pd
 import boto3
 from datetime import datetime
 import pytz
 import time
-from io import BytesIO
 
 # 1. CONFIGURACIÓN INICIAL
 st.set_page_config(page_title="Sistema Dental BALLARTA", layout="wide")
@@ -72,7 +70,7 @@ df_stock = get_df_stock()
 
 tabs = st.tabs(["🛒 Venta", "📦 Stock", "📊 Reportes", "📋 Historial", "📥 Cargar", "🛠️ Mant."])
 
-# --- TAB 1: VENTA (CON LÓGICA DE REBAJA Y TOTAL CORREGIDO) ---
+# --- TAB 1: VENTA ---
 with tabs[0]:
     if st.session_state.boleta:
         st.balloons()
@@ -144,7 +142,7 @@ with tabs[0]:
                 st.session_state.carrito = []
                 st.rerun()
 
-# --- TAB 2: STOCK (LETRAS ROJAS) ---
+# --- TAB 2: STOCK ---
 with tabs[1]:
     st.subheader("📦 Inventario")
     if not df_stock.empty:
@@ -152,7 +150,7 @@ with tabs[1]:
             return ['color: red; font-weight: bold' if val <= 5 else '' for val in s]
         st.dataframe(df_stock.style.apply(estilo_stock, subset=['Stock']).format({"Precio": "S/ {:.2f}"}), use_container_width=True, hide_index=True)
 
-# --- TAB 3: REPORTES (ORDENADOS) ---
+# --- TAB 3: REPORTES ---
 with tabs[2]:
     st.subheader("📊 Reportes Diarios")
     _, _, ahora_dt, _ = obtener_tiempo_peru()
@@ -167,7 +165,7 @@ with tabs[2]:
             st.metric("VENTA TOTAL", f"S/ {df_dia['Total'].sum():.2f}")
             st.dataframe(df_dia[['Hora', 'Producto', 'Cantidad', 'Total', 'Metodo']], use_container_width=True, hide_index=True)
 
-# --- TAB 4: HISTORIAL (ORDENADO) ---
+# --- TAB 4: HISTORIAL ---
 with tabs[3]:
     st.subheader("📋 Historial")
     h_data = tabla_auditoria.scan().get('Items', [])
@@ -184,11 +182,12 @@ with tabs[4]:
         c_i = st.number_input("Cant:", min_value=1)
         pr_i = st.number_input("Precio:", min_value=0.1)
         if st.form_submit_button("GUARDAR"):
-            f, h, _, uid = obtener_tiempo_peru()
-            s_ant = int(df_stock[df_stock['Producto'] == p_f]['Stock'].values[0]) if p_f in df_stock['Producto'].values else 0
-            tabla_stock.put_item(Item={'Producto': p_f, 'Stock': s_ant + c_i, 'Precio': str(round(pr_i, 2))})
-            tabla_auditoria.put_item(Item={'ID_Ingreso': f"I-{uid}", 'Fecha': f, 'Hora': h, 'Producto': p_f, 'Cantidad_Entrante': int(c_i), 'Stock_Resultante': int(s_ant + c_i), 'Tipo': 'INGRESO'})
-            st.success("Ok"); time.sleep(1); st.rerun()
+            if p_f:
+                f, h, _, uid = obtener_tiempo_peru()
+                s_ant = int(df_stock[df_stock['Producto'] == p_f]['Stock'].values[0]) if p_f in df_stock['Producto'].values else 0
+                tabla_stock.put_item(Item={'Producto': p_f, 'Stock': s_ant + c_i, 'Precio': str(round(pr_i, 2))})
+                tabla_auditoria.put_item(Item={'ID_Ingreso': f"I-{uid}", 'Fecha': f, 'Hora': h, 'Producto': p_f, 'Cantidad_Entrante': int(c_i), 'Stock_Resultante': int(s_ant + c_i), 'Tipo': 'INGRESO'})
+                st.success("Ok"); time.sleep(1); st.rerun()
 
 # --- TAB 6: MANTENIMIENTO ---
 with tabs[5]:
