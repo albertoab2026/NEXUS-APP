@@ -13,7 +13,7 @@ def obtener_tiempo_peru():
     ahora = datetime.now(tz_peru)
     return ahora.strftime("%d/%m/%Y"), ahora.strftime("%H:%M:%S"), ahora, ahora.strftime("%Y%m%d%H%M%S%f")
 
-# 2. CONEXIÓN AWS
+# 2. CONEXIÓN AWS (Usando tus secretos configurados)
 try:
     aws_id = st.secrets["aws"]["aws_access_key_id"]
     aws_key = st.secrets["aws"]["aws_secret_access_key"]
@@ -39,7 +39,7 @@ if 'boleta' not in st.session_state: st.session_state.boleta = None
 # --- LOGIN ---
 if not st.session_state.sesion_iniciada:
     st.markdown("<h1 style='text-align: center;'>🦷</h1><h2 style='text-align: center;'>Sistema BALLARTA</h2>", unsafe_allow_html=True)
-    clave = st.text_input("Contraseña:", type="password")
+    clave = st.text_input("Contraseña del sistema:", type="password")
     if st.button("🔓 INGRESAR", use_container_width=True):
         if clave == admin_pass:
             st.session_state.sesion_iniciada = True
@@ -65,26 +65,26 @@ df_stock = get_df_stock()
 
 tabs = st.tabs(["🛒 VENTA", "📦 STOCK", "📊 HOY", "📋 HISTORIAL", "📥 CARGAR", "🛠️ MANT."])
 
-# --- TAB 1: VENTA (CORREGIDA) ---
+# --- TAB 1: VENTA (ARREGLO DE BOLETA) ---
 with tabs[0]:
     if st.session_state.boleta:
         b = st.session_state.boleta
         
-        # CONSTRUCCIÓN DEL TICKET (HTML LIMPIO)
+        # DISEÑO DE BOLETA (HTML FORZADO A SER BLANCO Y NEGRO)
         ticket_html = f"""
-        <div style="background-color: white; color: black; padding: 20px; border: 2px solid black; border-radius: 10px; font-family: 'Courier New', Courier, monospace; width: 100%; max-width: 400px; margin: auto;">
+        <div style="background-color: white; color: black; padding: 15px; border: 2px solid black; border-radius: 10px; font-family: 'Courier New', Courier, monospace; width: 100%; max-width: 350px; margin: auto; box-shadow: 2px 2px 10px rgba(0,0,0,0.1);">
             <center>
                 <h2 style='margin:0; color: black;'>BALLARTA DENTAL</h2>
-                <p style='margin:0; color: black;'>Carabayllo, Lima</p>
-                <p style='margin:0; color: black;'>Fecha: {b['fecha']} | Hora: {b['hora']}</p>
+                <p style='margin:0; font-size: 12px; color: black;'>Santa Isabel, Carabayllo</p>
+                <p style='margin:0; font-size: 12px; color: black;'>{b['fecha']} | {b['hora']}</p>
             </center>
-            <hr style='border: 1px dashed black;'>
-            <table style='width: 100%; font-size: 13px; border-collapse: collapse; color: black;'>
+            <hr style='border: 1px dashed black; margin: 10px 0;'>
+            <table style='width: 100%; font-size: 12px; border-collapse: collapse; color: black;'>
                 <thead>
                     <tr style='border-bottom: 1px solid black;'>
                         <th style='text-align: left;'>Cant.</th>
-                        <th style='text-align: left;'>Descripción</th>
-                        <th style='text-align: right;'>P.Unt.</th>
+                        <th style='text-align: left;'>Producto</th>
+                        <th style='text-align: right;'>P.U.</th>
                         <th style='text-align: right;'>Total</th>
                     </tr>
                 </thead>
@@ -93,8 +93,8 @@ with tabs[0]:
         for i in b['items']:
             ticket_html += f"""
                 <tr>
-                    <td style='padding: 5px 0;'>{i['Cantidad']}</td>
-                    <td style='padding: 5px 0;'>{i['Producto']}</td>
+                    <td style='padding: 4px 0;'>{i['Cantidad']}</td>
+                    <td style='padding: 4px 0;'>{i['Producto']}</td>
                     <td style='text-align: right;'>{i['Precio']:.2f}</td>
                     <td style='text-align: right;'>{i['Subtotal']:.2f}</td>
                 </tr>
@@ -103,14 +103,16 @@ with tabs[0]:
         ticket_html += f"""
                 </tbody>
             </table>
-            <hr style='border: 1px dashed black;'>
-            <h3 style='text-align: right; margin: 10px 0; color: black;'>TOTAL: S/ {b['total']:.2f}</h3>
-            <p style='margin: 0; color: black;'><b>Pago:</b> {b['metodo']}</p>
+            <hr style='border: 1px dashed black; margin: 10px 0;'>
+            <div style='text-align: right;'>
+                <p style='margin: 0; font-size: 16px; color: black;'><b>TOTAL: S/ {b['total']:.2f}</b></p>
+                <p style='margin: 0; font-size: 12px; color: black;'>Pago: {b['metodo']}</p>
+            </div>
             <br>
-            <center><b style='color: black;'>¡Gracias por su preferencia!</b></center>
+            <center><p style='margin:0; font-weight: bold; color: black;'>¡Gracias por su preferencia!</p></center>
         </div>
         """
-        # IMPORTANTE: Aquí se usa st.markdown con unsafe_allow_html=True
+        # ESTA ES LA CLAVE: st.markdown dibuja el HTML real
         st.markdown(ticket_html, unsafe_allow_html=True)
         
         st.write("") # Espacio
@@ -121,30 +123,30 @@ with tabs[0]:
         if not df_stock.empty:
             p_sel = st.selectbox("Elegir Producto:", df_stock['Producto'].tolist())
             info = df_stock[df_stock['Producto'] == p_sel].iloc[0]
-            st.info(f"Stock: {info['Stock']} | Sugerido: S/ {info['Precio']:.2f}")
+            st.info(f"Stock: {info['Stock']} | Precio: S/ {info['Precio']:.2f}")
             
             c1, c2 = st.columns(2)
-            with c1: precio_u = st.number_input("Precio Cobrar S/:", value=float(info['Precio']), step=1.0, key=f"p_{p_sel}")
-            with c2: cant = st.number_input("Cant:", min_value=1, value=1, key=f"c_{p_sel}")
+            with c1: precio_u = st.number_input("Precio Cobrar:", value=float(info['Precio']), step=1.0)
+            with c2: cant = st.number_input("Cant:", min_value=1, value=1)
             
             sub_total = precio_u * cant
-            st.markdown(f"<div style='background-color:#E8F8F5; padding:10px; border-radius:5px; text-align:center; border: 1px solid #A9DFBF;'><h2 style='color:#145A32; margin:0;'>Subtotal: S/ {sub_total:.2f}</h2></div>", unsafe_allow_html=True)
+            st.markdown(f"<div style='background-color:#E8F8F5; padding:10px; border-radius:5px; text-align:center; border: 1px solid #A9DFBF;'><h2 style='color:#145A32; margin:0;'>S/ {sub_total:.2f}</h2></div>", unsafe_allow_html=True)
             
-            nota = st.text_input("Nota (Rebaja, Cliente, etc.)", key=f"n_{p_sel}")
+            nota = st.text_input("Nota (opcional)")
 
             if st.button("➕ AÑADIR A LA LISTA", use_container_width=True):
                 if cant <= info['Stock']:
                     st.session_state.carrito.append({'Producto': f"{p_sel} ({nota})" if nota else p_sel, 'Original': p_sel, 'Cantidad': int(cant), 'Precio': float(precio_u), 'Subtotal': round(sub_total, 2)})
                     st.rerun()
-                else: st.error("Stock insuficiente")
+                else: st.error("Sin stock")
 
         if st.session_state.carrito:
             st.divider()
             df_c = pd.DataFrame(st.session_state.carrito)
-            st.table(df_c[['Producto', 'Cantidad', 'Precio', 'Subtotal']])
+            st.table(df_c[['Producto', 'Cantidad', 'Subtotal']])
             total_f = df_c['Subtotal'].sum()
             
-            metodo = st.radio("Método de Pago:", ["Efectivo", "Yape", "Plin"], horizontal=True)
+            metodo = st.radio("Método:", ["Efectivo", "Yape", "Plin"], horizontal=True)
             if st.button(f"🚀 COBRAR S/ {total_f:.2f}", type="primary", use_container_width=True):
                 f, h, _, uid = obtener_tiempo_peru()
                 st.session_state.boleta = {'fecha': f, 'hora': h, 'items': list(st.session_state.carrito), 'total': total_f, 'metodo': metodo}
@@ -155,11 +157,11 @@ with tabs[0]:
                 st.session_state.carrito = []
                 st.rerun()
 
-# --- TAB 3: HOY (CORREGIDO EL TOTAL QUE NO SE VEÍA) ---
+# --- TAB 3: HOY (DETALLE DE CAJA) ---
 with tabs[2]:
-    st.subheader("📊 Reporte de Caja Diario")
+    st.subheader("📊 Reporte del Día")
     _, _, ahora_dt, _ = obtener_tiempo_peru()
-    f_bus = st.date_input("Consultar fecha:", ahora_dt).strftime("%d/%m/%Y")
+    f_bus = st.date_input("Fecha:", ahora_dt).strftime("%d/%m/%Y")
     
     v_data = tabla_ventas.scan().get('Items', [])
     if v_data:
@@ -170,32 +172,29 @@ with tabs[2]:
             ef = df_dia[df_dia['Metodo'] == 'Efectivo']['Total'].sum()
             ya = df_dia[df_dia['Metodo'] == 'Yape']['Total'].sum()
             pl = df_dia[df_dia['Metodo'] == 'Plin']['Total'].sum()
-            total_dia = df_dia['Total'].sum()
             
             c1, c2, c3 = st.columns(3)
             c1.metric("💵 EFECTIVO", f"S/ {ef:.2f}")
             c2.metric("🟢 YAPE", f"S/ {ya:.2f}")
             c3.metric("🟣 PLIN", f"S/ {pl:.2f}")
             
-            # Forzamos texto oscuro para que se lea en el cuadro blanco
+            # Cuadro de total legible
             st.markdown(f"""
-                <div style='text-align:center; background-color:white; border:2px solid #2E86C1; padding:15px; border-radius:10px; margin-top:10px;'>
-                    <h2 style='color:#1B4F72; margin:0;'>VENTA TOTAL DEL DÍA</h2>
-                    <h1 style='color:#2874A6; margin:0;'>S/ {total_dia:.2f}</h1>
+                <div style='text-align:center; background-color:white; border:2px solid #2E86C1; padding:10px; border-radius:10px; margin-top:10px;'>
+                    <h1 style='color:#1B4F72; margin:0;'>TOTAL: S/ {df_dia['Total'].sum():.2f}</h1>
                 </div>
             """, unsafe_allow_html=True)
             
             st.divider()
             st.dataframe(df_dia[['Hora', 'Producto', 'Total', 'Metodo']], use_container_width=True, hide_index=True)
-        else: st.info("No hay ventas registradas en esta fecha.")
 
-# --- DEMÁS PESTAÑAS (IGUALES) ---
+# (STOCK, HISTORIAL, CARGAR y MANTENIMIENTO se mantienen igual para seguridad)
 with tabs[1]:
     st.subheader("📦 Almacén")
     st.dataframe(df_stock, use_container_width=True, hide_index=True)
 
 with tabs[3]:
-    st.subheader("📋 Historial de Cargas")
+    st.subheader("📋 Historial")
     h_data = tabla_auditoria.scan().get('Items', [])
     if h_data:
         df_h = pd.DataFrame(h_data).rename(columns={'Fecha':'FECHA','Hora':'HORA','Producto':'PRODUCTO','Cantidad_Entrante':'ENTRÓ','Stock_Resultante':'TOTAL'})
@@ -206,18 +205,18 @@ with tabs[4]:
     with st.form("fc"):
         p_n = st.text_input("Producto:").upper().strip()
         c_n = st.number_input("Cantidad:", min_value=1)
-        pr_n = st.number_input("Precio Sugerido S/:", min_value=1.0)
-        if st.form_submit_button("💾 GUARDAR"):
+        pr_n = st.number_input("Precio S/:", min_value=1.0)
+        if st.form_submit_button("GUARDAR"):
             f, h, _, uid = obtener_tiempo_peru()
             s_ant = int(df_stock[df_stock['Producto'] == p_n]['Stock'].values[0]) if p_n in df_stock['Producto'].values else 0
             tabla_stock.put_item(Item={'Producto': p_n, 'Stock': s_ant + c_n, 'Precio': str(pr_n)})
             tabla_auditoria.put_item(Item={'ID_Ingreso': f"I-{uid}", 'Fecha': f, 'Hora': h, 'Producto': p_n, 'Cantidad_Entrante': int(c_n), 'Stock_Resultante': int(s_ant + c_n), 'Tipo': 'INGRESO'})
-            st.success("Guardado"); time.sleep(1); st.rerun()
+            st.success("Cargado"); time.sleep(1); st.rerun()
 
 with tabs[5]:
-    st.subheader("🛠️ Mant.")
+    st.subheader("🛠️ Eliminar")
     if not df_stock.empty:
         p_del = st.selectbox("Borrar:", df_stock['Producto'].tolist())
-        if st.button("🗑️ ELIMINAR"):
+        if st.button("BORRAR PRODUCTO"):
             tabla_stock.delete_item(Key={'Producto': p_del})
             st.success("Borrado"); time.sleep(1); st.rerun()
