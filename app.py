@@ -70,7 +70,7 @@ df_stock = get_df_stock()
 
 tabs = st.tabs(["🛒 Venta", "📦 Stock", "📊 Reportes", "📋 Historial", "📥 Cargar", "🛠️ Mant."])
 
-# --- TAB 1: VENTA ---
+# --- TAB 1: VENTA (BOLETA DETALLADA) ---
 with tabs[0]:
     if st.session_state.boleta:
         st.balloons()
@@ -85,10 +85,25 @@ with tabs[0]:
             </center>
             <hr style="border: 1px dashed #000;">
             <p style="font-size: 14px; color: #000000;"><b>FECHA:</b> {b['fecha']} | {b['hora']}</p>
-            <table style="width: 100%; font-size: 16px; color: #000000; border-collapse: collapse;">
+            <table style="width: 100%; font-size: 14px; color: #000000; border-collapse: collapse;">
         """
         for i in b['items']: 
-            ticket += f"<tr><td style='padding: 5px 0;'><b>{i['Cantidad']} x {i['Producto']}</b></td><td style='text-align: right;'><b>S/ {float(i['Subtotal']):.2f}</b></td></tr>"
+            ticket += f"""
+            <tr>
+                <td style='padding: 5px 0;'><b>{i['Cantidad']} x {i['Producto']}</b></td>
+                <td style='text-align: right;'><b>S/ {float(i['Subtotal']):.2f}</b></td>
+            </tr>
+            """
+            # Si hubo rebaja, la mostramos debajo del producto
+            if i['Rebaja'] > 0:
+                original = i['Precio'] * i['Cantidad']
+                ticket += f"""
+                <tr>
+                    <td colspan='2' style='font-size: 11px; color: #555;'>
+                        Precio normal: S/ {original:.2f} | Desc: -S/ {i['Rebaja']:.2f}
+                    </td>
+                </tr>
+                """
         
         ticket += f"""
             </table>
@@ -120,7 +135,7 @@ with tabs[0]:
                 if cant <= info['Stock']:
                     st.session_state.carrito.append({
                         'Producto': p_sel, 'Cantidad': int(cant), 
-                        'Precio': precio_fijo, 'Subtotal': subtotal_a_cobrar
+                        'Precio': precio_fijo, 'Rebaja': rebaja, 'Subtotal': subtotal_a_cobrar
                     })
                     st.rerun()
                 else: st.error("Stock insuficiente")
@@ -152,15 +167,13 @@ with tabs[0]:
                 st.session_state.carrito = []
                 st.rerun()
 
-# --- TAB 2: STOCK ---
+# --- LAS DEMÁS PESTAÑAS (STOCK, REPORTES, HISTORIAL, CARGAR, MANT.) SE MANTIENEN IGUAL ---
 with tabs[1]:
     st.subheader("📦 Inventario")
     if not df_stock.empty:
-        def estilo_stock(s):
-            return ['color: red; font-weight: bold' if val <= 5 else '' for val in s]
+        def estilo_stock(s): return ['color: red; font-weight: bold' if val <= 5 else '' for val in s]
         st.dataframe(df_stock.style.apply(estilo_stock, subset=['Stock']).format({"Precio": "S/ {:.2f}"}), use_container_width=True, hide_index=True)
 
-# --- TAB 3: REPORTES ---
 with tabs[2]:
     st.subheader("📊 Reportes Diarios")
     _, _, ahora_dt, _ = obtener_tiempo_peru()
@@ -175,7 +188,6 @@ with tabs[2]:
             st.metric("VENTA TOTAL DEL DÍA", f"S/ {df_dia['Total'].sum():.2f}")
             st.dataframe(df_dia[['Hora', 'Producto', 'Cantidad', 'Total', 'Metodo']], use_container_width=True, hide_index=True)
 
-# --- TAB 4: HISTORIAL ---
 with tabs[3]:
     st.subheader("📋 Historial")
     h_data = tabla_auditoria.scan().get('Items', [])
@@ -183,7 +195,6 @@ with tabs[3]:
         df_h = pd.DataFrame(h_data).sort_values(by=['Fecha', 'Hora'], ascending=[False, False])
         st.dataframe(df_h[['Fecha', 'Hora', 'Producto', 'Cantidad_Entrante', 'Stock_Resultante', 'Tipo']], use_container_width=True, hide_index=True)
 
-# --- TAB 5: CARGAR ---
 with tabs[4]:
     st.subheader("📥 Ingresar Stock")
     with st.form("fc"):
@@ -200,7 +211,6 @@ with tabs[4]:
                 tabla_auditoria.put_item(Item={'ID_Ingreso': f"I-{uid}", 'Fecha': f, 'Hora': h, 'Producto': p_f, 'Cantidad_Entrante': int(c_i), 'Stock_Resultante': int(s_ant + c_i), 'Tipo': 'INGRESO'})
                 st.success("Guardado"); time.sleep(1); st.rerun()
 
-# --- TAB 6: MANTENIMIENTO ---
 with tabs[5]:
     st.subheader("🛠️ Eliminar")
     if not df_stock.empty:
