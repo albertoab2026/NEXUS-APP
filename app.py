@@ -176,52 +176,53 @@ with tabs[2]:
             df_hoy = df_hoy.sort_values(by='Hora', ascending=False)
             st.dataframe(df_hoy[['Hora', 'Producto', 'Cantidad', 'Total', 'Metodo']], hide_index=True, use_container_width=True)
 
-# 4. HISTORIAL (MEJORADO: MUESTRA ELIMINADOS)
+# 4. HISTORIAL
 with tabs[3]:
     st.subheader("📋 Historial de Movimientos")
     h_data = tabla_auditoria.scan().get('Items', [])
     if h_data:
         df_h = pd.DataFrame(h_data)
         df_h = df_h.sort_values(by=['Fecha', 'Hora'], ascending=False)
-        # Resaltar en rojo los productos eliminados en la tabla
-        def color_eliminados(val):
-            color = 'red' if val == "ELIMINADO" else 'black'
-            return f'color: {color}'
-        
         st.dataframe(df_h[['Fecha', 'Hora', 'Producto', 'Cantidad_Entrante', 'Stock_Resultante']], use_container_width=True, hide_index=True)
 
-# 5. CARGAR STOCK
+# 5. CARGAR STOCK (AJUSTADO PARA CARGA RÁPIDA DE 500 PRODUCTOS)
 with tabs[4]:
     st.subheader("📥 Cargar Stock")
     modo = st.radio("Tipo:", ["Existente", "Nuevo"], horizontal=True, on_change=lambda: st.session_state.update({"reset_c": st.session_state.reset_c + 1}))
-    with st.form("form_carga_v5"):
+    with st.form("form_carga_v5", clear_on_submit=True): # clear_on_submit ayuda a limpiar el formulario rápido
         if modo == "Existente":
-            p_final = st.selectbox("Elegir:", df_stock['Producto'].tolist())
+            p_final = st.selectbox("Elegir Producto:", df_stock['Producto'].tolist())
             p_p_base = df_stock[df_stock['Producto'] == p_final]['Precio'].values[0] if p_final in df_stock['Producto'].values else 10.0
         else:
-            p_final = st.text_input("Nombre:").upper().strip()
+            p_final = st.text_input("Nombre de Producto Nuevo:").upper().strip()
             p_p_base = 1.0
-        p_cant = st.number_input("Cantidad:", min_value=1, value=1, key=f"c_cant_{st.session_state.reset_c}")
-        p_precio = st.number_input("Precio:", min_value=0.1, value=float(p_p_base))
-        if st.form_submit_button("REGISTRAR"):
+        
+        # Aquí se registra por UNIDAD
+        p_cant = st.number_input("Cantidad de Unidades:", min_value=1, value=1, key=f"c_cant_{st.session_state.reset_c}")
+        p_precio = st.number_input("Precio de Venta Unitario:", min_value=0.1, value=float(p_p_base))
+        
+        if st.form_submit_button("REGISTRAR EN INVENTARIO"):
             if p_final:
                 f, h, _, uid = obtener_tiempo_peru()
                 s_ant = int(df_stock[df_stock['Producto'] == p_final]['Stock'].values[0]) if p_final in df_stock['Producto'].values else 0
                 n_t = s_ant + p_cant
+                
+                # Guarda en Stock
                 tabla_stock.put_item(Item={'Producto': p_final, 'Stock': n_t, 'Precio': str(round(p_precio, 2))})
+                # Guarda en Auditoría
                 tabla_auditoria.put_item(Item={'ID_Ingreso': f"I-{uid}", 'Fecha': f, 'Hora': h, 'Producto': p_final, 'Cantidad_Entrante': int(p_cant), 'Stock_Resultante': int(n_t)})
-                st.success("Cargado"); time.sleep(1); st.cache_data.clear(); st.rerun()
+                
+                st.success(f"¡{p_final} registrado correctamente!")
+                time.sleep(0.5) # Pausa corta para que el usuario vea el mensaje y pueda seguir cargando
+                st.cache_data.clear()
+                st.rerun()
 
-# 6. MANTENIMIENTO (MEJORADO CON REGISTRO DE ELIMINACIÓN)
+# 6. MANTENIMIENTO
 with tabs[5]:
     st.subheader("🛠️ Gestión de Sistema")
     p_b = st.selectbox("Producto a eliminar:", [""] + df_stock['Producto'].tolist())
     if st.button("🗑️ ELIMINAR") and p_b != "":
-        # 1. Obtener datos antes de borrar
-        info_borrar = df_stock[df_stock['Producto'] == p_b].iloc[0]
         f, h, _, uid = obtener_tiempo_peru()
-        
-        # 2. Registrar en Historial como salida/eliminación
         tabla_auditoria.put_item(Item={
             'ID_Ingreso': f"DEL-{uid}", 
             'Fecha': f, 
@@ -230,7 +231,5 @@ with tabs[5]:
             'Cantidad_Entrante': 0, 
             'Stock_Resultante': 0
         })
-        
-        # 3. Borrar de la tabla de Stock
         tabla_stock.delete_item(Key={'Producto': p_b})
-        st.warning(f"Se ha eliminado {p_b} y se registró en el historial."); time.sleep(1.5); st.rerun()
+        st.warning(f"Se ha eliminado {p_b}."); time.sleep(1.2); st.rerun()
