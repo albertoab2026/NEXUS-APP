@@ -4,7 +4,6 @@ import boto3
 from datetime import datetime
 import pytz
 import time
-from io import BytesIO
 
 # 1. CONFIGURACIÓN VISUAL
 st.set_page_config(page_title="Dental BALLARTA", layout="wide")
@@ -48,10 +47,6 @@ if not st.session_state.sesion_iniciada:
         else: st.error("Clave incorrecta")
     st.stop()
 
-if st.sidebar.button("🔴 CERRAR SESIÓN"):
-    st.session_state.sesion_iniciada = False
-    st.rerun()
-
 # CARGAR DATOS
 def get_df_stock():
     try:
@@ -70,7 +65,7 @@ df_stock = get_df_stock()
 
 tabs = st.tabs(["🛒 VENTA", "📦 STOCK", "📊 HOY", "📋 HISTORIAL", "📥 CARGAR", "🛠️ MANT."])
 
-# --- TAB 1: VENTA (CON FRASE DE GRACIAS) ---
+# --- TAB 1: VENTA ---
 with tabs[0]:
     if st.session_state.boleta:
         b = st.session_state.boleta
@@ -90,18 +85,18 @@ with tabs[0]:
             st.rerun()
     else:
         if not df_stock.empty:
-            p_sel = st.selectbox("Buscar Producto:", df_stock['Producto'].tolist())
+            p_sel = st.selectbox("Elegir Producto:", df_stock['Producto'].tolist())
             info = df_stock[df_stock['Producto'] == p_sel].iloc[0]
-            st.info(f"Stock: {info['Stock']} | Precio Normal: S/ {info['Precio']}")
+            st.info(f"Stock: {info['Stock']} | Normal: S/ {info['Precio']:.2f}")
             
             c1, c2 = st.columns(2)
-            with c1: precio_u = st.number_input("Precio Cobrar S/:", value=float(info['Precio']), step=1.0, key=f"p_{p_sel}")
-            with c2: cant = st.number_input("Cantidad:", min_value=1, value=1, key=f"c_{p_sel}")
+            with c1: precio_u = st.number_input("Precio Cobrar:", value=float(info['Precio']), step=1.0, key=f"p_{p_sel}")
+            with c2: cant = st.number_input("Cant:", min_value=1, value=1, key=f"c_{p_sel}")
             
             sub_total = precio_u * cant
-            st.markdown(f"<div style='background-color:#E8F8F5; padding:10px; border-radius:5px; text-align:center;'><h2 style='color:#145A32; margin:0;'>Subtotal: S/ {sub_total:.2f}</h2></div>", unsafe_allow_html=True)
+            st.markdown(f"<div style='background-color:#E8F8F5; padding:10px; border-radius:5px; text-align:center; border: 1px solid #A9DFBF;'><h2 style='color:#145A32; margin:0;'>Subtotal: S/ {sub_total:.2f}</h2></div>", unsafe_allow_html=True)
             
-            nota = st.text_input("Nota (opcional)", key=f"n_{p_sel}")
+            nota = st.text_input("Nota (ej: Rebaja, Cliente)", key=f"n_{p_sel}")
 
             if st.button("➕ AÑADIR A LA LISTA", use_container_width=True):
                 if cant <= info['Stock']:
@@ -116,7 +111,7 @@ with tabs[0]:
             total_f = df_c['Subtotal'].sum()
             
             metodo = st.radio("Método de Pago:", ["Efectivo", "Yape", "Plin"], horizontal=True)
-            if st.button(f"🚀 FINALIZAR COBRO S/ {total_f:.2f}", type="primary", use_container_width=True):
+            if st.button(f"🚀 COBRAR S/ {total_f:.2f}", type="primary", use_container_width=True):
                 f, h, _, uid = obtener_tiempo_peru()
                 st.session_state.boleta = {'fecha': f, 'hora': h, 'items': list(st.session_state.carrito), 'total': total_f, 'metodo': metodo}
                 for item in st.session_state.carrito:
@@ -126,11 +121,13 @@ with tabs[0]:
                 st.session_state.carrito = []
                 st.rerun()
 
-# --- TAB 3: HOY (REPORTE SEPARADO) ---
+# --- TAB 3: HOY (AJUSTE DE COLOR EN EL TOTAL) ---
 with tabs[2]:
     st.subheader("📊 Reporte de Caja Diario")
     _, _, ahora_dt, _ = obtener_tiempo_peru()
+    # Cambiamos a selector de fecha para que sea más fácil de usar
     f_bus = st.date_input("Consultar fecha:", ahora_dt).strftime("%d/%m/%Y")
+    
     v_data = tabla_ventas.scan().get('Items', [])
     if v_data:
         df_v = pd.DataFrame(v_data)
@@ -142,18 +139,26 @@ with tabs[2]:
             ef = df_dia[df_dia['Metodo'] == 'Efectivo']['Total'].sum()
             ya = df_dia[df_dia['Metodo'] == 'Yape']['Total'].sum()
             pl = df_dia[df_dia['Metodo'] == 'Plin']['Total'].sum()
+            total_dia = df_dia['Total'].sum()
             
             c1, c2, c3 = st.columns(3)
             c1.metric("💵 EFECTIVO", f"S/ {ef:.2f}")
             c2.metric("🟢 YAPE", f"S/ {ya:.2f}")
             c3.metric("🟣 PLIN", f"S/ {pl:.2f}")
             
-            st.markdown(f"<div style='text-align:center; background-color:#FBFCFC; border:1px solid #D5DBDB; padding:10px; border-radius:10px;'><h3>VENTA TOTAL DEL DÍA: S/ {df_dia['Total'].sum():.2f}</h3></div>", unsafe_allow_html=True)
+            # AJUSTE DE COLOR: Aquí forzamos que el texto sea oscuro para que se lea en el cuadro blanco
+            st.markdown(f"""
+                <div style='text-align:center; background-color:white; border:2px solid #2E86C1; padding:15px; border-radius:10px; margin-top:10px;'>
+                    <h2 style='color:#1B4F72; margin:0;'>VENTA TOTAL DEL DÍA</h2>
+                    <h1 style='color:#2874A6; margin:0;'>S/ {total_dia:.2f}</h1>
+                </div>
+            """, unsafe_allow_html=True)
+            
             st.divider()
             st.dataframe(df_dia[['Hora', 'Producto', 'Total', 'Metodo']], use_container_width=True, hide_index=True)
         else: st.info("No hay ventas registradas en esta fecha.")
 
-# --- TAB 4: HISTORIAL DE CARGAS ---
+# --- TAB 4: HISTORIAL ---
 with tabs[3]:
     st.subheader("📋 Movimientos de Inventario")
     h_data = tabla_auditoria.scan().get('Items', [])
@@ -165,29 +170,28 @@ with tabs[3]:
             df_h = df_h.sort_values('tmp', ascending=False)
         st.dataframe(df_h[['FECHA', 'HORA', 'PRODUCTO', 'ENTRÓ', 'TOTAL']], use_container_width=True, hide_index=True)
 
-# --- TAB 5: CARGAR STOCK ---
-with tabs[4]:
-    st.subheader("📥 Cargar Mercadería")
-    with st.form("form_carga"):
-        p_n = st.text_input("Nombre del Producto:").upper().strip()
-        c_n = st.number_input("Cantidad que entra:", min_value=1)
-        pr_n = st.number_input("Precio Normal de Venta:", min_value=1.0)
-        if st.form_submit_button("💾 REGISTRAR INGRESO"):
-            f, h, _, uid = obtener_tiempo_peru()
-            s_ant = int(df_stock[df_stock['Producto'] == p_n]['Stock'].values[0]) if p_n in df_stock['Producto'].values else 0
-            tabla_stock.put_item(Item={'Producto': p_n, 'Stock': s_ant + c_n, 'Precio': str(pr_n)})
-            tabla_auditoria.put_item(Item={'ID_Ingreso': f"I-{uid}", 'Fecha': f, 'Hora': h, 'Producto': p_n, 'Cantidad_Entrante': int(c_n), 'Stock_Resultante': int(s_ant + c_n), 'Tipo': 'INGRESO'})
-            st.success("Inventario actualizado"); time.sleep(1); st.rerun()
-
 # --- LAS DEMÁS PESTAÑAS ---
 with tabs[1]:
     st.subheader("📦 Stock en Almacén")
     st.dataframe(df_stock, use_container_width=True, hide_index=True)
 
+with tabs[4]:
+    st.subheader("📥 Cargar Stock")
+    with st.form("fc"):
+        p_n = st.text_input("Producto:").upper().strip()
+        c_n = st.number_input("Cantidad:", min_value=1)
+        pr_n = st.number_input("Precio Normal S/:", min_value=1.0)
+        if st.form_submit_button("💾 GUARDAR"):
+            f, h, _, uid = obtener_tiempo_peru()
+            s_ant = int(df_stock[df_stock['Producto'] == p_n]['Stock'].values[0]) if p_n in df_stock['Producto'].values else 0
+            tabla_stock.put_item(Item={'Producto': p_n, 'Stock': s_ant + c_n, 'Precio': str(pr_n)})
+            tabla_auditoria.put_item(Item={'ID_Ingreso': f"I-{uid}", 'Fecha': f, 'Hora': h, 'Producto': p_n, 'Cantidad_Entrante': int(c_n), 'Stock_Resultante': int(s_ant + c_n), 'Tipo': 'INGRESO'})
+            st.success("Guardado"); time.sleep(1); st.rerun()
+
 with tabs[5]:
-    st.subheader("🛠️ Mantenimiento")
+    st.subheader("🛠️ Mant.")
     if not df_stock.empty:
-        p_del = st.selectbox("Eliminar producto del sistema:", df_stock['Producto'].tolist())
-        if st.button("🗑️ ELIMINAR DEFINITIVAMENTE"):
+        p_del = st.selectbox("Borrar producto:", df_stock['Producto'].tolist())
+        if st.button("🗑️ ELIMINAR"):
             tabla_stock.delete_item(Key={'Producto': p_del})
-            st.success("Producto borrado"); time.sleep(1); st.rerun()
+            st.success("Borrado"); time.sleep(1); st.rerun()
