@@ -148,7 +148,7 @@ with tabs[1]:
     if not df_stock.empty:
         st.dataframe(df_stock.style.map(lambda x: 'color: red; font-weight: bold' if x <= 5 else '', subset=['Stock']).format({"Precio": "S/ {:.2f}"}), use_container_width=True, hide_index=True)
 
-# 3. PESTAÑA DE REPORTES (ORDENADO Y DESGLOSADO)
+# 3. PESTAÑA DE REPORTES (ORDENADO Y DESGLOSADO CON COLORES SOLICITADOS)
 with tabs[2]:
     st.subheader("📊 Resumen de Caja Diaria")
     f_bus = st.date_input("Consultar Fecha:").strftime("%d/%m/%Y")
@@ -171,11 +171,11 @@ with tabs[2]:
                 st.subheader(f"S/ {ef:.2f}")
             with m3:
                 ya = df_hoy[df_hoy['Metodo'] == 'Yape']['Total'].sum()
-                st.markdown("<p style='color: #00D1FF; font-weight: bold;'>📱 YAPE</p>", unsafe_allow_html=True)
+                st.markdown("<p style='color: #6339AD; font-weight: bold;'>📱 YAPE</p>", unsafe_allow_html=True) # Color Morado solicitado
                 st.subheader(f"S/ {ya:.2f}")
             with m4:
                 pl = df_hoy[df_hoy['Metodo'] == 'Plin']['Total'].sum()
-                st.markdown("<p style='color: #6339AD; font-weight: bold;'>💜 PLIN</p>", unsafe_allow_html=True)
+                st.markdown("<p style='color: #00D1FF; font-weight: bold;'>📱 PLIN</p>", unsafe_allow_html=True) # Color Celeste solicitado, sin corazón
                 st.subheader(f"S/ {pl:.2f}")
             
             st.divider()
