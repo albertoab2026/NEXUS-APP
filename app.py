@@ -70,13 +70,12 @@ df_stock = get_df_stock()
 
 tabs = st.tabs(["🛒 Venta", "📦 Stock", "📊 Reportes", "📋 Historial", "📥 Cargar", "🛠️ Mant."])
 
-# --- TAB 1: VENTA (DISEÑO DE TICKET MODIFICADO) ---
+# --- TAB 1: VENTA ---
 with tabs[0]:
     if st.session_state.boleta:
         st.balloons()
         b = st.session_state.boleta
         
-        # DISEÑO DEL TICKET PROFESIONAL (LETRAS BIEN NEGRITAS)
         ticket = f"""
         <div style="background-color: white; color: #000000; padding: 25px; border: 3px solid #000; border-radius: 10px; max-width: 400px; margin: auto; font-family: 'Courier New', Courier, monospace;">
             <center>
@@ -89,13 +88,11 @@ with tabs[0]:
             <table style="width: 100%; font-size: 16px; color: #000000; border-collapse: collapse;">
         """
         for i in b['items']: 
-            # CÓDIGO NEGRITA EN CANTIDAD Y PRODUCTO
             ticket += f"<tr><td style='padding: 5px 0;'><b>{i['Cantidad']} x {i['Producto']}</b></td><td style='text-align: right;'><b>S/ {float(i['Subtotal']):.2f}</b></td></tr>"
         
         ticket += f"""
             </table>
             <hr style='border: 1px dashed #000;'>
-            # CÓDIGO NEGRITA EN EL TOTAL
             <h2 style='text-align: right; margin: 10px 0; color: #000000; font-size: 30px; font-weight: 900;'>TOTAL: S/ {b['total']:.2f}</h2>
             <p style='font-size: 14px; color: #000000;'><b>PAGO:</b> {b['metodo']}</p>
         </div>
@@ -155,7 +152,7 @@ with tabs[0]:
                 st.session_state.carrito = []
                 st.rerun()
 
-# --- TAB 2: STOCK (CON LETRAS ROJAS) ---
+# --- TAB 2: STOCK ---
 with tabs[1]:
     st.subheader("📦 Inventario")
     if not df_stock.empty:
@@ -163,7 +160,7 @@ with tabs[1]:
             return ['color: red; font-weight: bold' if val <= 5 else '' for val in s]
         st.dataframe(df_stock.style.apply(estilo_stock, subset=['Stock']).format({"Precio": "S/ {:.2f}"}), use_container_width=True, hide_index=True)
 
-# --- TAB 3: REPORTES (ORDENADOS) ---
+# --- TAB 3: REPORTES ---
 with tabs[2]:
     st.subheader("📊 Reportes Diarios")
     _, _, ahora_dt, _ = obtener_tiempo_peru()
@@ -178,7 +175,7 @@ with tabs[2]:
             st.metric("VENTA TOTAL DEL DÍA", f"S/ {df_dia['Total'].sum():.2f}")
             st.dataframe(df_dia[['Hora', 'Producto', 'Cantidad', 'Total', 'Metodo']], use_container_width=True, hide_index=True)
 
-# --- TAB 4: HISTORIAL (ORDENADO) ---
+# --- TAB 4: HISTORIAL ---
 with tabs[3]:
     st.subheader("📋 Historial")
     h_data = tabla_auditoria.scan().get('Items', [])
