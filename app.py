@@ -35,6 +35,8 @@ except Exception as e:
 if 'sesion_iniciada' not in st.session_state: st.session_state.sesion_iniciada = False
 if 'carrito' not in st.session_state: st.session_state.carrito = []
 if 'boleta' not in st.session_state: st.session_state.boleta = None
+# Estado para controlar la cantidad
+if 'cantidad_actual' not in st.session_state: st.session_state.cantidad_actual = 1
 
 # --- LOGIN ---
 if not st.session_state.sesion_iniciada:
@@ -70,7 +72,7 @@ df_stock = get_df_stock()
 
 tabs = st.tabs(["🛒 Venta", "📦 Stock", "📊 Reportes", "📋 Historial", "📥 Cargar", "🛠️ Mant."])
 
-# --- TAB 1: VENTA (REBAJA AL FINAL) ---
+# --- TAB 1: VENTA (CON RESET DE CANTIDAD) ---
 with tabs[0]:
     if st.session_state.boleta:
         st.balloons()
@@ -108,13 +110,18 @@ with tabs[0]:
         if not df_stock.empty:
             c1, c2 = st.columns([3, 1])
             with c1:
-                p_sel = st.selectbox("Elegir Producto:", df_stock['Producto'].tolist())
+                # Al cambiar el selectbox, el on_change reinicia la cantidad a 1
+                p_sel = st.selectbox("Elegir Producto:", df_stock['Producto'].tolist(), 
+                                   on_change=lambda: st.session_state.update({"cant_val": 1}))
+                
                 info = df_stock[df_stock['Producto'] == p_sel].iloc[0]
                 precio_fijo = float(info['Precio'])
                 if info['Stock'] <= 5: st.error(f"⚠️ STOCK CRÍTICO: {info['Stock']}")
                 else: st.info(f"Precio Unit: S/ {precio_fijo:.2f} | Stock: {info['Stock']}")
+            
             with c2:
-                cant = st.number_input("Cantidad:", min_value=1, value=1)
+                # Usamos una key para controlar el valor manualmente
+                cant = st.number_input("Cantidad:", min_value=1, value=1, key="cant_val")
             
             if st.button("➕ AÑADIR AL CARRITO", use_container_width=True):
                 if cant <= info['Stock']:
@@ -122,6 +129,8 @@ with tabs[0]:
                         'Producto': p_sel, 'Cantidad': int(cant), 
                         'Precio': precio_fijo, 'Subtotal': round(precio_fijo * cant, 2)
                     })
+                    # Resetear cantidad después de añadir para el siguiente producto
+                    st.session_state.cant_val = 1
                     st.rerun()
                 else: st.error("Stock insuficiente")
 
@@ -132,7 +141,6 @@ with tabs[0]:
             
             total_acumulado = sum(item['Subtotal'] for item in st.session_state.carrito)
             
-            # REBAJA FINAL
             rebaja_f = st.number_input("Descuento/Rebaja Final (S/):", min_value=0.0, max_value=float(total_acumulado), value=0.0, step=0.50)
             total_con_descuento = max(0.0, total_acumulado - rebaja_f)
 
@@ -146,26 +154,23 @@ with tabs[0]:
             
             if st.button("🗑️ VACÍAR CARRITO"):
                 st.session_state.carrito = []
+                st.session_state.cant_val = 1
                 st.rerun()
 
             metodo = st.radio("Método de Pago:", ["💵 Efectivo", "🟢 Yape", "🟣 Plin"], horizontal=True)
             if st.button("🚀 FINALIZAR VENTA", type="primary", use_container_width=True):
                 f, h, _, uid = obtener_tiempo_peru()
                 
-                # Guardar datos para la boleta visual
                 st.session_state.boleta = {
                     'fecha': f, 'hora': h, 'items': list(st.session_state.carrito), 
                     'total_bruto': total_acumulado, 'rebaja_total': rebaja_f, 
                     'total_neto': total_con_descuento, 'metodo': metodo
                 }
                 
-                # Procesar en Base de Datos (Distribuimos la rebaja proporcionalmente o la restamos de la primera entrada)
                 for i, item in enumerate(st.session_state.carrito):
-                    # Actualizar Stock
                     s_actual = int(df_stock[df_stock['Producto'] == item['Producto']]['Stock'].values[0])
                     tabla_stock.update_item(Key={'Producto': item['Producto']}, UpdateExpression="set Stock = :s", ExpressionAttributeValues={':s': s_actual - item['Cantidad']})
                     
-                    # En la DB de ventas, si es el último item, le restamos la rebaja para que el total de la DB coincida
                     monto_db = item['Subtotal']
                     if i == 0: monto_db = max(0.0, item['Subtotal'] - rebaja_f)
                     
@@ -176,6 +181,7 @@ with tabs[0]:
                     })
                 
                 st.session_state.carrito = []
+                st.session_state.cant_val = 1
                 st.rerun()
 
 # --- LAS DEMÁS PESTAÑAS SE MANTIENEN IGUAL ---
