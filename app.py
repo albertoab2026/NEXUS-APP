@@ -44,10 +44,12 @@ def actualizar_stock_local():
         items = tabla_stock.scan().get('Items', [])
         if items:
             df = pd.DataFrame(items)
+            # Asegurar columnas básicas
+            for col in ['Stock', 'Precio', 'P_Compra']:
+                if col not in df.columns: df[col] = 0
+            
             df['Stock'] = pd.to_numeric(df['Stock'], errors='coerce').fillna(0).astype(int)
             df['Precio'] = pd.to_numeric(df['Precio'], errors='coerce').fillna(0.0)
-            # Manejo de P_Compra (Costo)
-            if 'P_Compra' not in df.columns: df['P_Compra'] = 0.0
             df['P_Compra'] = pd.to_numeric(df['P_Compra'], errors='coerce').fillna(0.0)
             st.session_state.df_stock_local = df[['Producto', 'Stock', 'Precio', 'P_Compra']].sort_values(by='Producto')
         else:
@@ -172,11 +174,15 @@ with tabs[1]:
     bus_s = st.text_input("🔍 Buscar:", key="bus_stock_p").strip().upper()
     df_f = df_stock[df_stock['Producto'].str.upper().str.contains(bus_s, na=False)].copy()
     if not df_f.empty:
+        # Aseguramos que existan las columnas para que no de el error de la foto 1
+        cols_mostrar = ['Producto', 'Stock', 'Precio']
+        if 'P_Compra' in df_f.columns: cols_mostrar.append('P_Compra')
+        
         def color_stock(val):
             return 'color: #FF4B4B; font-weight: bold;' if val < 5 else 'color: white;'
-        st.dataframe(df_f.style.map(color_stock, subset=['Stock']).format({"Precio": "S/ {:.2f}", "P_Compra": "S/ {:.2f}"}), use_container_width=True, hide_index=True)
+        st.dataframe(df_f[cols_mostrar].style.map(color_stock, subset=['Stock']).format({"Precio": "S/ {:.2f}", "P_Compra": "S/ {:.2f}"} if 'P_Compra' in df_f.columns else {"Precio": "S/ {:.2f}"}), use_container_width=True, hide_index=True)
 
-# 3. REPORTES (CON LIMPIEZA DE DATOS PARA EVITAR ERROR)
+# 3. REPORTES (GANANCIA REAL)
 with tabs[2]:
     st.subheader("📊 Caja y Ganancias")
     f_bus = st.date_input("Consultar Fecha:").strftime("%d/%m/%Y")
@@ -185,10 +191,10 @@ with tabs[2]:
         df_v = pd.DataFrame(v_data)
         df_hoy = df_v[df_v['Fecha'] == f_bus].copy() if not df_v.empty else pd.DataFrame()
         if not df_hoy.empty:
-            # PARACAÍDAS PARA EVITAR EL ERROR DE LA FOTO
+            # LIMPIEZA CRÍTICA PARA EVITAR ERROR DE LA FOTO 6
             df_hoy['Total'] = pd.to_numeric(df_hoy['Total'], errors='coerce').fillna(0.0)
-            df_hoy['P_Compra_U'] = pd.to_numeric(df_hoy.get('P_Compra_U', 0), errors='coerce').fillna(0.0)
             df_hoy['Cantidad'] = pd.to_numeric(df_hoy['Cantidad'], errors='coerce').fillna(0)
+            df_hoy['P_Compra_U'] = pd.to_numeric(df_hoy.get('P_Compra_U', 0), errors='coerce').fillna(0.0)
             
             df_hoy['Ganancia'] = df_hoy['Total'] - (df_hoy['P_Compra_U'] * df_hoy['Cantidad'])
             
@@ -226,7 +232,7 @@ with tabs[3]:
             if not df_borrados.empty:
                 st.dataframe(df_borrados[['Hora', 'Producto', 'Stock_Resultante']], use_container_width=True, hide_index=True)
 
-# 5. CARGAR STOCK
+# 5. CARGAR STOCK (CON P_COMPRA)
 with tabs[4]:
     st.subheader("📥 Cargar Mercadería")
     m_man = st.radio("Tipo:", ["Existente", "Nuevo"], horizontal=True)
