@@ -136,7 +136,6 @@ with tabs[0]:
             metodo_sel = st.radio("Método de Pago:", ["💵 Efectivo", "🟣 Yape", "🔵 Plin"], horizontal=True)
             metodo = metodo_sel.split(" ")[1]
 
-            # --- NUEVA SECCIÓN: CONFIRMACIÓN DE SEGURIDAD ---
             st.warning("⚠️ ¿Estás seguro de finalizar la venta?")
             if st.button("🚀 SÍ, FINALIZAR Y REGISTRAR VENTA", type="primary", use_container_width=True):
                 f, h, _, uid = obtener_tiempo_peru()
@@ -153,12 +152,24 @@ with tabs[0]:
                 st.session_state.carrito = []
                 st.rerun()
 
-# 2. STOCK
+# 2. STOCK (CON ALERTA ROJA)
 with tabs[1]:
     st.subheader("📦 Inventario Actual")
     bus_s = st.text_input("🔍 Buscar en inventario:", key="bus_s").strip().upper()
-    df_f = df_stock[df_stock['Producto'].str.upper().str.contains(bus_s, na=False)]
-    st.dataframe(df_f[['Producto', 'Stock', 'Precio']].style.format({"Precio": "S/ {:.2f}"}), use_container_width=True, hide_index=True)
+    df_f = df_stock[df_stock['Producto'].str.upper().str.contains(bus_s, na=False)].copy()
+    
+    # Función para pintar de rojo si el stock es < 5
+    def color_bajo_stock(val):
+        color = 'red' if val < 5 else 'white'
+        return f'color: {color}'
+
+    if not df_f.empty:
+        st.dataframe(
+            df_f[['Producto', 'Stock', 'Precio']].style.applymap(color_bajo_stock, subset=['Stock'])
+            .format({"Precio": "S/ {:.2f}"}), 
+            use_container_width=True, hide_index=True
+        )
+        st.caption("⚠️ Los productos con menos de 5 unidades aparecen en **rojo**.")
 
 # 3. REPORTES
 with tabs[2]:
