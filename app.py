@@ -80,7 +80,6 @@ with tabs[0]:
         st.balloons()
         st.success("✅ ¡VENTA REALIZADA CON ÉXITO!")
         b = st.session_state.boleta
-        # ... (código del ticket igual) ...
         ticket = f"""
         <div style="background-color: white; color: #000; padding: 20px; border: 2px solid #000; border-radius: 10px; max-width: 350px; margin: auto; font-family: monospace;">
             <center><b>BALLARTA DENTAL</b><br>{b['fecha']} {b['hora']}</center>
@@ -127,12 +126,19 @@ with tabs[0]:
 
         if st.session_state.carrito:
             df_c = pd.DataFrame(st.session_state.carrito)
-            st.table(df_c)
+            # SECCIÓN CORREGIDA: Formato de decimales en tabla
+            st.table(df_c.style.format({"Precio": "{:.2f}", "Subtotal": "{:.2f}"}))
+            
             t_bruto = df_c['Subtotal'].sum()
             rebaja = st.number_input("Rebaja (S/):", min_value=0.0, value=0.0)
             t_final = max(0.0, t_bruto - rebaja)
             st.markdown(f"<h2 style='text-align:center; color:#2ECC71;'>TOTAL: S/ {t_final:.2f}</h2>", unsafe_allow_html=True)
-            metodo = st.radio("Pago:", ["Efectivo", "Yape", "Plin"], horizontal=True)
+            
+            # SECCIÓN CORREGIDA: Emojis y colores de pago
+            metodo_sel = st.radio("Método de Pago:", ["💵 Efectivo", "🟣 Yape", "🔵 Plin"], horizontal=True)
+            # Limpiamos el emoji para guardar solo el texto en la base de datos
+            metodo = metodo_sel.split(" ")[1]
+
             if st.button("🚀 FINALIZAR VENTA", type="primary", use_container_width=True):
                 f, h, _, uid = obtener_tiempo_peru()
                 st.session_state.boleta = {'fecha': f, 'hora': h, 'items': list(st.session_state.carrito), 'total_bruto': t_bruto, 'rebaja_total': rebaja, 'total_neto': t_final, 'metodo': metodo}
@@ -149,6 +155,7 @@ with tabs[1]:
     st.subheader("📦 Inventario Actual")
     bus_s = st.text_input("🔍 Buscar en inventario:", key="bus_s").strip().upper()
     df_f = df_stock[df_stock['Producto'].str.upper().str.contains(bus_s, na=False)]
+    # SECCIÓN CORREGIDA: Precio con 2 decimales
     st.dataframe(df_f[['Producto', 'Stock', 'Precio']].style.format({"Precio": "S/ {:.2f}"}), use_container_width=True, hide_index=True)
 
 # 3. REPORTES (CAJA DIARIA)
@@ -167,12 +174,10 @@ with tabs[2]:
 # 4. HISTORIAL (CON FILTRO DE FECHA)
 with tabs[3]:
     st.subheader("📋 Historial de Movimientos")
-    # Buscador por fecha para que no se llene
     f_hist = st.date_input("Filtrar Historial por Fecha:", value=datetime.now()).strftime("%d/%m/%Y")
     h_data = tabla_auditoria.scan().get('Items', [])
     if h_data:
         df_h = pd.DataFrame(h_data)
-        # Filtramos por la fecha seleccionada
         df_h_filt = df_h[df_h['Fecha'] == f_hist].sort_values(by='Hora', ascending=False)
         if not df_h_filt.empty:
             st.dataframe(df_h_filt[['Fecha', 'Hora', 'Producto', 'Cantidad_Entrante', 'Stock_Resultante']], use_container_width=True, hide_index=True)
@@ -194,7 +199,6 @@ with tabs[4]:
     m_man = st.radio("Tipo de Carga:", ["Existente", "Nuevo"], horizontal=True)
     with st.form("f_cargar"):
         if m_man == "Existente":
-            # BUSCADOR DENTRO DE CARGAR
             bus_c = st.text_input("🔍 Escribe para buscar producto a cargar:").strip().upper()
             prod_filt_c = [p for p in df_stock['Producto'].tolist() if bus_c in p.upper()]
             p_f = st.selectbox("Confirmar Producto:", prod_filt_c) if prod_filt_c else None
@@ -205,7 +209,8 @@ with tabs[4]:
         
         c1, c2 = st.columns(2)
         c_f = c1.number_input("Cantidad que entra:", min_value=1, value=1)
-        pr_f = c2.number_input("Precio Unitario:", min_value=0.1, value=float(p_b))
+        # SECCIÓN CORREGIDA: Formato de carga a 2 decimales
+        pr_f = c2.number_input("Precio Unitario:", min_value=0.1, value=float(p_b), format="%.2f")
         
         if st.form_submit_button("📥 REGISTRAR ENTRADA"):
             if p_f:
