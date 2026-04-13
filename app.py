@@ -116,7 +116,6 @@ with tabs[0]:
     else:
         st.subheader("🛒 Realizar Venta")
         bus_v = st.text_input("🔍 Buscar producto:", key="bus_v").strip().upper()
-        # BÚSQUEDA RÁPIDA LOCAL
         prod_filt_v = [p for p in df_stock['Producto'].tolist() if bus_v in p.upper()]
         
         c1, c2 = st.columns([3, 1])
@@ -157,7 +156,6 @@ with tabs[0]:
                     nuevo_s = int(df_stock[df_stock['Producto'] == item['Producto']]['Stock'].values[0]) - item['Cantidad']
                     tabla_stock.update_item(Key={'Producto': item['Producto']}, UpdateExpression="set Stock = :s", ExpressionAttributeValues={':s': nuevo_s})
                     val_db = item['Subtotal'] - rebaja if idx == 0 else item['Subtotal']
-                    # Guardamos P_Compra_U para calcular ganancia después
                     tabla_ventas.put_item(Item={
                         'ID_Venta': f"V-{uid}-{idx}", 'Fecha': f, 'Hora': h, 
                         'Producto': item['Producto'], 'Cantidad': int(item['Cantidad']), 
@@ -165,7 +163,7 @@ with tabs[0]:
                         'P_Compra_U': str(item['P_Compra'])
                     })
                 st.session_state.carrito = []
-                actualizar_stock_local() # Refrescar memoria
+                actualizar_stock_local()
                 st.rerun()
 
 # 2. STOCK
@@ -178,7 +176,7 @@ with tabs[1]:
             return 'color: #FF4B4B; font-weight: bold;' if val < 5 else 'color: white;'
         st.dataframe(df_f.style.map(color_stock, subset=['Stock']).format({"Precio": "S/ {:.2f}", "P_Compra": "S/ {:.2f}"}), use_container_width=True, hide_index=True)
 
-# 3. REPORTES (GANANCIA REAL)
+# 3. REPORTES (CON LIMPIEZA DE DATOS PARA EVITAR ERROR)
 with tabs[2]:
     st.subheader("📊 Caja y Ganancias")
     f_bus = st.date_input("Consultar Fecha:").strftime("%d/%m/%Y")
@@ -187,9 +185,11 @@ with tabs[2]:
         df_v = pd.DataFrame(v_data)
         df_hoy = df_v[df_v['Fecha'] == f_bus].copy() if not df_v.empty else pd.DataFrame()
         if not df_hoy.empty:
-            df_hoy['Total'] = pd.to_numeric(df_hoy['Total'])
-            df_hoy['P_Compra_U'] = pd.to_numeric(df_hoy.get('P_Compra_U', 0))
-            # Ganancia Real calculada
+            # PARACAÍDAS PARA EVITAR EL ERROR DE LA FOTO
+            df_hoy['Total'] = pd.to_numeric(df_hoy['Total'], errors='coerce').fillna(0.0)
+            df_hoy['P_Compra_U'] = pd.to_numeric(df_hoy.get('P_Compra_U', 0), errors='coerce').fillna(0.0)
+            df_hoy['Cantidad'] = pd.to_numeric(df_hoy['Cantidad'], errors='coerce').fillna(0)
+            
             df_hoy['Ganancia'] = df_hoy['Total'] - (df_hoy['P_Compra_U'] * df_hoy['Cantidad'])
             
             t_efe = df_hoy[df_hoy['Metodo'] == 'Efectivo']['Total'].sum()
@@ -226,7 +226,7 @@ with tabs[3]:
             if not df_borrados.empty:
                 st.dataframe(df_borrados[['Hora', 'Producto', 'Stock_Resultante']], use_container_width=True, hide_index=True)
 
-# 5. CARGAR STOCK (CON P_COMPRA)
+# 5. CARGAR STOCK
 with tabs[4]:
     st.subheader("📥 Cargar Mercadería")
     m_man = st.radio("Tipo:", ["Existente", "Nuevo"], horizontal=True)
@@ -254,7 +254,7 @@ with tabs[4]:
                 n_t = s_a + cant_c
                 tabla_stock.put_item(Item={'Producto': p_f, 'Stock': n_t, 'Precio': str(round(pr_venta, 2)), 'P_Compra': str(round(pr_compra, 2))})
                 tabla_auditoria.put_item(Item={'ID_Ingreso': f"I-{uid}", 'Fecha': f, 'Hora': h, 'Producto': p_f, 'Cantidad_Entrante': int(cant_c), 'Stock_Resultante': int(n_t)})
-                actualizar_stock_local() # Refrescar memoria
+                actualizar_stock_local()
                 st.success("✅ Registrado"); time.sleep(1); st.rerun()
 
 # 6. MANTENIMIENTO
@@ -265,5 +265,5 @@ with tabs[5]:
         f, h, _, uid = obtener_tiempo_peru()
         tabla_auditoria.put_item(Item={'ID_Ingreso': f"DEL-{uid}", 'Fecha': f, 'Hora': h, 'Producto': p_del, 'Cantidad_Entrante': 0, 'Stock_Resultante': 0})
         tabla_stock.delete_item(Key={'Producto': p_del})
-        actualizar_stock_local() # Refrescar memoria
+        actualizar_stock_local()
         st.error(f"Eliminado"); time.sleep(1); st.rerun()
