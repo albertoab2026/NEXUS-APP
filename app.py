@@ -48,7 +48,7 @@ def actualizar_stock_local():
             df['Stock'] = pd.to_numeric(df['Stock'], errors='coerce').fillna(0).astype(int)
             df['Precio'] = pd.to_numeric(df['Precio'], errors='coerce').fillna(0.0)
             df['P_Compra_U'] = pd.to_numeric(df['P_Compra_U'], errors='coerce').fillna(0.0)
-            df['Producto'] = df['Producto'].astype(str).str.upper()
+            df['Producto'] = df['Producto'].astype(str).str.upper().str.strip()
             st.session_state.df_stock_local = df[['Producto', 'Stock', 'Precio', 'P_Compra_U']].sort_values(by='Producto')
         else:
             st.session_state.df_stock_local = pd.DataFrame(columns=['Producto', 'Stock', 'Precio', 'P_Compra_U'])
@@ -79,12 +79,13 @@ with st.sidebar:
         st.session_state.sesion_iniciada = False
         st.rerun()
     st.divider()
-    st.success("Conectado a AWS")
+    st.success("AWS Conectado")
 
 tabs = st.tabs(["🛒 VENTA", "📦 STOCK", "📊 REPORTES", "📋 HISTORIAL", "📥 CARGAR", "🛠️ MANT."])
 
-# 1. VENTA
-with tabs[0]:
+# --- PESTAÑAS (Resumen de lógica corregida) ---
+
+with tabs[0]: # VENTA
     if st.session_state.boleta:
         st.balloons()
         b = st.session_state.boleta
@@ -107,7 +108,7 @@ with tabs[0]:
         </div>
         """
         st.markdown(ticket, unsafe_allow_html=True)
-        if st.button("⬅️ NUEVA VENTA", use_container_width=True):
+        if st.button("⬅️ NUEVA VENTA"):
             st.session_state.boleta = None; st.rerun()
     else:
         st.subheader("🛒 Caja")
@@ -131,7 +132,7 @@ with tabs[0]:
                     'Subtotal': round(float(info['Precio']) * cant, 2)
                 })
                 st.session_state.reset_v += 1; st.rerun()
-            else: st.error("No hay suficiente stock")
+            else: st.error("Stock insuficiente")
 
         if st.session_state.carrito:
             df_c = pd.DataFrame(st.session_state.carrito)
@@ -143,8 +144,8 @@ with tabs[0]:
             met_sel = st.radio("Pago:", ["💵 Efectivo", "🟣 Yape", "🔵 Plin"], horizontal=True)
             metodo = met_sel.split(" ")[1]
             
-            if st.checkbox("✅ CONFIRMO PAGO RECIBIDO"):
-                if st.button("🚀 REGISTRAR VENTA", type="primary", use_container_width=True):
+            if st.checkbox("✅ CONFIRMO PAGO"):
+                if st.button("🚀 FINALIZAR VENTA", type="primary"):
                     f, h, _, uid = obtener_tiempo_peru()
                     st.session_state.boleta = {'fecha': f, 'hora': h, 'items': list(st.session_state.carrito), 'total_bruto': t_bruto, 'rebaja_total': rebaja, 'total_neto': t_final, 'metodo': metodo}
                     for idx, item in enumerate(st.session_state.carrito):
@@ -159,25 +160,23 @@ with tabs[0]:
                         })
                     st.session_state.carrito = []; actualizar_stock_local(); st.rerun()
 
-# 2. STOCK
-with tabs[1]:
+with tabs[1]: # STOCK
     st.subheader("📦 Inventario")
     df_f = df_stock.copy()
     def resaltar_bajo_stock(s):
         return ['color: #FF4B4B; font-weight: bold' if val < 5 else '' for val in s]
     st.dataframe(df_f.style.apply(resaltar_bajo_stock, subset=['Stock']).format({"Precio": "S/ {:.2f}", "P_Compra_U": "S/ {:.2f}"}), use_container_width=True, hide_index=True)
 
-# 3. REPORTES (CORREGIDO YAPE/PLIN SEPARADOS)
-with tabs[2]:
-    st.subheader("📊 Reporte de Ventas")
-    f_bus = st.date_input("Día:", value=datetime.now(pytz.timezone('America/Lima'))).strftime("%d/%m/%Y")
+with tabs[2]: # REPORTES
+    st.subheader("📊 Reportes")
+    f_bus = st.date_input("Fecha:", value=datetime.now(pytz.timezone('America/Lima'))).strftime("%d/%m/%Y")
     v_data = tabla_ventas.scan().get('Items', [])
     if v_data:
         df_v = pd.DataFrame(v_data)
         df_hoy = df_v[df_v['Fecha'] == f_bus].copy() if not df_v.empty else pd.DataFrame()
         if not df_hoy.empty:
             df_hoy['Total'] = pd.to_numeric(df_hoy['Total']).fillna(0.0)
-            df_hoy['Cantidad'] = pd.to_numeric(df_hoy['Cantidad']).fillna(0).astype(int)
+            df_hoy['Cantidad'] = pd.to_numeric(df_hoy['Cantidad']).astype(int)
             df_hoy['P_Compra_U'] = pd.to_numeric(df_hoy['P_Compra_U']).fillna(0.0)
             df_hoy['Ganancia'] = df_hoy['Total'] - (df_hoy['P_Compra_U'] * df_hoy['Cantidad'])
             
@@ -186,62 +185,59 @@ with tabs[2]:
             c2.metric("🟣 YAPE", f"S/ {df_hoy[df_hoy['Metodo'] == 'Yape']['Total'].sum():.2f}")
             c3.metric("🔵 PLIN", f"S/ {df_hoy[df_hoy['Metodo'] == 'Plin']['Total'].sum():.2f}")
             c4.metric("📈 GANANCIA", f"S/ {df_hoy['Ganancia'].sum():.2f}")
-            
-            st.divider()
-            st.dataframe(df_hoy[['Hora', 'Producto', 'Cantidad', 'Total', 'Metodo']], use_container_width=True, hide_index=True)
+            st.table(df_hoy[['Hora', 'Producto', 'Cantidad', 'Total', 'Metodo']])
 
-# 4. HISTORIAL (CON FECHA Y ORDEN)
-with tabs[3]:
-    st.subheader("📋 Historial de Movimientos")
+with tabs[3]: # HISTORIAL
+    st.subheader("📋 Auditoría")
     h_data = tabla_auditoria.scan().get('Items', [])
     if h_data:
         df_h = pd.DataFrame(h_data)
-        # Convertir fecha para ordenar bien
         df_h['sort_date'] = pd.to_datetime(df_h['Fecha'], format='%d/%m/%Y')
         df_h = df_h.sort_values(by=['sort_date', 'Hora'], ascending=False)
-        # Limpieza de decimales en stock
-        df_h['Cantidad_Entrante'] = pd.to_numeric(df_h['Cantidad_Entrante'], errors='coerce').fillna(0).astype(int)
-        df_h['Stock_Resultante'] = pd.to_numeric(df_h['Stock_Resultante'], errors='coerce').fillna(0).astype(int)
-        
         st.dataframe(df_h[['Fecha', 'Hora', 'Producto', 'Cantidad_Entrante', 'Stock_Resultante']], use_container_width=True, hide_index=True)
 
-# 5. CARGAR STOCK
-with tabs[4]:
+with tabs[4]: # CARGAR
     st.subheader("📥 Cargar Stock")
-    p_rep = st.selectbox("Producto:", df_stock['Producto'].unique(), key="p_rep_5")
+    p_rep = st.selectbox("Producto:", df_stock['Producto'].unique())
     if p_rep:
         info_r = df_stock[df_stock['Producto'] == p_rep].iloc[0]
         st.write(f"Stock actual: {int(info_r['Stock'])}")
         cant_r = st.number_input("Entrada:", min_value=1, value=1)
-        if st.button("📥 REGISTRAR ENTRADA"):
+        if st.button("📥 ACTUALIZAR"):
             f, h, _, uid = obtener_tiempo_peru()
             n_s = int(info_r['Stock']) + cant_r
             tabla_stock.update_item(Key={'Producto': p_rep}, UpdateExpression="set Stock = :s", ExpressionAttributeValues={':s': n_s})
             tabla_auditoria.put_item(Item={'ID_Ingreso': f"I-{uid}", 'Fecha': f, 'Hora': h, 'Producto': p_rep, 'Cantidad_Entrante': int(cant_r), 'Stock_Resultante': int(n_s)})
-            actualizar_stock_local(); st.success("OK"); time.sleep(1); st.rerun()
+            actualizar_stock_local(); st.success("Stock aumentado"); time.sleep(1); st.rerun()
 
-# 6. MANTENIMIENTO (CON HISTORIAL DE ELIMINACIÓN)
-with tabs[5]:
-    st.subheader("🛠️ Mantenimiento")
-    with st.expander("✨ Nuevo Producto"):
+with tabs[5]: # MANTENIMIENTO (ESCUDO ANTI-DUPLICADOS)
+    st.subheader("🛠️ Administración")
+    
+    with st.expander("✨ Registrar Producto Nuevo"):
         with st.form("f_nuevo"):
-            n_p = st.text_input("Nombre:").upper().strip()
+            n_p = st.text_input("Nombre del producto:").upper().strip()
             c1, c2, c3 = st.columns(3)
             s_i = c1.number_input("Stock Inicial:", min_value=0)
             c_i = c2.number_input("Costo:", min_value=0.0)
             v_i = c3.number_input("Venta:", min_value=0.0)
-            if st.form_submit_button("CREAR"):
-                f, h, _, uid = obtener_tiempo_peru()
-                tabla_stock.put_item(Item={'Producto': n_p, 'Stock': s_i, 'Precio': str(round(v_i, 2)), 'P_Compra_U': str(round(c_i, 2))})
-                tabla_auditoria.put_item(Item={'ID_Ingreso': f"N-{uid}", 'Fecha': f, 'Hora': h, 'Producto': f"NUEVO: {n_p}", 'Cantidad_Entrante': int(s_i), 'Stock_Resultante': int(s_i)})
-                actualizar_stock_local(); st.rerun()
+            
+            if st.form_submit_button("🆕 CREAR"):
+                # --- VALIDACIÓN CLAVE ---
+                if n_p in df_stock['Producto'].values:
+                    st.error(f"❌ ERROR: El producto '{n_p}' ya existe. Usa la pestaña CARGAR para reponer o EDITAR abajo para cambiar precios.")
+                elif not n_p:
+                    st.warning("Escribe un nombre.")
+                else:
+                    f, h, _, uid = obtener_tiempo_peru()
+                    tabla_stock.put_item(Item={'Producto': n_p, 'Stock': s_i, 'Precio': str(round(v_i, 2)), 'P_Compra_U': str(round(c_i, 2))})
+                    tabla_auditoria.put_item(Item={'ID_Ingreso': f"N-{uid}", 'Fecha': f, 'Hora': h, 'Producto': f"NUEVO: {n_p}", 'Cantidad_Entrante': int(s_i), 'Stock_Resultante': int(s_i)})
+                    actualizar_stock_local(); st.success("Producto creado con éxito."); time.sleep(1); st.rerun()
 
     st.divider()
     st.write("### 🗑️ Eliminar Producto")
-    p_del = st.selectbox("Seleccionar para borrar:", [""] + df_stock['Producto'].tolist(), key="p_del_final")
-    if st.button("🗑️ BORRAR DEFINITIVAMENTE") and p_del:
+    p_del = st.selectbox("Borrar:", [""] + df_stock['Producto'].tolist())
+    if st.button("🗑️ ELIMINAR") and p_del:
         f, h, _, uid = obtener_tiempo_peru()
-        # Guardar en historial que se borró
         tabla_auditoria.put_item(Item={'ID_Ingreso': f"DEL-{uid}", 'Fecha': f, 'Hora': h, 'Producto': f"ELIMINADO: {p_del}", 'Cantidad_Entrante': 0, 'Stock_Resultante': 0})
         tabla_stock.delete_item(Key={'Producto': p_del})
-        actualizar_stock_local(); st.error(f"{p_del} eliminado del sistema."); time.sleep(1); st.rerun()
+        actualizar_stock_local(); st.warning("Eliminado."); time.sleep(1); st.rerun()
