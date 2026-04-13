@@ -38,28 +38,26 @@ if 'boleta' not in st.session_state: st.session_state.boleta = None
 if 'reset_v' not in st.session_state: st.session_state.reset_v = 0
 if 'df_stock_local' not in st.session_state: st.session_state.df_stock_local = None
 
-# FUNCIÓN PARA ACTUALIZAR LA MEMORIA LOCAL - CORREGIDA
+# FUNCIÓN PARA ACTUALIZAR LA MEMORIA LOCAL (CON EL ARREGLO DE P_Compra_U)
 def actualizar_stock_local():
     try:
         items = tabla_stock.scan().get('Items', [])
         if items:
             df = pd.DataFrame(items)
-            # Asegurar que las columnas existan antes de convertirlas
-            for col in ['Stock', 'Precio', 'P_Compra']:
+            # --- PASO 1: BLINDAJE DE COLUMNAS ---
+            for col in ['Stock', 'Precio', 'P_Compra_U']:
                 if col not in df.columns: df[col] = 0
             
             df['Stock'] = pd.to_numeric(df['Stock'], errors='coerce').fillna(0).astype(int)
             df['Precio'] = pd.to_numeric(df['Precio'], errors='coerce').fillna(0.0)
-            df['P_Compra'] = pd.to_numeric(df['P_Compra'], errors='coerce').fillna(0.0)
-            # Forzar que Producto sea texto para evitar el AttributeError .str
+            df['P_Compra_U'] = pd.to_numeric(df['P_Compra_U'], errors='coerce').fillna(0.0)
             df['Producto'] = df['Producto'].astype(str)
-            st.session_state.df_stock_local = df[['Producto', 'Stock', 'Precio', 'P_Compra']].sort_values(by='Producto')
+            st.session_state.df_stock_local = df[['Producto', 'Stock', 'Precio', 'P_Compra_U']].sort_values(by='Producto')
         else:
-            st.session_state.df_stock_local = pd.DataFrame(columns=['Producto', 'Stock', 'Precio', 'P_Compra'])
+            st.session_state.df_stock_local = pd.DataFrame(columns=['Producto', 'Stock', 'Precio', 'P_Compra_U'])
     except:
-        st.session_state.df_stock_local = pd.DataFrame(columns=['Producto', 'Stock', 'Precio', 'P_Compra'])
+        st.session_state.df_stock_local = pd.DataFrame(columns=['Producto', 'Stock', 'Precio', 'P_Compra_U'])
 
-# Carga inicial
 if st.session_state.df_stock_local is None:
     actualizar_stock_local()
 
@@ -89,7 +87,7 @@ with st.sidebar:
 
 tabs = st.tabs(["🛒 VENTA", "📦 STOCK", "📊 REPORTES", "📋 HISTORIAL", "📥 CARGAR", "🛠️ MANT."])
 
-# 1. PESTAÑA DE VENTAS
+# 1. VENTA
 with tabs[0]:
     if st.session_state.boleta:
         st.balloons(); st.success("✅ ¡VENTA REALIZADA!")
@@ -118,7 +116,6 @@ with tabs[0]:
     else:
         st.subheader("🛒 Realizar Venta")
         bus_v = st.text_input("🔍 Buscar producto:", key="bus_v").strip().upper()
-        # BÚSQUEDA ROBUSTA
         prod_filt_v = [p for p in df_stock['Producto'].tolist() if bus_v in str(p).upper()]
         
         c1, c2 = st.columns([3, 1])
@@ -134,7 +131,7 @@ with tabs[0]:
             if cant <= info['Stock']:
                 st.session_state.carrito.append({
                     'Producto': p_sel, 'Cantidad': int(cant), 
-                    'Precio': float(info['Precio']), 'P_Compra': float(info['P_Compra']),
+                    'Precio': float(info['Precio']), 'P_Compra_U': float(info['P_Compra_U']),
                     'Subtotal': round(float(info['Precio']) * cant, 2)
                 })
                 st.session_state.reset_v += 1; st.rerun()
@@ -160,22 +157,21 @@ with tabs[0]:
                         'ID_Venta': f"V-{uid}-{idx}", 'Fecha': f, 'Hora': h, 
                         'Producto': item['Producto'], 'Cantidad': int(item['Cantidad']), 
                         'Total': str(round(max(0, val_db), 2)), 'Metodo': metodo,
-                        'P_Compra_U': str(item['P_Compra'])
+                        'P_Compra_U': str(item['P_Compra_U'])
                     })
                 st.session_state.carrito = []; actualizar_stock_local(); st.rerun()
 
-# 2. STOCK - CORREGIDO
+# 2. STOCK
 with tabs[1]:
     st.subheader("📦 Inventario Actual")
     bus_s = st.text_input("🔍 Buscar:", key="bus_stock_p").strip().upper()
-    # Usar .astype(str) para prevenir el AttributeError de la captura
     df_f = df_stock[df_stock['Producto'].astype(str).str.upper().str.contains(bus_s, na=False)].copy()
     if not df_f.empty:
         def color_stock(val):
             return 'color: #FF4B4B; font-weight: bold;' if val < 5 else 'color: white;'
-        st.dataframe(df_f.style.map(color_stock, subset=['Stock']).format({"Precio": "S/ {:.2f}", "P_Compra": "S/ {:.2f}"}), use_container_width=True, hide_index=True)
+        st.dataframe(df_f.style.map(color_stock, subset=['Stock']).format({"Precio": "S/ {:.2f}", "P_Compra_U": "S/ {:.2f}"}), use_container_width=True, hide_index=True)
 
-# 3. REPORTES - CORREGIDO (Lógica de la captura 6 y 7)
+# 3. REPORTES (PASO 2: EL ARREGLO DE RAÍZ)
 with tabs[2]:
     st.subheader("📊 Caja y Ganancias")
     f_bus = st.date_input("Consultar Fecha:").strftime("%d/%m/%Y")
@@ -184,10 +180,11 @@ with tabs[2]:
         df_v = pd.DataFrame(v_data)
         df_hoy = df_v[df_v['Fecha'] == f_bus].copy() if not df_v.empty else pd.DataFrame()
         if not df_hoy.empty:
-            # Limpieza forzada de tipos para evitar el TypeError
+            # Blindaje para el cálculo
+            if 'P_Compra_U' not in df_hoy.columns: df_hoy['P_Compra_U'] = 0
             df_hoy['Total'] = pd.to_numeric(df_hoy['Total'], errors='coerce').fillna(0.0)
             df_hoy['Cantidad'] = pd.to_numeric(df_hoy['Cantidad'], errors='coerce').fillna(0)
-            df_hoy['P_Compra_U'] = pd.to_numeric(df_hoy.get('P_Compra_U', 0), errors='coerce').fillna(0.0)
+            df_hoy['P_Compra_U'] = pd.to_numeric(df_hoy['P_Compra_U'], errors='coerce').fillna(0.0)
             
             df_hoy['Ganancia'] = df_hoy['Total'] - (df_hoy['P_Compra_U'] * df_hoy['Cantidad'])
             
@@ -217,10 +214,6 @@ with tabs[3]:
             st.write("📥 **Entradas**")
             df_entradas = df_h_filt[df_h_filt['ID_Ingreso'].str.startswith('I-', na=False)]
             st.dataframe(df_entradas[['Hora', 'Producto', 'Cantidad_Entrante', 'Stock_Resultante']], use_container_width=True, hide_index=True)
-            st.divider(); st.write("🗑️ **Borrados**")
-            df_borrados = df_h_filt[df_h_filt['ID_Ingreso'].str.startswith('DEL-', na=False)]
-            if not df_borrados.empty:
-                st.dataframe(df_borrados[['Hora', 'Producto', 'Stock_Resultante']], use_container_width=True, hide_index=True)
 
 # 5. CARGAR STOCK
 with tabs[4]:
@@ -233,27 +226,43 @@ with tabs[4]:
             p_f = st.selectbox("Confirmar:", filt_c) if filt_c else None
             info_p = df_stock[df_stock['Producto'] == p_f].iloc[0] if p_f else None
             p_v = info_p['Precio'] if info_p is not None else 10.0
-            p_c = info_p['P_Compra'] if info_p is not None else 5.0
+            p_c = info_p['P_Compra_U'] if info_p is not None else 5.0
         else:
             p_f = st.text_input("Nombre:").upper().strip(); p_v, p_c = 1.0, 0.5
         
         c1, c2, c3 = st.columns(3)
         cant_c = c1.number_input("Cant:", min_value=1, value=1)
-        pr_compra = c2.number_input("P. Compra:", min_value=0.0, value=float(p_c))
-        pr_venta = c3.number_input("P. Venta:", min_value=0.1, value=float(p_v))
+        pr_compra = c2.number_input("Costo Unitario:", min_value=0.0, value=float(p_c))
+        pr_venta = c3.number_input("Precio Venta:", min_value=0.1, value=float(p_v))
         
         if st.form_submit_button("📥 REGISTRAR"):
             if p_f:
                 f, h, _, uid = obtener_tiempo_peru()
                 s_a = int(df_stock[df_stock['Producto'] == p_f]['Stock'].values[0]) if p_f in df_stock['Producto'].values else 0
                 n_t = s_a + cant_c
-                tabla_stock.put_item(Item={'Producto': p_f, 'Stock': n_t, 'Precio': str(round(pr_venta, 2)), 'P_Compra': str(round(pr_compra, 2))})
+                tabla_stock.put_item(Item={'Producto': p_f, 'Stock': n_t, 'Precio': str(round(pr_venta, 2)), 'P_Compra_U': str(round(pr_compra, 2))})
                 tabla_auditoria.put_item(Item={'ID_Ingreso': f"I-{uid}", 'Fecha': f, 'Hora': h, 'Producto': p_f, 'Cantidad_Entrante': int(cant_c), 'Stock_Resultante': int(n_t)})
                 actualizar_stock_local(); st.success("✅ Registrado"); time.sleep(1); st.rerun()
 
-# 6. MANTENIMIENTO
+# 6. MANTENIMIENTO (PASO 3: ACTUALIZAR COSTOS FÁCIL)
 with tabs[5]:
-    st.subheader("🛠️ Eliminar Producto")
+    st.subheader("🛠️ Gestión de Sistema")
+    st.write("---")
+    st.subheader("💰 Actualizar Costos de Compra")
+    p_editar = st.selectbox("Selecciona producto para ponerle su costo:", df_stock['Producto'].unique())
+    costo_nuevo = st.number_input("¿Cuánto te costó este producto (Costo Unitario)?", min_value=0.0, step=0.1)
+    if st.button("💾 Guardar Costo"):
+        tabla_stock.update_item(
+            Key={'Producto': p_editar},
+            UpdateExpression="set P_Compra_U = :c",
+            ExpressionAttributeValues={':c': str(round(costo_nuevo, 2))}
+        )
+        actualizar_stock_local()
+        st.success(f"¡Costo de {p_editar} actualizado!")
+        time.sleep(1); st.rerun()
+    
+    st.divider()
+    st.subheader("🗑️ Eliminar Producto")
     p_del = st.selectbox("Producto a borrar:", [""] + df_stock['Producto'].tolist())
     if st.button("🗑️ BORRAR DEFINITIVAMENTE") and p_del:
         f, h, _, uid = obtener_tiempo_peru()
