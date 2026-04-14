@@ -8,11 +8,8 @@ import time
 # 1. CONFIGURACIÓN E INTERFAZ
 st.set_page_config(page_title="Sistema Dental BALLARTA", layout="wide")
 
-# --- AJUSTE GLOBAL DE TIEMPO PERÚ ---
-tz_peru = pytz.timezone('America/Lima')
-
 def obtener_tiempo_peru():
-    # Aseguramos que 'ahora' siempre sea la hora de Lima
+    tz_peru = pytz.timezone('America/Lima')
     ahora = datetime.now(tz_peru)
     return ahora.strftime("%d/%m/%Y"), ahora.strftime("%H:%M:%S"), ahora, ahora.strftime("%Y%m%d%H%M%S%f")
 
@@ -176,8 +173,7 @@ with tabs[1]:
 # 3. REPORTES
 with tabs[2]:
     st.subheader("📊 Caja y Ganancias")
-    # CORRECCIÓN: El calendario ahora arranca con la fecha de Perú
-    f_bus = st.date_input("Consultar Fecha:", value=datetime.now(tz_peru)).strftime("%d/%m/%Y")
+    f_bus = st.date_input("Consultar Fecha:").strftime("%d/%m/%Y")
     v_data = tabla_ventas.scan().get('Items', [])
     if v_data:
         df_v = pd.DataFrame(v_data)
@@ -194,13 +190,11 @@ with tabs[2]:
             c4.metric("📈 GANANCIA REAL", f"S/ {df_hoy['Ganancia'].sum():.2f}")
             st.divider()
             st.dataframe(df_hoy.sort_values(by='Hora', ascending=False)[['Hora', 'Producto', 'Cantidad', 'Total', 'Ganancia', 'Metodo']], use_container_width=True, hide_index=True)
-        else: st.info("No hay ventas registradas hoy.")
 
-# 4. HISTORIAL
+# 4. HISTORIAL (ORDENADO)
 with tabs[3]:
     st.subheader("📋 Movimientos de Inventario")
-    # CORRECCIÓN: El calendario ahora arranca con la fecha de Perú
-    f_hist = st.date_input("Fecha movimientos:", value=datetime.now(tz_peru), key="f_hist_k").strftime("%d/%m/%Y")
+    f_hist = st.date_input("Fecha de movimientos:", key="f_hist_k").strftime("%d/%m/%Y")
     h_data = tabla_auditoria.scan().get('Items', [])
     if h_data:
         df_h = pd.DataFrame(h_data)
@@ -209,63 +203,86 @@ with tabs[3]:
             df_h_filt = df_h_filt.sort_values(by='Hora', ascending=False)
             st.dataframe(df_h_filt[['Hora', 'Producto', 'Cantidad_Entrante', 'Stock_Resultante']], use_container_width=True, hide_index=True)
 
-# 5. CARGAR STOCK
+# 5. CARGAR STOCK (LIMPIO Y SIN EJEMPLOS)
 with tabs[4]:
     st.subheader("📥 Registro de Mercadería")
-    op_carga = st.radio("Método:", ["Individual", "Masiva (Excel/CSV)"], horizontal=True)
-    if op_carga == "Individual":
-        m_tipo = st.radio("Tipo:", ["Existente (Reponer)", "Producto Nuevo"], horizontal=True)
+    
+    opcion_carga = st.radio("Método de carga:", ["Individual", "Masiva (Excel/CSV)"], horizontal=True)
+    
+    if opcion_carga == "Individual":
+        m_tipo = st.radio("Tipo de ingreso:", ["Existente (Reponer)", "Producto Nuevo"], horizontal=True)
+        
         with st.form("f_cargar"):
             if m_tipo == "Existente (Reponer)":
-                bus_c = st.text_input("🔍 Buscar:").strip().upper()
+                bus_c = st.text_input("🔍 Buscar producto en sistema:").strip().upper()
                 filt_c = [p for p in df_stock['Producto'].tolist() if bus_c in str(p).upper()]
-                p_final = st.selectbox("Confirmar:", filt_c) if filt_c else None
-                p_c_sug, p_v_sug = (float(df_stock[df_stock['Producto'] == p_final].iloc[0]['P_Compra_U']), float(df_stock[df_stock['Producto'] == p_final].iloc[0]['Precio'])) if p_final else (0.0, 0.0)
+                p_final = st.selectbox("Confirmar selección:", filt_c) if filt_c else None
+                
+                # Valores sugeridos si el producto existe
+                p_c_sug, p_v_sug = (float(df_stock[df_stock['Producto'] == p_final].iloc[0]['P_Compra_U']), 
+                                    float(df_stock[df_stock['Producto'] == p_final].iloc[0]['Precio'])) if p_final else (0.0, 0.0)
             else:
-                p_final = st.text_input("Nombre Nuevo:").upper().strip()
+                p_final = st.text_input("Nombre del Producto Nuevo:").upper().strip()
                 p_c_sug, p_v_sug = 0.0, 0.0
+            
             c1, c2, c3 = st.columns(3)
             cant_c = c1.number_input("Cantidad:", min_value=1, value=1)
-            pr_compra = c2.number_input("Costo Unitario:", min_value=0.0, value=p_c_sug)
-            pr_venta = c3.number_input("Precio Venta:", min_value=0.0, value=p_v_sug)
-            if st.form_submit_button("📥 REGISTRAR"):
+            pr_compra = c2.number_input("Costo Unitario (S/):", min_value=0.0, value=p_c_sug)
+            pr_venta = c3.number_input("Precio Venta (S/):", min_value=0.0, value=p_v_sug)
+            
+            if st.form_submit_button("📥 REGISTRAR CARGA"):
                 if p_final:
                     f, h, _, uid = obtener_tiempo_peru()
                     s_act = int(df_stock[df_stock['Producto'] == p_final]['Stock'].values[0]) if p_final in df_stock['Producto'].values else 0
                     n_total = s_act + cant_c
                     tabla_stock.put_item(Item={'Producto': p_final, 'Stock': n_total, 'Precio': str(round(pr_venta, 2)), 'P_Compra_U': str(round(pr_compra, 2))})
                     tabla_auditoria.put_item(Item={'ID_Ingreso': f"I-{uid}", 'Fecha': f, 'Hora': h, 'Producto': p_final, 'Cantidad_Entrante': int(cant_c), 'Stock_Resultante': int(n_total)})
-                    actualizar_stock_local(); st.success("✅ ¡Hecho!"); time.sleep(1); st.rerun()
+                    actualizar_stock_local(); st.success("✅ Stock actualizado!"); time.sleep(1); st.rerun()
+                else:
+                    st.error("Por favor, ingrese un nombre de producto.")
+
     else:
-        st.info("Formato: Producto | Stock | Precio | P_Compra_U")
-        archivo = st.file_uploader("Archivo:", type=['xlsx', 'csv'])
+        st.info("Sube un archivo Excel o CSV con las columnas: **Producto**, **Stock**, **Precio**, **P_Compra_U**")
+        archivo = st.file_uploader("Seleccionar archivo", type=['xlsx', 'csv'])
         if archivo:
             df_masivo = pd.read_excel(archivo) if archivo.name.endswith('xlsx') else pd.read_csv(archivo)
-            if st.button("🚀 PROCESAR MASIVA"):
+            st.write("Vista previa:")
+            st.dataframe(df_masivo.head())
+            if st.button("🚀 PROCESAR CARGA MASIVA"):
                 progress_bar = st.progress(0)
                 f, h, _, uid = obtener_tiempo_peru()
+                total = len(df_masivo)
                 for i, row in df_masivo.iterrows():
                     p_nom = str(row['Producto']).upper().strip()
-                    tabla_stock.put_item(Item={'Producto': p_nom, 'Stock': int(row['Stock']), 'Precio': str(round(float(row['Precio']), 2)), 'P_Compra_U': str(round(float(row['P_Compra_U']), 2))})
-                    progress_bar.progress((i + 1) / len(df_masivo))
-                st.success("✅ Carga masiva exitosa"); actualizar_stock_local(); time.sleep(2); st.rerun()
+                    tabla_stock.put_item(Item={
+                        'Producto': p_nom, 
+                        'Stock': int(row['Stock']), 
+                        'Precio': str(round(float(row['Precio']), 2)), 
+                        'P_Compra_U': str(round(float(row['P_Compra_U']), 2))
+                    })
+                    progress_bar.progress((i + 1) / total)
+                st.success(f"✅ Se procesaron {total} productos.")
+                actualizar_stock_local(); time.sleep(2); st.rerun()
 
 # 6. MANTENIMIENTO
 with tabs[5]:
     st.subheader("🛠️ Administración")
+    st.write("### 💰 Editar Precios")
     p_edit = st.selectbox("Selecciona producto:", df_stock['Producto'].unique(), key="p_m_edit")
     if p_edit:
         info_e = df_stock[df_stock['Producto'] == p_edit].iloc[0]
         col1, col2 = st.columns(2)
-        c_act = col1.number_input("Nuevo Costo:", value=float(info_e['P_Compra_U']))
-        v_act = col2.number_input("Nuevo Precio:", value=float(info_e['Precio']))
-        if st.button("💾 Guardar"):
+        c_act = col1.number_input("Nuevo Costo Compra:", value=float(info_e['P_Compra_U']))
+        v_act = col2.number_input("Nuevo Precio Venta:", value=float(info_e['Precio']))
+        if st.button("💾 Guardar Cambios"):
             tabla_stock.update_item(Key={'Producto': p_edit}, UpdateExpression="set P_Compra_U = :c, Precio = :p", ExpressionAttributeValues={':c': str(round(c_act, 2)), ':p': str(round(v_act, 2))})
-            actualizar_stock_local(); st.success("✅ Guardado"); time.sleep(1); st.rerun()
+            actualizar_stock_local(); st.success("✅ Precios actualizados"); time.sleep(1); st.rerun()
+            
     st.divider()
-    p_del = st.selectbox("Eliminar:", [""] + df_stock['Producto'].tolist())
+    st.write("### 🗑️ Eliminar Producto")
+    p_del = st.selectbox("Producto a eliminar:", [""] + df_stock['Producto'].tolist())
     if st.button("🗑️ ELIMINAR") and p_del:
         f, h, _, uid = obtener_tiempo_peru()
         tabla_auditoria.put_item(Item={'ID_Ingreso': f"DEL-{uid}", 'Fecha': f, 'Hora': h, 'Producto': f"❌ ELIMINADO: {p_del}", 'Cantidad_Entrante': 0, 'Stock_Resultante': 0})
         tabla_stock.delete_item(Key={'Producto': p_del})
-        actualizar_stock_local(); st.error("Eliminado."); time.sleep(1.5); st.rerun()
+        actualizar_stock_local(); st.error(f"{p_del} eliminado."); time.sleep(1.5); st.rerun()
