@@ -8,10 +8,13 @@ import time
 # 1. CONFIGURACIÓN E INTERFAZ
 st.set_page_config(page_title="Sistema Dental BALLARTA", layout="wide")
 
+# --- AJUSTE GLOBAL DE TIEMPO PERÚ ---
+tz_peru = pytz.timezone('America/Lima')
+
 def obtener_tiempo_peru():
-    tz_peru = pytz.timezone('America/Lima')
     ahora = datetime.now(tz_peru)
     return ahora.strftime("%d/%m/%Y"), ahora.strftime("%H:%M:%S"), ahora, ahora.strftime("%Y%m%d%H%M%S%f")
+
 
 # 2. CONEXIÓN AWS DYNAMODB
 try:
@@ -31,12 +34,14 @@ except Exception as e:
     st.error(f"Error de conexión AWS: {e}")
     st.stop()
 
+
 # 3. CONTROL DE ESTADOS
 if 'sesion_iniciada' not in st.session_state: st.session_state.sesion_iniciada = False
 if 'carrito' not in st.session_state: st.session_state.carrito = []
 if 'boleta' not in st.session_state: st.session_state.boleta = None
 if 'reset_v' not in st.session_state: st.session_state.reset_v = 0
 if 'df_stock_local' not in st.session_state: st.session_state.df_stock_local = None
+
 
 def actualizar_stock_local():
     try:
@@ -55,10 +60,12 @@ def actualizar_stock_local():
     except:
         st.session_state.df_stock_local = pd.DataFrame(columns=['Producto', 'Stock', 'Precio', 'P_Compra_U'])
 
+
 if st.session_state.df_stock_local is None:
     actualizar_stock_local()
 
 df_stock = st.session_state.df_stock_local
+
 
 # --- LOGIN ---
 if not st.session_state.sesion_iniciada:
@@ -73,6 +80,7 @@ if not st.session_state.sesion_iniciada:
             else: st.error("❌ Contraseña incorrecta")
     st.stop()
 
+
 with st.sidebar:
     st.title("⚙️ Panel")
     if st.button("🔴 CERRAR SESIÓN", use_container_width=True):
@@ -81,7 +89,9 @@ with st.sidebar:
     st.divider()
     st.success("Conectado a AWS")
 
+
 tabs = st.tabs(["🛒 VENTA", "📦 STOCK", "📊 REPORTES", "📋 HISTORIAL", "📥 CARGAR", "🛠️ MANT."])
+
 
 # 1. PESTAÑA DE VENTAS
 with tabs[0]:
@@ -161,6 +171,7 @@ with tabs[0]:
                     })
                 st.session_state.carrito = []; actualizar_stock_local(); st.rerun()
 
+
 # 2. STOCK
 with tabs[1]:
     st.subheader("📦 Inventario Actual")
@@ -170,10 +181,12 @@ with tabs[1]:
         def color_stock(val): return 'color: #FF4B4B; font-weight: bold;' if val < 5 else 'color: white;'
         st.dataframe(df_f.style.map(color_stock, subset=['Stock']).format({"Precio": "S/ {:.2f}", "P_Compra_U": "S/ {:.2f}"}), use_container_width=True, hide_index=True)
 
+
 # 3. REPORTES
 with tabs[2]:
     st.subheader("📊 Caja y Ganancias")
-    f_bus = st.date_input("Consultar Fecha:").strftime("%d/%m/%Y")
+    # CORRECCIÓN: Arranca con la fecha actual de Perú
+    f_bus = st.date_input("Consultar Fecha:", value=datetime.now(tz_peru)).strftime("%d/%m/%Y")
     v_data = tabla_ventas.scan().get('Items', [])
     if v_data:
         df_v = pd.DataFrame(v_data)
@@ -191,10 +204,12 @@ with tabs[2]:
             st.divider()
             st.dataframe(df_hoy.sort_values(by='Hora', ascending=False)[['Hora', 'Producto', 'Cantidad', 'Total', 'Ganancia', 'Metodo']], use_container_width=True, hide_index=True)
 
+
 # 4. HISTORIAL (ORDENADO)
 with tabs[3]:
     st.subheader("📋 Movimientos de Inventario")
-    f_hist = st.date_input("Fecha de movimientos:", key="f_hist_k").strftime("%d/%m/%Y")
+    # CORRECCIÓN: Arranca con la fecha actual de Perú
+    f_hist = st.date_input("Fecha de movimientos:", value=datetime.now(tz_peru), key="f_hist_k").strftime("%d/%m/%Y")
     h_data = tabla_auditoria.scan().get('Items', [])
     if h_data:
         df_h = pd.DataFrame(h_data)
@@ -202,6 +217,7 @@ with tabs[3]:
         if not df_h_filt.empty:
             df_h_filt = df_h_filt.sort_values(by='Hora', ascending=False)
             st.dataframe(df_h_filt[['Hora', 'Producto', 'Cantidad_Entrante', 'Stock_Resultante']], use_container_width=True, hide_index=True)
+
 
 # 5. CARGAR STOCK (LIMPIO Y SIN EJEMPLOS)
 with tabs[4]:
@@ -263,6 +279,7 @@ with tabs[4]:
                     progress_bar.progress((i + 1) / total)
                 st.success(f"✅ Se procesaron {total} productos.")
                 actualizar_stock_local(); time.sleep(2); st.rerun()
+
 
 # 6. MANTENIMIENTO
 with tabs[5]:
