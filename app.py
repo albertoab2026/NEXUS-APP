@@ -30,8 +30,8 @@ def obtener_tiempo_peru():
 # 2. CONEXIÓN SEGURA AWS (BLINDAJE DE CREDENCIALES)
 try:
     # Verificación de integridad de secretos
-    if "aws" not in st.secrets:
-        st.error("⚠️ Error crítico: Credenciales no configuradas.")
+    if "aws" not in st.secrets or "auth" not in st.secrets:
+        st.error("⚠️ Error crítico: Credenciales [aws] o [auth] no configuradas.")
         st.stop()
         
     # .strip() elimina espacios invisibles que causan el error de token inválido
@@ -48,8 +48,7 @@ try:
     tabla_stock = dynamodb.Table(TABLA_STOCK_NAME)
     tabla_auditoria = dynamodb.Table(TABLA_AUDITORIA_NAME)
 except Exception as e:
-    # Ofuscación de errores técnicos para seguridad pero útil para debug
-    st.error(f"Error de conexión: {e}")
+    st.error(f"Error de conexión AWS: {e}")
     st.stop()
 
 
@@ -215,6 +214,7 @@ with tabs[1]:
 with tabs[2]:
     st.subheader("📊 Caja y Ganancias")
     f_bus = st.date_input("Consultar Fecha:", value=datetime.now(tz_peru)).strftime("%d/%m/%Y")
+    # Cambiado a .scan() para evitar errores de Index en tablas nuevas
     v_data = tabla_ventas.scan().get('Items', [])
     if v_data:
         df_v = pd.DataFrame(v_data)
@@ -235,6 +235,7 @@ with tabs[2]:
 with tabs[3]:
     st.subheader("📋 Movimientos de Inventario")
     f_hist = st.date_input("Fecha de movimientos:", value=datetime.now(tz_peru), key="f_hist_k").strftime("%d/%m/%Y")
+    # Cambiado a .scan() para máxima estabilidad
     h_data = tabla_auditoria.scan().get('Items', [])
     if h_data:
         df_h = pd.DataFrame(h_data)
