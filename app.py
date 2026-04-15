@@ -4,7 +4,6 @@ import boto3
 from datetime import datetime
 import pytz
 import time
-import hashlib # 1. Importado para seguridad pro
 
 # 0. CONFIGURACIÓN DEL CLIENTE (SaaS READY)
 CLIENTE_NOMBRE = "BALLARTA DENTAL"
@@ -27,12 +26,7 @@ def obtener_tiempo_peru():
     return ahora.strftime("%d/%m/%Y"), ahora.strftime("%H:%M:%S"), ahora, ahora.strftime("%Y%m%d%H%M%S%f")
 
 
-# 2. FUNCIÓN DE BLINDAJE (LA TRITURADORA)
-def generar_hash(palabra):
-    return hashlib.sha256(palabra.encode()).hexdigest()
-
-
-# 2. CONEXIÓN SEGURA AWS (BLINDAJE DE CREDENCIALES)
+# 2. CONEXIÓN SEGURA AWS
 try:
     if "aws" not in st.secrets:
         st.error("⚠️ Error crítico: Credenciales no configuradas.")
@@ -41,7 +35,9 @@ try:
     aws_id = st.secrets["aws"]["aws_access_key_id"]
     aws_key = st.secrets["aws"]["aws_secret_access_key"]
     aws_region = st.secrets["aws"]["aws_region"]
-    admin_hash_guardado = st.secrets["auth"]["admin_password"] 
+    
+    # CLAVE DIRECTA DESDE SECRETS
+    admin_password_configurada = st.secrets["auth"]["admin_password"] 
     
     dynamodb = boto3.resource('dynamodb', region_name=aws_region,
                               aws_access_key_id=aws_id,
@@ -94,22 +90,18 @@ if st.session_state.df_stock_local is None:
 df_stock = st.session_state.df_stock_local
 
 
-# --- LOGIN SEGURO (ANTI-FUERZA BRUTA Y HASHING) ---
+# --- LOGIN SIMPLE (COMPARACIÓN DIRECTA) ---
 if not st.session_state.sesion_iniciada:
     st.markdown(f"<h1 style='text-align: center;'>{CLIENTE_EMOJI}</h1><h1 style='text-align: center; color: #2E86C1;'>Sistema {CLIENTE_NOMBRE}</h1>", unsafe_allow_html=True)
     col_login, _ = st.columns([1, 1])
     with col_login:
         clave_ingresada = st.text_input("Clave de acceso:", type="password")
         if st.button("🔓 Ingresar", use_container_width=True):
-            # LIMPIEZA AUTOMÁTICA DE ERRORES EN SECRETS (Espacios o saltos de línea)
-            hash_limpio = admin_hash_guardado.strip().replace("\n", "").replace("\r", "")
-            
-            if generar_hash(clave_ingresada.strip()) == hash_limpio:
+            # Comparamos el texto ingresado directamente con el del secret
+            if clave_ingresada.strip() == admin_password_configurada.strip():
                 st.session_state.sesion_iniciada = True
                 st.rerun()
             else: 
-                with st.spinner("Validando acceso..."):
-                    time.sleep(3) # Freno de seguridad anti-hackers
                 st.error("❌ Acceso denegado: Credenciales incorrectas")
     st.stop()
 
@@ -120,7 +112,7 @@ with st.sidebar:
         st.session_state.sesion_iniciada = False
         st.rerun()
     st.divider()
-    st.info(f"Empresa: {CLIENTE_NOMBRE}\nEstado: Conexión Segura (SHA-256)")
+    st.info(f"Empresa: {CLIENTE_NOMBRE}")
 
 
 tabs = st.tabs(["🛒 VENTA", "📦 STOCK", "📊 REPORTES", "📋 HISTORIAL", "📥 CARGAR", "🛠️ MANT."])
@@ -313,8 +305,3 @@ with tabs[5]:
         tabla_auditoria.put_item(Item={'ID_Ingreso': f"DEL-{uid}", 'Fecha': f, 'Hora': h, 'Producto': f"❌ ELIMINADO: {p_del}", 'Cantidad_Entrante': 0, 'Stock_Resultante': 0})
         tabla_stock.delete_item(Key={'Producto': p_del})
         actualizar_stock_local(); st.error(f"{p_del} eliminado."); time.sleep(1.5); st.rerun()
-
-
-# --- FIN DEL CODIGO ---
-# SaaS Engine Ballarta Cloud 2026
-# Sistema universal para negocios locales
