@@ -12,7 +12,6 @@ from boto3.dynamodb.conditions import Attr
 MARCA_SaaS = "NEXUS BALLARTA SaaS"
 st.set_page_config(page_title=MARCA_SaaS, layout="wide", page_icon="🚀")
 
-# Nombres de tablas AWS
 TABLA_VENTAS_NAME = 'SaaS_Ventas_Test'
 TABLA_STOCK_NAME = 'SaaS_Stock_Test'
 
@@ -71,15 +70,10 @@ def actualizar_stock_local():
         st.session_state.df_stock_local = pd.DataFrame(columns=['Producto', 'Stock', 'Precio', 'P_Compra_U'])
 
 # ==========================================
-# 4. LOGIN (MODO ADAPTABLE)
+# 4. LOGIN
 # ==========================================
 if not st.session_state.sesion_iniciada:
-    st.markdown(f"""
-        <div style='text-align: center; padding: 10px;'>
-            <h1 style='color: #3498DB; font-family: sans-serif;'>{MARCA_SaaS}</h1>
-            <p style='color: #7FB3D5;'>Cloud Inventory System</p>
-        </div>
-    """, unsafe_allow_html=True)
+    st.markdown(f"<div style='text-align: center; padding: 10px;'><h1 style='color: #3498DB;'>{MARCA_SaaS}</h1><p style='color: #7FB3D5;'>Cloud Inventory System</p></div>", unsafe_allow_html=True)
     
     locales = list(st.secrets.get("auth_multi", {}).keys())
     col1, col2 = st.columns(2)
@@ -95,12 +89,7 @@ if not st.session_state.sesion_iniciada:
                 st.rerun()
             else: st.error("Clave incorrecta.")
     with col2:
-        st.markdown(f"""
-            <div style='background-color: rgba(52, 152, 219, 0.1); padding: 25px; border-radius: 10px; border: 1px solid #3498DB;'>
-                <h4 style='color: #3498DB;'>Entorno Seguro</h4>
-                <p style='font-size: 0.9em;'>Sus datos están cifrados y aislados para <b>{local_sel if local_sel else '...'}</b></p>
-            </div>
-        """, unsafe_allow_html=True)
+        st.markdown(f"<div style='background-color: rgba(52, 152, 219, 0.1); padding: 25px; border-radius: 10px; border: 1px solid #3498DB;'><h4>Bienvenido</h4><p>Datos protegidos para: <b>{local_sel if local_sel else '...'}</b></p></div>", unsafe_allow_html=True)
     st.stop()
 
 # ==========================================
@@ -116,54 +105,9 @@ with st.sidebar:
 tabs = st.tabs(["🛒 VENTA", "📦 STOCK", "📊 REPORTES", "📋 HISTORIAL", "📥 CARGAR", "🛠️ MANT."])
 df_stock = st.session_state.df_stock_local
 
-# --- PESTAÑA: VENTAS ---
-with tabs[0]:
-    if st.session_state.boleta:
-        b = st.session_state.boleta
-        st.success("✅ VENTA REALIZADA")
-        st.markdown(f"<div style='background-color: white; color: black; padding: 20px; border: 2px solid black; max-width: 320px; margin: auto; font-family: monospace;'><center><b>{st.session_state.tenant_id}</b><br>{b['fecha']}</center><hr>{''.join([f'<p>{i["Cantidad"]} x {i["Producto"]} - S/ {i["Subtotal"]:.2f}</p>' for i in b['items']])}<hr><h3>TOTAL: S/ {b['total_neto']:.2f}</h3></div>", unsafe_allow_html=True)
-        if st.button("⬅️ NUEVA VENTA"): st.session_state.boleta = None; st.rerun()
-    else:
-        st.subheader("Registro de Venta")
-        bus_v = st.text_input("🔍 Buscar Producto:", key="bus_v").upper()
-        prod_filt = [p for p in df_stock['Producto'].tolist() if bus_v in p]
-        c1, c2 = st.columns(2)
-        with c1:
-            if prod_filt:
-                p_sel = st.selectbox("Seleccionar:", prod_filt, key=f"v_{st.session_state.reset_v}")
-                info = df_stock[df_stock['Producto'] == p_sel].iloc[0]
-                st.write(f"Stock: **{info['Stock']}** | Precio: **S/ {info['Precio']:.2f}**")
-            else: st.warning("Sin resultados.")
-        with c2: cant = st.number_input("Cantidad:", min_value=1, value=1, key=f"c_{st.session_state.reset_v}")
-        
-        if st.button("➕ AÑADIR AL CARRITO", use_container_width=True) and prod_filt:
-            if cant <= info['Stock']:
-                st.session_state.carrito.append({'Producto': p_sel, 'Cantidad': int(cant), 'Precio': float(info['Precio']), 'P_Compra_U': float(info['P_Compra_U']), 'Subtotal': round(float(info['Precio']) * cant, 2), 'TenantID': st.session_state.tenant_id})
-                st.session_state.reset_v += 1; st.rerun()
-            else: st.error("Stock insuficiente.")
-        
-        if st.session_state.carrito:
-            df_c = pd.DataFrame(st.session_state.carrito)
-            st.table(df_c[['Producto', 'Cantidad', 'Subtotal']])
-            if st.button("🚀 FINALIZAR"):
-                f, h, dt, idv = obtener_tiempo_peru()
-                total = df_c['Subtotal'].sum()
-                try:
-                    tabla_ventas.put_item(Item={'VentaID': idv, 'TenantID': st.session_state.tenant_id, 'Fecha': f, 'Total': str(total), 'Items': st.session_state.carrito})
-                    for item in st.session_state.carrito:
-                        tabla_stock.update_item(Key={'Producto': item['Producto']}, UpdateExpression="SET Stock = Stock - :v", ExpressionAttributeValues={':v': item['Cantidad']})
-                    st.session_state.boleta = {'fecha': f, 'items': st.session_state.carrito, 'total_neto': total}
-                    st.session_state.carrito = []; actualizar_stock_local(); st.rerun()
-                except Exception as e: st.error(f"Error AWS: {e}")
-
-# --- PESTAÑA: STOCK ---
-with tabs[1]:
-    st.subheader("Existencias en Nube")
-    st.dataframe(df_stock, use_container_width=True)
-
-# --- PESTAÑA: CARGAR (INDIVIDUAL Y MASIVO) ---
+# --- PESTAÑA CARGAR (INDIVIDUAL Y MASIVO CON LIMPIEZA) ---
 with tabs[4]:
-    st.subheader("📥 Entrada de Mercaderia")
+    st.subheader("📥 Entrada de Mercadería")
     col_i, col_m = st.columns(2)
     with col_i:
         st.write("✍️ Registro Individual")
@@ -180,16 +124,34 @@ with tabs[4]:
         st.write("📂 Carga Masiva (Excel/CSV)")
         archivo = st.file_uploader("Subir archivo:", type=['xlsx', 'csv'])
         if archivo:
-            df_m = pd.read_csv(archivo) if archivo.name.endswith('.csv') else pd.read_excel(archivo)
-            st.dataframe(df_m.head())
-            if st.button("🚀 SUBIR TODO"):
-                pb = st.progress(0)
-                for i, r in df_m.iterrows():
-                    tabla_stock.put_item(Item={'Producto': str(r['Producto']).upper(), 'TenantID': st.session_state.tenant_id, 'Stock': int(r['Stock']), 'Precio': str(r['Precio']), 'P_Compra_U': str(r['P_Compra_U'])})
-                    pb.progress((i+1)/len(df_m))
-                st.success("Carga masiva terminada"); actualizar_stock_local(); st.rerun()
+            try:
+                # Lectura flexible
+                df_m = pd.read_csv(archivo) if archivo.name.endswith('.csv') else pd.read_excel(archivo)
+                
+                # --- LIMPIEZA ANTIFALLO (Elimina los 'None' de tu imagen) ---
+                df_m['Producto'] = df_m['Producto'].fillna("SIN NOMBRE").astype(str).str.upper()
+                df_m['Stock'] = pd.to_numeric(df_m['Stock'], errors='coerce').fillna(0).astype(int)
+                df_m['Precio'] = pd.to_numeric(df_m['Precio'], errors='coerce').fillna(0)
+                df_m['P_Compra_U'] = pd.to_numeric(df_m['P_Compra_U'], errors='coerce').fillna(0)
+                
+                st.dataframe(df_m.head())
+                
+                if st.button("🚀 SUBIR TODO"):
+                    pb = st.progress(0)
+                    for i, r in df_m.iterrows():
+                        tabla_stock.put_item(Item={
+                            'Producto': r['Producto'], 
+                            'TenantID': st.session_state.tenant_id, 
+                            'Stock': int(r['Stock']), 
+                            'Precio': str(r['Precio']), 
+                            'P_Compra_U': str(r['P_Compra_U'])
+                        })
+                        pb.progress((i+1)/len(df_m))
+                    st.success("¡Carga terminada con éxito!"); actualizar_stock_local(); st.rerun()
+            except Exception as e:
+                st.error(f"Error procesando el archivo: {e}")
 
-# --- PESTAÑA: MANTENIMIENTO ---
+# --- PESTAÑA MANTENIMIENTO ---
 with tabs[5]:
     st.subheader("🛠️ Gestión de Precios y Borrado")
     p_lista = df_stock['Producto'].tolist()
@@ -209,6 +171,47 @@ with tabs[5]:
                 tabla_stock.delete_item(Key={'Producto': pm})
                 st.error("Producto eliminado"); actualizar_stock_local(); st.rerun()
 
-# --- ESPACIOS REPORTES E HISTORIAL ---
-with tabs[2]: st.info("📊 Módulo de Reportes Nexus próximamente.")
-with tabs[3]: st.info("📋 Historial de Movimientos de inventario.")
+# --- PESTAÑA VENTA ---
+with tabs[0]:
+    if st.session_state.boleta:
+        b = st.session_state.boleta
+        st.success("✅ VENTA REALIZADA")
+        st.markdown(f"<div style='background-color: white; color: black; padding: 20px; border: 2px solid black; max-width: 320px; margin: auto; font-family: monospace;'><center><b>{st.session_state.tenant_id}</b><br>{b['fecha']}</center><hr>{''.join([f'<p>{i["Cantidad"]} x {i["Producto"]} - S/ {i["Subtotal"]:.2f}</p>' for i in b['items']])}<hr><h3>TOTAL: S/ {b['total_neto']:.2f}</h3></div>", unsafe_allow_html=True)
+        if st.button("⬅️ NUEVA VENTA"): st.session_state.boleta = None; st.rerun()
+    else:
+        st.subheader("Ventas")
+        bus_v = st.text_input("🔍 Buscar:", key="bus_v").upper()
+        prod_filt = [p for p in df_stock['Producto'].tolist() if bus_v in p]
+        c1, c2 = st.columns(2)
+        with c1:
+            if prod_filt:
+                p_sel = st.selectbox("Seleccionar:", prod_filt, key=f"v_{st.session_state.reset_v}")
+                info = df_stock[df_stock['Producto'] == p_sel].iloc[0]
+                st.write(f"Stock: **{info['Stock']}** | Precio: **S/ {info['Precio']:.2f}**")
+            else: st.warning("Sin resultados.")
+        with c2: cant = st.number_input("Cantidad:", min_value=1, value=1, key=f"c_{st.session_state.reset_v}")
+        
+        if st.button("➕ AÑADIR", use_container_width=True) and prod_filt:
+            if cant <= info['Stock']:
+                st.session_state.carrito.append({'Producto': p_sel, 'Cantidad': int(cant), 'Precio': float(info['Precio']), 'P_Compra_U': float(info['P_Compra_U']), 'Subtotal': round(float(info['Precio']) * cant, 2), 'TenantID': st.session_state.tenant_id})
+                st.session_state.reset_v += 1; st.rerun()
+            else: st.error("Stock insuficiente.")
+        
+        if st.session_state.carrito:
+            df_c = pd.DataFrame(st.session_state.carrito)
+            st.table(df_c[['Producto', 'Cantidad', 'Subtotal']])
+            if st.button("🚀 FINALIZAR"):
+                f, h, dt, idv = obtener_tiempo_peru()
+                total = df_c['Subtotal'].sum()
+                try:
+                    tabla_ventas.put_item(Item={'VentaID': idv, 'TenantID': st.session_state.tenant_id, 'Fecha': f, 'Total': str(total), 'Items': st.session_state.carrito})
+                    for item in st.session_state.carrito:
+                        tabla_stock.update_item(Key={'Producto': item['Producto']}, UpdateExpression="SET Stock = Stock - :v", ExpressionAttributeValues={':v': item['Cantidad']})
+                    st.session_state.boleta = {'fecha': f, 'items': st.session_state.carrito, 'total_neto': total}
+                    st.session_state.carrito = []; actualizar_stock_local(); st.rerun()
+                except Exception as e: st.error(f"Error AWS: {e}")
+
+# --- PESTAÑAS STOCK, REPORTES, HISTORIAL ---
+with tabs[1]: st.dataframe(df_stock, use_container_width=True)
+with tabs[2]: st.info("📊 Reportes Nexus próximamente.")
+with tabs[3]: st.info("📋 Historial de Movimientos.")
