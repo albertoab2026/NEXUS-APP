@@ -89,7 +89,7 @@ with t1:
         if p_sel:
             info_row = df_inv[df_inv['Producto'] == p_sel]
             if not info_row.empty:
-                info = info_row.iloc[0]
+                info = info_row.iloc
                 st.info(f"💰 Precio: S/ {float(info['Precio']):.2f} | 📦 Stock: {int(info['Stock'])}")
                 if st.button("➕ Añadir al Carrito", use_container_width=True):
                     if cant <= info['Stock']:
@@ -113,7 +113,7 @@ with t1:
                     f, h, uid = obtener_tiempo_peru()
                     for i, item in enumerate(st.session_state.carrito):
                         tabla_ventas.put_item(Item={'TenantID': st.session_state.tenant, 'VentaID': f"V-{uid}-{i}", 'Fecha': f, 'Hora': h, 'Producto': item['Producto'], 'Cantidad': int(item['Cantidad']), 'Total': str(item['Subtotal']), 'Precio_Compra': str(item['Precio_Compra']), 'Metodo': m_pago, 'Rebaja': str(rebaja)})
-                        n_s = int(df_inv[df_inv['Producto'] == item['Producto']]['Stock'].values[0]) - item['Cantidad']
+                        n_s = int(df_inv[df_inv['Producto'] == item['Producto']]['Stock'].values) - item['Cantidad']
                         tabla_stock.update_item(Key={'TenantID': st.session_state.tenant, 'Producto': item['Producto']}, UpdateExpression="SET Stock = :s", ExpressionAttributeValues={':s': n_s})
                     st.session_state.boleta = {'items': st.session_state.carrito, 'total_bruto': total_bruto, 'rebaja': rebaja, 'total_neto': total_neto, 'metodo': m_pago, 'fecha': f, 'hora': h}
                     st.session_state.carrito = []; st.session_state.confirmar = False; st.rerun()
@@ -136,7 +136,7 @@ with t2:
             })
     else: st.info("Inventario vacío.")
 
-with t3: # --- PESTAÑA REPORTES POR FECHA ---
+with t3: # --- REPORTE CON CANTIDAD, INVERSIÓN Y UTILIDAD ---
     st.subheader("📊 Reporte de Ganancias por Día")
     fecha_sel = st.date_input("📅 Consultar Fecha:", datetime.now(tz_peru))
     f_str = fecha_sel.strftime("%d/%m/%Y")
@@ -155,7 +155,7 @@ with t3: # --- PESTAÑA REPORTES POR FECHA ---
         st.markdown(f"### Resumen: {f_str}")
         c1, c2, c3 = st.columns(3)
         c1.metric("VENTAS TOTALES", f"S/ {df_v['Total'].sum():.2f}")
-        c2.metric("INVERSIÓN", f"S/ {df_v['Inversion'].sum():.2f}")
+        c2.metric("INVERSIÓN (COSTO)", f"S/ {df_v['Inversion'].sum():.2f}")
         c3.metric("GANANCIA NETA", f"S/ {df_v['Utilidad'].sum():.2f}", delta=f"{df_v['Utilidad'].sum():.2f}")
         
         st.write("### 💰 Cajas por Método de Pago")
@@ -163,8 +163,18 @@ with t3: # --- PESTAÑA REPORTES POR FECHA ---
         p1.markdown(f"<div style='text-align:center; padding:10px; border:1px solid #ddd; border-radius:10px;'>💵 <b>EFECTIVO</b><br><h2>S/ {df_v[df_v['Metodo'].str.contains('EFECTIVO', na=False)]['Total'].sum():.2f}</h2></div>", unsafe_allow_html=True)
         p2.markdown(f"<div style='text-align:center; padding:10px; border:1px solid #ddd; border-radius:10px;'>🟣 <b>YAPE</b><br><h2>S/ {df_v[df_v['Metodo'].str.contains('YAPE', na=False)]['Total'].sum():.2f}</h2></div>", unsafe_allow_html=True)
         p3.markdown(f"<div style='text-align:center; padding:10px; border:1px solid #ddd; border-radius:10px;'>🔵 <b>PLIN</b><br><h2>S/ {df_v[df_v['Metodo'].str.contains('PLIN', na=False)]['Total'].sum():.2f}</h2></div>", unsafe_allow_html=True)
+        
         st.write("---")
-        st.dataframe(df_v[['Hora', 'Producto', 'Total', 'Utilidad']], use_container_width=True, hide_index=True)
+        st.write("📝 **Detalle del día:**")
+        st.dataframe(
+            df_v[['Hora', 'Producto', 'Cantidad', 'Inversion', 'Total', 'Utilidad']], 
+            use_container_width=True, hide_index=True,
+            column_config={
+                "Inversion": st.column_config.NumberColumn("Inversión Total"),
+                "Total": st.column_config.NumberColumn("Venta Total"),
+                "Utilidad": st.column_config.NumberColumn("Ganancia")
+            }
+        )
     else: st.warning(f"No hay ventas para el día {f_str}.")
 
 with t5:
