@@ -53,6 +53,7 @@ def obtener_datos():
         df['Stock'] = pd.to_numeric(df['Stock'], errors='coerce').fillna(0).astype(int)
         df['Precio'] = pd.to_numeric(df['Precio'], errors='coerce').fillna(0.0)
         df['Precio_Compra'] = pd.to_numeric(df['Precio_Compra'], errors='coerce').fillna(0.0)
+        # Ordenamos las columnas internamente para que el dataframe respete el orden
         return df[['Producto', 'Precio_Compra', 'Precio', 'Stock']].sort_values('Producto')
     except: return pd.DataFrame(columns=['Producto', 'Precio_Compra', 'Precio', 'Stock'])
 
@@ -87,7 +88,6 @@ with t1:
         with c2: cant = st.number_input("Cant:", min_value=1, value=1, key=f"v_cant_{p_sel}" if p_sel else "v_none")
         
         if p_sel:
-            # --- CORRECCIÓN CLAVE ---
             info_row = df_inv[df_inv['Producto'] == p_sel]
             if not info_row.empty:
                 info = info_row.iloc[0]
@@ -122,19 +122,30 @@ with t1:
 with t2:
     st.subheader("📦 Inventario de Almacén")
     bus_stock = st.text_input("🔍 Buscar en stock:", key="bus_stock").upper()
+    
     if not df_inv.empty:
+        # Filtramos primero
         df_f = df_inv[df_inv['Producto'].str.contains(bus_stock, na=False)].copy()
         
+        # Función para el color rojo en Stock bajo
         def resaltar_bajo(row):
-            return ['background-color: rgba(255, 75, 75, 0.2); color: #ff4b4b; font-weight: bold;'] * len(row) if row.Stock < 5 else [''] * len(row)
+            estilo = 'background-color: rgba(255, 75, 75, 0.15); color: #ff4b4b; font-weight: bold;'
+            return [estilo] * len(row) if row.Stock < 5 else [''] * len(row)
 
-        st.dataframe(df_f.style.apply(resaltar_bajo, axis=1), use_container_width=True, hide_index=True,
+        # Configuramos el orden y los nombres de las columnas
+        st.dataframe(
+            df_f.style.apply(resaltar_bajo, axis=1), 
+            use_container_width=True, 
+            hide_index=True,
+            column_order=("Producto", "Precio_Compra", "Precio", "Stock"), # <--- ORDEN FORZADO AQUÍ
             column_config={
                 "Producto": st.column_config.TextColumn("NOMBRE DEL PRODUCTO", width="large"),
                 "Precio_Compra": st.column_config.NumberColumn("PRECIO COMPRA", format="S/ %.2f"),
                 "Precio": st.column_config.NumberColumn("PRECIO VENTA", format="S/ %.2f"),
                 "Stock": st.column_config.NumberColumn("STOCK ACTUAL")
-            })
+            }
+        )
+        st.caption("💡 Productos en rojo tienen menos de 5 unidades.")
     else: st.info("Inventario vacío.")
 
 with t3: # REPORTES
@@ -143,9 +154,8 @@ with t3: # REPORTES
     v_data = res_v.get('Items', [])
     if v_data:
         df_v = pd.DataFrame(v_data)
-        df_v['Total'] = pd.to_numeric(df_v['Total'])
-        df_v['Precio_Compra'] = pd.to_numeric(df_v['Precio_Compra'])
-        df_v['Cantidad'] = pd.to_numeric(df_v['Cantidad'])
+        for c in ['Total', 'Precio_Compra', 'Cantidad']:
+            df_v[c] = pd.to_numeric(df_v[c], errors='coerce').fillna(0)
         df_v['Ganancia'] = df_v['Total'] - (df_v['Precio_Compra'] * df_v['Cantidad'])
         c1, c2 = st.columns(2)
         c1.metric("VENTAS TOTALES", f"S/ {df_v['Total'].sum():.2f}")
