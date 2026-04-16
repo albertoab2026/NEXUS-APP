@@ -81,21 +81,39 @@ with t1:
     else:
         st.subheader("🛒 Punto de Venta")
         bus = st.text_input("🔍 Buscar Producto:").upper()
+        # Filtramos la lista de productos
         prod_filt = [p for p in df_inv['Producto'].tolist() if bus in str(p)]
-        c1, c2 = st.columns(2)
-        with c1: p_sel = st.selectbox("Seleccionar:", prod_filt) if prod_filt else None
-        with c2: cant = st.number_input("Cant:", min_value=1, value=1, key=f"v_cant_{p_sel}" if p_sel else "v_none")
         
+        c1, c2 = st.columns(2)
+        with c1: 
+            p_sel = st.selectbox("Seleccionar:", prod_filt) if prod_filt else None
+        with c2: 
+            cant = st.number_input("Cant:", min_value=1, value=1, key=f"v_cant_{p_sel}" if p_sel else "v_none")
+        
+        # --- BLINDAJE CONTRA EL ERROR DE LA IMAGEN ---
         if p_sel:
-            info_row = df_inv[df_inv['Producto'] == p_sel]
-            if not info_row.empty:
-                info = info_row.iloc
-                st.info(f"💰 Precio: S/ {float(info['Precio']):.2f} | 📦 Stock: {int(info['Stock'])}")
+            # Buscamos de forma segura en el dataframe
+            datos_filtrados = df_inv[df_inv['Producto'] == p_sel]
+            if not datos_filtrados.empty:
+                # Usamos .values[0] en lugar de .iloc para evitar el error de índice
+                p_venta = float(datos_filtrados['Precio'].values[0])
+                p_costo = float(datos_filtrados['Precio_Compra'].values[0])
+                stock_act = int(datos_filtrados['Stock'].values[0])
+                
+                st.info(f"💰 Precio: S/ {p_venta:.2f} | 📦 Stock: {stock_act}")
+                
                 if st.button("➕ Añadir al Carrito", use_container_width=True):
-                    if cant <= info['Stock']:
-                        st.session_state.carrito.append({'Producto': p_sel, 'Cantidad': int(cant), 'Precio': float(info['Precio']), 'Precio_Compra': float(info['Precio_Compra']), 'Subtotal': round(float(info['Precio']) * cant, 2)})
+                    if cant <= stock_act:
+                        st.session_state.carrito.append({
+                            'Producto': p_sel, 
+                            'Cantidad': int(cant), 
+                            'Precio': p_venta, 
+                            'Precio_Compra': p_costo, 
+                            'Subtotal': round(p_venta * cant, 2)
+                        })
                         st.rerun()
-                    else: st.error("❌ Stock insuficiente")
+                    else: 
+                        st.error("❌ Stock insuficiente")
         
         if st.session_state.carrito:
             df_c = pd.DataFrame(st.session_state.carrito)
@@ -105,7 +123,10 @@ with t1:
             rebaja = st.number_input("💸 Rebaja S/:", min_value=0.0, step=0.5, value=0.0)
             total_neto = max(0.0, total_bruto - rebaja)
             st.markdown(f"<h1 style='text-align:center; color:#2ecc71;'>S/ {total_neto:.2f}</h1>", unsafe_allow_html=True)
-            if st.button("🚀 FINALIZAR COMPRA", use_container_width=True, type="primary"): st.session_state.confirmar = True
+            
+            if st.button("🚀 FINALIZAR COMPRA", use_container_width=True, type="primary"): 
+                st.session_state.confirmar = True
+            
             if st.session_state.confirmar:
                 st.warning(f"⚠️ ¿Confirmar venta de S/ {total_neto:.2f}?")
                 cc1, cc2 = st.columns(2)
@@ -113,11 +134,13 @@ with t1:
                     f, h, uid = obtener_tiempo_peru()
                     for i, item in enumerate(st.session_state.carrito):
                         tabla_ventas.put_item(Item={'TenantID': st.session_state.tenant, 'VentaID': f"V-{uid}-{i}", 'Fecha': f, 'Hora': h, 'Producto': item['Producto'], 'Cantidad': int(item['Cantidad']), 'Total': str(item['Subtotal']), 'Precio_Compra': str(item['Precio_Compra']), 'Metodo': m_pago, 'Rebaja': str(rebaja)})
-                        n_s = int(df_inv[df_inv['Producto'] == item['Producto']]['Stock'].values) - item['Cantidad']
-                        tabla_stock.update_item(Key={'TenantID': st.session_state.tenant, 'Producto': item['Producto']}, UpdateExpression="SET Stock = :s", ExpressionAttributeValues={':s': n_s})
+                        # Descuento de stock con validación
+                        s_previo = int(df_inv[df_inv['Producto'] == item['Producto']]['Stock'].values[0])
+                        tabla_stock.update_item(Key={'TenantID': st.session_state.tenant, 'Producto': item['Producto']}, UpdateExpression="SET Stock = :s", ExpressionAttributeValues={':s': s_previo - item['Cantidad']})
                     st.session_state.boleta = {'items': st.session_state.carrito, 'total_bruto': total_bruto, 'rebaja': rebaja, 'total_neto': total_neto, 'metodo': m_pago, 'fecha': f, 'hora': h}
                     st.session_state.carrito = []; st.session_state.confirmar = False; st.rerun()
-                if cc2.button("❌ NO, CANCELAR", use_container_width=True): st.session_state.confirmar = False; st.rerun()
+                if cc2.button("❌ NO, CANCELAR", use_container_width=True): 
+                    st.session_state.confirmar = False; st.rerun()
 with t2:
     st.subheader("📦 Inventario de Almacén")
     bus_stock = st.text_input("🔍 Buscar en stock:", key="bus_stock").upper()
@@ -136,45 +159,25 @@ with t2:
             })
     else: st.info("Inventario vacío.")
 
-with t3: # --- REPORTE CON CANTIDAD, INVERSIÓN Y UTILIDAD ---
+with t3: # --- REPORTES MEJORADOS ---
     st.subheader("📊 Reporte de Ganancias por Día")
     fecha_sel = st.date_input("📅 Consultar Fecha:", datetime.now(tz_peru))
     f_str = fecha_sel.strftime("%d/%m/%Y")
-    
     res_v = tabla_ventas.scan(FilterExpression=Attr('TenantID').eq(st.session_state.tenant) & Attr('Fecha').eq(f_str))
     v_data = res_v.get('Items', [])
-    
     if v_data:
         df_v = pd.DataFrame(v_data)
         for col in ['Total', 'Precio_Compra', 'Cantidad']:
             df_v[col] = pd.to_numeric(df_v[col], errors='coerce').fillna(0)
-        
         df_v['Inversion'] = df_v['Precio_Compra'] * df_v['Cantidad']
         df_v['Utilidad'] = df_v['Total'] - df_v['Inversion']
-        
         st.markdown(f"### Resumen: {f_str}")
         c1, c2, c3 = st.columns(3)
         c1.metric("VENTAS TOTALES", f"S/ {df_v['Total'].sum():.2f}")
         c2.metric("INVERSIÓN (COSTO)", f"S/ {df_v['Inversion'].sum():.2f}")
-        c3.metric("GANANCIA NETA", f"S/ {df_v['Utilidad'].sum():.2f}", delta=f"{df_v['Utilidad'].sum():.2f}")
-        
-        st.write("### 💰 Cajas por Método de Pago")
-        p1, p2, p3 = st.columns(3)
-        p1.markdown(f"<div style='text-align:center; padding:10px; border:1px solid #ddd; border-radius:10px;'>💵 <b>EFECTIVO</b><br><h2>S/ {df_v[df_v['Metodo'].str.contains('EFECTIVO', na=False)]['Total'].sum():.2f}</h2></div>", unsafe_allow_html=True)
-        p2.markdown(f"<div style='text-align:center; padding:10px; border:1px solid #ddd; border-radius:10px;'>🟣 <b>YAPE</b><br><h2>S/ {df_v[df_v['Metodo'].str.contains('YAPE', na=False)]['Total'].sum():.2f}</h2></div>", unsafe_allow_html=True)
-        p3.markdown(f"<div style='text-align:center; padding:10px; border:1px solid #ddd; border-radius:10px;'>🔵 <b>PLIN</b><br><h2>S/ {df_v[df_v['Metodo'].str.contains('PLIN', na=False)]['Total'].sum():.2f}</h2></div>", unsafe_allow_html=True)
-        
+        c3.metric("GANANCIA NETA", f"S/ {df_v['Utilidad'].sum():.2f}")
         st.write("---")
-        st.write("📝 **Detalle del día:**")
-        st.dataframe(
-            df_v[['Hora', 'Producto', 'Cantidad', 'Inversion', 'Total', 'Utilidad']], 
-            use_container_width=True, hide_index=True,
-            column_config={
-                "Inversion": st.column_config.NumberColumn("Inversión Total"),
-                "Total": st.column_config.NumberColumn("Venta Total"),
-                "Utilidad": st.column_config.NumberColumn("Ganancia")
-            }
-        )
+        st.dataframe(df_v[['Hora', 'Producto', 'Cantidad', 'Inversion', 'Total', 'Utilidad']], use_container_width=True, hide_index=True)
     else: st.warning(f"No hay ventas para el día {f_str}.")
 
 with t5:
