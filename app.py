@@ -82,29 +82,35 @@ with t1:
         st.subheader("🛒 Punto de Venta")
         bus = st.text_input("🔍 Buscar Producto:").upper()
         prod_lista = [p for p in df_inv['Producto'].tolist() if bus in str(p)]
+        
         c1, c2 = st.columns(2)
         with c1: p_sel = st.selectbox("Seleccionar:", prod_lista) if prod_lista else None
-        with c2: cant = st.number_input("Cant:", min_value=1, value=1, key=f"cant_{p_sel}")
-        if p_sel:
-            info = df_inv[df_inv['Producto'] == p_sel].iloc
+        with c2: cant = st.number_input("Cant:", min_value=1, value=1, key=f"cant_{p_sel}" if p_sel else "cant_none")
+        
+        # --- CORRECCIÓN AQUÍ: Solo intentamos indexar si hay un producto seleccionado ---
+        if p_sel and not df_inv[df_inv['Producto'] == p_sel].empty:
+            info = df_inv[df_inv['Producto'] == p_sel].iloc[0]
             st.info(f"💰 Precio: S/ {float(info['Precio']):.2f} | 📦 Stock: {int(info['Stock'])}")
             if st.button("➕ Añadir al Carrito", use_container_width=True):
                 if cant <= info['Stock']:
                     st.session_state.carrito.append({'Producto': p_sel, 'Cantidad': int(cant), 'Precio': float(info['Precio']), 'Precio_Compra': float(info['Precio_Compra']), 'Subtotal': round(float(info['Precio']) * cant, 2)})
                     st.rerun()
                 else: st.error("❌ Stock insuficiente")
+        elif bus != "": st.warning("Producto no encontrado.")
+
         if st.session_state.carrito:
+            st.write("---")
             df_c = pd.DataFrame(st.session_state.carrito)
-            df_c['Subtotal'] = df_c['Subtotal'].map('{:.2f}'.format) # Limpia ceros en tabla
-            st.table(df_c[['Producto', 'Cantidad', 'Subtotal']])
+            df_c['Subtotal_V'] = df_c['Subtotal'].map('{:.2f}'.format)
+            st.table(df_c[['Producto', 'Cantidad', 'Subtotal_V']])
             total_bruto = sum(i['Subtotal'] for i in st.session_state.carrito)
             
             st.write("💳 **Método de Pago:**")
             m_pago = st.radio("Pago:", ["💵 EFECTIVO", "🟣 YAPE", "🔵 PLIN"], horizontal=True, label_visibility="collapsed")
-            
             rebaja = st.number_input("💸 Rebaja S/:", min_value=0.0, step=0.5, value=0.0)
             total_neto = max(0.0, total_bruto - rebaja)
             st.markdown(f"<h1 style='text-align:center; color:#2ecc71;'>S/ {total_neto:.2f}</h1>", unsafe_allow_html=True)
+            
             if st.button("🚀 FINALIZAR COMPRA", use_container_width=True, type="primary"): st.session_state.confirmar = True
             if st.session_state.confirmar:
                 st.warning(f"⚠️ ¿Confirmar venta de S/ {total_neto:.2f}?")
@@ -113,7 +119,7 @@ with t1:
                     f, h, uid = obtener_tiempo_peru()
                     for i, item in enumerate(st.session_state.carrito):
                         tabla_ventas.put_item(Item={'TenantID': st.session_state.tenant, 'VentaID': f"V-{uid}-{i}", 'Fecha': f, 'Hora': h, 'Producto': item['Producto'], 'Cantidad': int(item['Cantidad']), 'Total': str(item['Subtotal']), 'Precio_Compra': str(item['Precio_Compra']), 'Metodo': m_pago, 'Rebaja': str(rebaja)})
-                        n_s = int(df_inv[df_inv['Producto'] == item['Producto']]['Stock'].values) - item['Cantidad']
+                        n_s = int(df_inv[df_inv['Producto'] == item['Producto']]['Stock'].values[0]) - item['Cantidad']
                         tabla_stock.update_item(Key={'TenantID': st.session_state.tenant, 'Producto': item['Producto']}, UpdateExpression="SET Stock = :s", ExpressionAttributeValues={':s': n_s})
                     st.session_state.boleta = {'items': st.session_state.carrito, 'total_bruto': total_bruto, 'rebaja': rebaja, 'total_neto': total_neto, 'metodo': m_pago, 'fecha': f, 'hora': h}
                     st.session_state.carrito = []; st.session_state.confirmar = False; st.rerun()
