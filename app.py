@@ -53,7 +53,6 @@ def obtener_datos():
         df['Stock'] = pd.to_numeric(df['Stock'], errors='coerce').fillna(0).astype(int)
         df['Precio'] = pd.to_numeric(df['Precio'], errors='coerce').fillna(0.0)
         df['Precio_Compra'] = pd.to_numeric(df['Precio_Compra'], errors='coerce').fillna(0.0)
-        # Ordenamos las columnas internamente para que el dataframe respete el orden
         return df[['Producto', 'Precio_Compra', 'Precio', 'Stock']].sort_values('Producto')
     except: return pd.DataFrame(columns=['Producto', 'Precio_Compra', 'Precio', 'Stock'])
 
@@ -122,52 +121,58 @@ with t1:
 with t2:
     st.subheader("📦 Inventario de Almacén")
     bus_stock = st.text_input("🔍 Buscar en stock:", key="bus_stock").upper()
-    
     if not df_inv.empty:
-        # Filtramos primero
         df_f = df_inv[df_inv['Producto'].str.contains(bus_stock, na=False)].copy()
-        
-        # Función para el color rojo en Stock bajo
         def resaltar_bajo(row):
             estilo = 'background-color: rgba(255, 75, 75, 0.15); color: #ff4b4b; font-weight: bold;'
             return [estilo] * len(row) if row.Stock < 5 else [''] * len(row)
-
-        # Configuramos el orden y los nombres de las columnas
-        st.dataframe(
-            df_f.style.apply(resaltar_bajo, axis=1), 
-            use_container_width=True, 
-            hide_index=True,
-            column_order=("Producto", "Precio_Compra", "Precio", "Stock"), # <--- ORDEN FORZADO AQUÍ
+        st.dataframe(df_f.style.apply(resaltar_bajo, axis=1), use_container_width=True, hide_index=True,
+            column_order=("Producto", "Precio_Compra", "Precio", "Stock"),
             column_config={
                 "Producto": st.column_config.TextColumn("NOMBRE DEL PRODUCTO", width="large"),
-                "Precio_Compra": st.column_config.NumberColumn("PRECIO COMPRA", format="S/ %.2f"),
-                "Precio": st.column_config.NumberColumn("PRECIO VENTA", format="S/ %.2f"),
+                "Precio_Compra": st.column_config.NumberColumn("P. COMPRA", format="S/ %.2f"),
+                "Precio": st.column_config.NumberColumn("P. VENTA", format="S/ %.2f"),
                 "Stock": st.column_config.NumberColumn("STOCK ACTUAL")
-            }
-        )
-        st.caption("💡 Productos en rojo tienen menos de 5 unidades.")
+            })
     else: st.info("Inventario vacío.")
 
-with t3: # REPORTES
-    st.subheader("📊 Reporte de Ganancias")
-    res_v = tabla_ventas.scan(FilterExpression=Attr('TenantID').eq(st.session_state.tenant))
+with t3: # --- PESTAÑA REPORTES POR FECHA ---
+    st.subheader("📊 Reporte de Ganancias por Día")
+    fecha_sel = st.date_input("📅 Consultar Fecha:", datetime.now(tz_peru))
+    f_str = fecha_sel.strftime("%d/%m/%Y")
+    
+    res_v = tabla_ventas.scan(FilterExpression=Attr('TenantID').eq(st.session_state.tenant) & Attr('Fecha').eq(f_str))
     v_data = res_v.get('Items', [])
+    
     if v_data:
         df_v = pd.DataFrame(v_data)
-        for c in ['Total', 'Precio_Compra', 'Cantidad']:
-            df_v[c] = pd.to_numeric(df_v[c], errors='coerce').fillna(0)
-        df_v['Ganancia'] = df_v['Total'] - (df_v['Precio_Compra'] * df_v['Cantidad'])
-        c1, c2 = st.columns(2)
+        for col in ['Total', 'Precio_Compra', 'Cantidad']:
+            df_v[col] = pd.to_numeric(df_v[col], errors='coerce').fillna(0)
+        
+        df_v['Inversion'] = df_v['Precio_Compra'] * df_v['Cantidad']
+        df_v['Utilidad'] = df_v['Total'] - df_v['Inversion']
+        
+        st.markdown(f"### Resumen: {f_str}")
+        c1, c2, c3 = st.columns(3)
         c1.metric("VENTAS TOTALES", f"S/ {df_v['Total'].sum():.2f}")
-        c2.metric("GANANCIA NETA", f"S/ {df_v['Ganancia'].sum():.2f}")
-    else: st.info("Sin ventas.")
+        c2.metric("INVERSIÓN", f"S/ {df_v['Inversion'].sum():.2f}")
+        c3.metric("GANANCIA NETA", f"S/ {df_v['Utilidad'].sum():.2f}", delta=f"{df_v['Utilidad'].sum():.2f}")
+        
+        st.write("### 💰 Cajas por Método de Pago")
+        p1, p2, p3 = st.columns(3)
+        p1.markdown(f"<div style='text-align:center; padding:10px; border:1px solid #ddd; border-radius:10px;'>💵 <b>EFECTIVO</b><br><h2>S/ {df_v[df_v['Metodo'].str.contains('EFECTIVO', na=False)]['Total'].sum():.2f}</h2></div>", unsafe_allow_html=True)
+        p2.markdown(f"<div style='text-align:center; padding:10px; border:1px solid #ddd; border-radius:10px;'>🟣 <b>YAPE</b><br><h2>S/ {df_v[df_v['Metodo'].str.contains('YAPE', na=False)]['Total'].sum():.2f}</h2></div>", unsafe_allow_html=True)
+        p3.markdown(f"<div style='text-align:center; padding:10px; border:1px solid #ddd; border-radius:10px;'>🔵 <b>PLIN</b><br><h2>S/ {df_v[df_v['Metodo'].str.contains('PLIN', na=False)]['Total'].sum():.2f}</h2></div>", unsafe_allow_html=True)
+        st.write("---")
+        st.dataframe(df_v[['Hora', 'Producto', 'Total', 'Utilidad']], use_container_width=True, hide_index=True)
+    else: st.warning(f"No hay ventas para el día {f_str}.")
 
 with t5:
     with st.form("carga"):
         p_n = st.text_input("Producto").upper()
         s_n = st.number_input("Stock", min_value=0)
         pr_n = st.number_input("Precio Venta", min_value=0.0); pc_n = st.number_input("Precio Compra", min_value=0.0)
-        if st.form_submit_button("Guardar"):
+        if st.form_submit_button("🚀 GUARDAR"):
             if p_n:
                 tabla_stock.put_item(Item={'TenantID': st.session_state.tenant, 'Producto': p_n, 'Stock': int(s_n), 'Precio': str(pr_n), 'Precio_Compra': str(pc_n)})
                 st.success("Guardado"); st.rerun()
