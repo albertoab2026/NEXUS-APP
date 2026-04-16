@@ -84,23 +84,25 @@ with t1:
         prod_filt = [p for p in df_inv['Producto'].tolist() if bus in str(p)]
         c1, c2 = st.columns(2)
         with c1: p_sel = st.selectbox("Seleccionar:", prod_filt) if prod_filt else None
-        with c2: cant = st.number_input("Cant:", min_value=1, value=1, key=f"cant_{p_sel}" if p_sel else "cant_none")
+        with c2: cant = st.number_input("Cant:", min_value=1, value=1, key=f"v_cant_{p_sel}" if p_sel else "v_none")
         
-        if p_sel and not df_inv[df_inv['Producto'] == p_sel].empty:
-            info = df_inv[df_inv['Producto'] == p_sel].iloc
-            st.info(f"💰 Precio: S/ {float(info['Precio']):.2f} | 📦 Stock: {int(info['Stock'])}")
-            if st.button("➕ Añadir al Carrito", use_container_width=True):
-                if cant <= info['Stock']:
-                    st.session_state.carrito.append({'Producto': p_sel, 'Cantidad': int(cant), 'Precio': float(info['Precio']), 'Precio_Compra': float(info['Precio_Compra']), 'Subtotal': round(float(info['Precio']) * cant, 2)})
-                    st.rerun()
-                else: st.error("❌ Stock insuficiente")
+        if p_sel:
+            # --- CORRECCIÓN CLAVE ---
+            info_row = df_inv[df_inv['Producto'] == p_sel]
+            if not info_row.empty:
+                info = info_row.iloc[0]
+                st.info(f"💰 Precio: S/ {float(info['Precio']):.2f} | 📦 Stock: {int(info['Stock'])}")
+                if st.button("➕ Añadir al Carrito", use_container_width=True):
+                    if cant <= info['Stock']:
+                        st.session_state.carrito.append({'Producto': p_sel, 'Cantidad': int(cant), 'Precio': float(info['Precio']), 'Precio_Compra': float(info['Precio_Compra']), 'Subtotal': round(float(info['Precio']) * cant, 2)})
+                        st.rerun()
+                    else: st.error("❌ Stock insuficiente")
         
         if st.session_state.carrito:
             df_c = pd.DataFrame(st.session_state.carrito)
-            df_c['Subtotal_V'] = df_c['Subtotal'].map('{:.2f}'.format)
-            st.table(df_c[['Producto', 'Cantidad', 'Subtotal_V']])
+            st.table(df_c[['Producto', 'Cantidad', 'Subtotal']])
             total_bruto = sum(i['Subtotal'] for i in st.session_state.carrito)
-            m_pago = st.radio("Pago:", ["💵 EFECTIVO", "🟣 YAPE", "🔵 PLIN"], horizontal=True, label_visibility="collapsed")
+            m_pago = st.radio("Pago:", ["💵 EFECTIVO", "🟣 YAPE", "🔵 PLIN"], horizontal=True)
             rebaja = st.number_input("💸 Rebaja S/:", min_value=0.0, step=0.5, value=0.0)
             total_neto = max(0.0, total_bruto - rebaja)
             st.markdown(f"<h1 style='text-align:center; color:#2ecc71;'>S/ {total_neto:.2f}</h1>", unsafe_allow_html=True)
@@ -112,39 +114,30 @@ with t1:
                     f, h, uid = obtener_tiempo_peru()
                     for i, item in enumerate(st.session_state.carrito):
                         tabla_ventas.put_item(Item={'TenantID': st.session_state.tenant, 'VentaID': f"V-{uid}-{i}", 'Fecha': f, 'Hora': h, 'Producto': item['Producto'], 'Cantidad': int(item['Cantidad']), 'Total': str(item['Subtotal']), 'Precio_Compra': str(item['Precio_Compra']), 'Metodo': m_pago, 'Rebaja': str(rebaja)})
-                        n_s = int(df_inv[df_inv['Producto'] == item['Producto']]['Stock'].values) - item['Cantidad']
+                        n_s = int(df_inv[df_inv['Producto'] == item['Producto']]['Stock'].values[0]) - item['Cantidad']
                         tabla_stock.update_item(Key={'TenantID': st.session_state.tenant, 'Producto': item['Producto']}, UpdateExpression="SET Stock = :s", ExpressionAttributeValues={':s': n_s})
                     st.session_state.boleta = {'items': st.session_state.carrito, 'total_bruto': total_bruto, 'rebaja': rebaja, 'total_neto': total_neto, 'metodo': m_pago, 'fecha': f, 'hora': h}
                     st.session_state.carrito = []; st.session_state.confirmar = False; st.rerun()
                 if cc2.button("❌ NO, CANCELAR", use_container_width=True): st.session_state.confirmar = False; st.rerun()
 with t2:
     st.subheader("📦 Inventario de Almacén")
-    bus_stock = st.text_input("🔍 Buscar producto:", key="bus_stock").upper()
-    
+    bus_stock = st.text_input("🔍 Buscar en stock:", key="bus_stock").upper()
     if not df_inv.empty:
         df_f = df_inv[df_inv['Producto'].str.contains(bus_stock, na=False)].copy()
         
-        # --- FUNCIÓN PARA RESALTAR STOCK BAJO ---
-        def resaltar_stock(row):
-            color = 'background-color: rgba(255, 0, 0, 0.2); color: #ff4b4b; font-weight: bold;' if row.Stock < 5 else ''
-            return [color] * len(row)
+        def resaltar_bajo(row):
+            return ['background-color: rgba(255, 75, 75, 0.2); color: #ff4b4b; font-weight: bold;'] * len(row) if row.Stock < 5 else [''] * len(row)
 
-        # Aplicamos estilo y mostramos
-        st.dataframe(
-            df_f.style.apply(resaltar_stock, axis=1), 
-            use_container_width=True, 
-            hide_index=True,
+        st.dataframe(df_f.style.apply(resaltar_bajo, axis=1), use_container_width=True, hide_index=True,
             column_config={
                 "Producto": st.column_config.TextColumn("NOMBRE DEL PRODUCTO", width="large"),
                 "Precio_Compra": st.column_config.NumberColumn("PRECIO COMPRA", format="S/ %.2f"),
                 "Precio": st.column_config.NumberColumn("PRECIO VENTA", format="S/ %.2f"),
                 "Stock": st.column_config.NumberColumn("STOCK ACTUAL")
-            }
-        )
-        st.caption("💡 Los productos resaltados en rojo tienen menos de 5 unidades.")
+            })
     else: st.info("Inventario vacío.")
 
-with t3: # PESTAÑA REPORTES
+with t3: # REPORTES
     st.subheader("📊 Reporte de Ganancias")
     res_v = tabla_ventas.scan(FilterExpression=Attr('TenantID').eq(st.session_state.tenant))
     v_data = res_v.get('Items', [])
@@ -154,14 +147,11 @@ with t3: # PESTAÑA REPORTES
         df_v['Precio_Compra'] = pd.to_numeric(df_v['Precio_Compra'])
         df_v['Cantidad'] = pd.to_numeric(df_v['Cantidad'])
         df_v['Ganancia'] = df_v['Total'] - (df_v['Precio_Compra'] * df_v['Cantidad'])
-        
         c1, c2 = st.columns(2)
         c1.metric("VENTAS TOTALES", f"S/ {df_v['Total'].sum():.2f}")
         c2.metric("GANANCIA NETA", f"S/ {df_v['Ganancia'].sum():.2f}")
-        st.dataframe(df_v[['Fecha', 'Producto', 'Total', 'Ganancia']], use_container_width=True, hide_index=True)
-    else: st.info("Sin ventas registradas.")
+    else: st.info("Sin ventas.")
 
-with t4: st.info("📋 Historial próximamente.")
 with t5:
     with st.form("carga"):
         p_n = st.text_input("Producto").upper()
@@ -171,9 +161,10 @@ with t5:
             if p_n:
                 tabla_stock.put_item(Item={'TenantID': st.session_state.tenant, 'Producto': p_n, 'Stock': int(s_n), 'Precio': str(pr_n), 'Precio_Compra': str(pc_n)})
                 st.success("Guardado"); st.rerun()
+
 with t6:
     if not df_inv.empty:
-        p_edit = st.selectbox("Editar:", df_inv['Producto'].tolist())
+        p_edit = st.selectbox("Editar Stock de:", df_inv['Producto'].tolist())
         ns = st.number_input("Nuevo Stock", value=0)
         if st.button("Actualizar Stock"):
             tabla_stock.update_item(Key={'TenantID': st.session_state.tenant, 'Producto': p_edit}, UpdateExpression="SET Stock = :s", ExpressionAttributeValues={':s': int(ns)})
