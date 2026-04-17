@@ -320,26 +320,53 @@ def registrar_kardex(producto_k, cantidad_k, tipo_k):
     })
 
 if st.session_state.rol == "DUEÑO":
-    with tabs[4]: # CARGAR
-        st.subheader("📥 Registro de Producto Nuevo")
-        with st.form("formulario_carga"):
-            p_nombre = st.text_input("NOMBRE DEL PRODUCTO").upper()
-            p_stock = st.number_input("STOCK INICIAL", min_value=1)
-            p_costo = st.number_input("PRECIO COSTO (COMPRA)", min_value=0.0)
-            p_venta = st.number_input("PRECIO VENTA", min_value=0.0)
-            if st.form_submit_button("🚀 GUARDAR PRODUCTO"):
-                if p_nombre:
-                    if not df_inv[df_inv['Producto'] == p_nombre].empty:
-                        st.error(f"❌ El producto '{p_nombre}' ya existe.")
-                    else:
+    with tabs[4]: # CARGAR (INDIVIDUAL Y MASIVA)
+        col_individual, col_masiva = st.columns(2)
+        
+        with col_individual:
+            st.subheader("📥 Registro Individual")
+            with st.form("formulario_carga"):
+                p_nombre = st.text_input("NOMBRE DEL PRODUCTO").upper()
+                p_stock = st.number_input("STOCK INICIAL", min_value=1)
+                p_costo = st.number_input("PRECIO COSTO (COMPRA)", min_value=0.0)
+                p_venta = st.number_input("PRECIO VENTA", min_value=0.0)
+                if st.form_submit_button("🚀 GUARDAR PRODUCTO"):
+                    if p_nombre:
+                        if not df_inv[df_inv['Producto'] == p_nombre].empty:
+                            st.error(f"❌ El producto '{p_nombre}' ya existe.")
+                        else:
+                            tabla_stock.put_item(Item={
+                                'TenantID': st.session_state.tenant, 'Producto': p_nombre, 
+                                'Stock': int(p_stock), 'Precio': str(p_venta), 'Precio_Compra': str(p_costo)
+                            })
+                            registrar_kardex(p_nombre, p_stock, "ENTRADA (NUEVO)")
+                            st.success("✅ ¡Producto Guardado!")
+                            time.sleep(2)
+                            st.rerun()
+
+        with col_masiva:
+            st.subheader("📂 Carga Masiva (Excel/CSV)")
+            st.caption("Columnas: Producto, Precio_Compra, Precio, Stock")
+            archivo_subido = st.file_uploader("Subir archivo", type=['xlsx', 'csv'], key="bulk_upload")
+            if archivo_subido:
+                df_bulk = pd.read_excel(archivo_subido) if archivo_subido.name.endswith('xlsx') else pd.read_csv(archivo_subido)
+                st.write("Vista previa:", df_bulk.head(3))
+                if st.button("⚡ PROCESAR CARGA", use_container_width=True):
+                    barra_progreso = st.progress(0)
+                    for i, fila in df_bulk.iterrows():
+                        p_bulk = str(fila['Producto']).upper()
                         tabla_stock.put_item(Item={
-                            'TenantID': st.session_state.tenant, 'Producto': p_nombre, 
-                            'Stock': int(p_stock), 'Precio': str(p_venta), 'Precio_Compra': str(p_costo)
+                            'TenantID': st.session_state.tenant, 
+                            'Producto': p_bulk, 
+                            'Precio_Compra': str(fila['Precio_Compra']), 
+                            'Precio': str(fila['Precio']), 
+                            'Stock': int(fila['Stock'])
                         })
-                        registrar_kardex(p_nombre, p_stock, "ENTRADA (NUEVO)")
-                        st.success("✅ ¡Producto Guardado con éxito!")
-                        time.sleep(3)
-                        st.rerun()
+                        registrar_kardex(p_bulk, fila['Stock'], "CARGA MASIVA")
+                        barra_progreso.progress((i + 1) / len(df_bulk))
+                    st.success(f"✅ {len(df_bulk)} Productos cargados.")
+                    time.sleep(2)
+                    st.rerun()
 
     with tabs[5]: # MANTENIMIENTO
         st.subheader("🛠️ Gestión de Almacén")
@@ -362,7 +389,7 @@ if st.session_state.rol == "DUEÑO":
                     )
                     registrar_kardex(p_sel_m, cantidad_ingreso, f"REPOSICIÓN (+{cantidad_ingreso})")
                     st.success(f"✅ Stock de {p_sel_m} actualizado.")
-                    time.sleep(3)
+                    time.sleep(2)
                     st.rerun()
             
             elif opcion_m == "📝 MODIFICAR PRECIOS":
@@ -376,7 +403,7 @@ if st.session_state.rol == "DUEÑO":
                     )
                     registrar_kardex(p_sel_m, 0, f"CAMBIO PRECIOS: C:{nuevo_c} V:{nuevo_v}")
                     st.success("✅ Precios actualizados.")
-                    time.sleep(3)
+                    time.sleep(2)
                     st.rerun()
             
             else:
@@ -384,7 +411,7 @@ if st.session_state.rol == "DUEÑO":
                     tabla_stock.delete_item(Key={'TenantID': st.session_state.tenant, 'Producto': p_sel_m})
                     registrar_kardex(p_sel_m, 0, "PRODUCTO ELIMINADO")
                     st.warning(f"El producto {p_sel_m} ha sido borrado.")
-                    time.sleep(3)
+                    time.sleep(2)
                     st.rerun()
 
 with st.sidebar:
