@@ -8,6 +8,7 @@ from fpdf import FPDF
 import time
 import re
 import urllib.parse
+from decimal import Decimal # <-- NUEVO: Para evitar errores de precisión en AWS
 
 # --- 0. CONFIGURACIÓN ---
 TABLA_STOCK = 'SaaS_Stock_Test'
@@ -348,25 +349,52 @@ if st.session_state.rol == "DUEÑO":
             st.subheader("📂 Carga Masiva (Excel/CSV)")
             st.caption("Columnas: Producto, Precio_Compra, Precio, Stock")
             archivo_subido = st.file_uploader("Subir archivo", type=['xlsx', 'csv'], key="bulk_upload")
+            
             if archivo_subido:
-                df_bulk = pd.read_excel(archivo_subido) if archivo_subido.name.endswith('xlsx') else pd.read_csv(archivo_subido)
-                st.write("Vista previa:", df_bulk.head(3))
-                if st.button("⚡ PROCESAR CARGA", use_container_width=True):
-                    barra_progreso = st.progress(0)
-                    for i, fila in df_bulk.iterrows():
-                        p_bulk = str(fila['Producto']).upper()
-                        tabla_stock.put_item(Item={
-                            'TenantID': st.session_state.tenant, 
-                            'Producto': p_bulk, 
-                            'Precio_Compra': str(fila['Precio_Compra']), 
-                            'Precio': str(fila['Precio']), 
-                            'Stock': int(fila['Stock'])
-                        })
-                        registrar_kardex(p_bulk, fila['Stock'], "CARGA MASIVA")
-                        barra_progreso.progress((i + 1) / len(df_bulk))
-                    st.success(f"✅ {len(df_bulk)} Productos cargados.")
-                    time.sleep(2)
-                    st.rerun()
+                try:
+                    # Carga inicial del archivo
+                    df_bulk = pd.read_excel(archivo_subido) if archivo_subido.name.endswith('xlsx') else pd.read_csv(archivo_subido)
+                    
+                    # MEJORA: Normalizamos columnas para que no falle por mayúsculas/minúsculas o espacios
+                    df_bulk.columns = [str(c).strip().title() for c in df_bulk.columns]
+                    columnas_necesarias = {'Producto', 'Precio_Compra', 'Precio', 'Stock'}
+                    
+                    if not columnas_necesarias.issubset(df_bulk.columns):
+                        st.error(f"❌ El archivo debe tener las columnas: {columnas_necesarias}")
+                    else:
+                        st.write("Vista previa:", df_bulk.head(3))
+                        if st.button("⚡ PROCESAR CARGA", use_container_width=True):
+                            barra_progreso = st.progress(0)
+                            exitos, errores = 0, 0
+                            
+                            for i, fila in df_bulk.iterrows():
+                                try:
+                                    p_bulk = str(fila['Producto']).strip().upper()
+                                    if not p_bulk or p_bulk == "NAN": continue
+                                    
+                                    # MEJORA: Validación de datos numéricos para que no rompa el bucle
+                                    costo_val = str(pd.to_numeric(fila['Precio_Compra'], errors='coerce') or 0.0)
+                                    precio_val = str(pd.to_numeric(fila['Precio'], errors='coerce') or 0.0)
+                                    stock_val = int(pd.to_numeric(fila['Stock'], errors='coerce') or 0)
+                                    
+                                    tabla_stock.put_item(Item={
+                                        'TenantID': st.session_state.tenant, 
+                                        'Producto': p_bulk, 
+                                        'Precio_Compra': costo_val, 
+                                        'Precio': precio_val, 
+                                        'Stock': stock_val
+                                    })
+                                    registrar_kardex(p_bulk, stock_val, "CARGA MASIVA")
+                                    exitos += 1
+                                except:
+                                    errores += 1
+                                barra_progreso.progress((i + 1) / len(df_bulk))
+                            
+                            st.success(f"✅ {exitos} Productos cargados. Errores: {errores}")
+                            time.sleep(2)
+                            st.rerun()
+                except Exception as e:
+                    st.error(f"❌ Error al leer el archivo: {e}")
 
     with tabs[5]: # MANTENIMIENTO
         st.subheader("🛠️ Gestión de Almacén")
