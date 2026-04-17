@@ -107,7 +107,7 @@ with tabs[0]: # VENTA
         b = st.session_state.boleta
         st.success("✅ VENTA REALIZADA CON ÉXITO")
         
-        # --- DISEÑO DE BOLETA VISUAL ---
+        # --- 1. BOLETA VISUAL CON MÉTODO DE PAGO ---
         st.markdown(f"""<div style="background-color:white;color:black;padding:20px;border:2px solid #333;max-width:350px;margin:auto;font-family:monospace;">
             <h3 style="text-align:center;margin:0;">{st.session_state.tenant}</h3>
             <p style="text-align:center;margin:0;">{b['fecha']} {b['hora']}</p><hr>
@@ -117,18 +117,18 @@ with tabs[0]: # VENTA
             <div style="display:flex;justify-content:space-between;color:red;font-size:12px;"><span>REBAJA:</span><span>- S/{b['rebaja']:g}</span></div>
             <div style="display:flex;justify-content:space-between;font-size:18px;"><b>NETO:</b><b>S/{b['t_neto']:g}</b></div></div>""", unsafe_allow_html=True)
         
-        st.write("")
-        
-        # --- REPORTE WHATSAPP ---
-        texto_wa = f"*RECIBO DE VENTA - {st.session_state.tenant}*\n"
+        st.write("") 
+
+        # --- 2. REPORTE POR WHATSAPP ---
+        texto_wa = f"*RECIBO - {st.session_state.tenant}*\n"
         texto_wa += f"Fecha: {b['fecha']} {b['hora']}\n---\n"
         for i in b['items']:
             texto_wa += f"{i['Cantidad']}x {i['Producto']} - S/{i['Subtotal']:g}\n"
-        texto_wa += f"---\n*Total Neto: S/{b['t_neto']:g}*\nMétodo: {b['metodo']}"
+        texto_wa += f"---\n*TOTAL NETO: S/{b['t_neto']:g}*\nMétodo: {b['metodo']}"
         wa_url = f"https://wa.me/?text={urllib.parse.quote(texto_wa)}"
         st.link_button("📲 Enviar reporte por WhatsApp", wa_url, use_container_width=True)
 
-        # --- DESCARGA PDF ---
+        # --- 3. DESCARGA DE PDF ---
         try:
             pdf = FPDF()
             pdf.add_page()
@@ -148,10 +148,10 @@ with tabs[0]: # VENTA
             pdf.set_font("Arial", 'B', 12)
             pdf.cell(190, 10, txt=f"TOTAL NETO: S/ {b['t_neto']:g}", ln=True, align='R')
             
-            pdf_output = pdf.output(dest='S').encode('latin-1')
-            st.download_button(label="📥 Descargar Boleta PDF", data=pdf_output, file_name=f"Boleta_{b['fecha'].replace('/','-')}.pdf", mime="application/pdf", use_container_width=True)
+            pdf_bytes = pdf.output(dest='S').encode('latin-1')
+            st.download_button(label="📥 Descargar Boleta PDF", data=pdf_bytes, file_name=f"Boleta_{b['fecha'].replace('/','-')}.pdf", mime="application/pdf", use_container_width=True)
         except Exception as e:
-            st.error(f"Error al generar PDF: {e}")
+            st.error(f"Error PDF: {e}")
 
         if st.button("⬅️ NUEVA VENTA", use_container_width=True):
             st.session_state.boleta = None
