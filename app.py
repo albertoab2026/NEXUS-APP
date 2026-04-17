@@ -4,6 +4,8 @@ import boto3
 from datetime import datetime
 import pytz
 from boto3.dynamodb.conditions import Attr
+from fpdf import FPDF # Librería para el PDF
+import base64
 
 # --- 0. CONFIGURACIÓN ---
 TABLA_STOCK = 'SaaS_Stock_Test'
@@ -35,76 +37,90 @@ if 'carrito' not in st.session_state: st.session_state.carrito = []
 if 'boleta' not in st.session_state: st.session_state.boleta = None
 if 'confirmar' not in st.session_state: st.session_state.confirmar = False
 
-# --- LOGIN SEGURO FILTRADO ---
 if not st.session_state.auth:
-    st.markdown("<h1 style='text-align: center; color: #3498db;'>🚀 NEXUS BALLARTA SaaS</h1>", unsafe_allow_html=True)
-    # Filtramos para que NO salgan los nombres con _emp en la lista
+    st.markdown("<h1 style='text-align: center;'>🚀 NEXUS BALLARTA SaaS</h1>", unsafe_allow_html=True)
     lista_negocios = [k for k in st.secrets["auth_multi"].keys() if not k.endswith("_emp")]
     l_s = st.selectbox("📍 Seleccione su Negocio:", lista_negocios)
     cl = st.text_input("🔑 Contraseña:", type="password")
-    
-    col_l1, col_l2 = st.columns(2)
-    if col_l1.button("🔓 DUEÑO", use_container_width=True):
+    c1, c2 = st.columns(2)
+    if c1.button("🔓 DUEÑO", use_container_width=True):
         if cl == st.secrets["auth_multi"][l_s]:
             st.session_state.auth = True; st.session_state.tenant = l_s; st.session_state.rol = "DUEÑO"; st.rerun()
-        else: st.error("❌ Clave de Dueño incorrecta")
-        
-    if col_l2.button("🧑‍💼 EMPLEADO", use_container_width=True):
-        key_emp = f"{l_s}_emp"
-        if key_emp in st.secrets["auth_multi"] and cl == st.secrets["auth_multi"][key_emp]:
+    if c2.button("🧑‍💼 EMPLEADO", use_container_width=True):
+        k_e = f"{l_s}_emp"
+        if k_e in st.secrets["auth_multi"] and cl == st.secrets["auth_multi"][k_e]:
             st.session_state.auth = True; st.session_state.tenant = l_s; st.session_state.rol = "EMPLEADO"; st.rerun()
-        else: st.error("❌ Clave de Empleado incorrecta")
     st.stop()
+def generar_pdf(b, local):
+    pdf = FPDF(format=(80, 150)) # Formato para ticketera
+    pdf.add_page()
+    pdf.set_font("Arial", 'B', 12)
+    pdf.cell(0, 10, local, ln=True, align='C')
+    pdf.set_font("Arial", size=9)
+    pdf.cell(0, 5, f"{b['fecha']} {b['hora']}", ln=True, align='C')
+    pdf.cell(0, 5, "-"*30, ln=True, align='C')
+    for i in b['items']:
+        pdf.cell(0, 5, f"{i['Cantidad']} x {i['Producto']}", ln=True)
+        pdf.cell(0, 5, f"Subtotal: S/ {i['Subtotal']:g}", ln=True, align='R')
+    pdf.cell(0, 5, "-"*30, ln=True, align='C')
+    pdf.set_font("Arial", 'B', 10)
+    pdf.cell(0, 7, f"TOTAL NETO: S/ {b['t_neto']:g}", ln=True, align='R')
+    return pdf.output(dest='S').encode('latin-1')
 
-def registrar_kardex(producto, cantidad, tipo):
-    f, h, uid = obtener_tiempo_peru()
-    tabla_movs.put_item(Item={'TenantID': st.session_state.tenant, 'MovID': f"M-{uid}", 'Fecha': f, 'Hora': h, 'Producto': producto, 'Cantidad': int(cantidad), 'Tipo': tipo})
 def obtener_datos():
     res = tabla_stock.scan(FilterExpression=Attr('TenantID').eq(st.session_state.tenant))
     df = pd.DataFrame(res.get('Items', []))
     if df.empty: return pd.DataFrame(columns=['Producto', 'Precio_Compra', 'Precio', 'Stock'])
-    for col in ['Stock', 'Precio', 'Precio_Compra']:
-        df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
+    for col in ['Stock', 'Precio', 'Precio_Compra']: df[col] = pd.to_numeric(df[col], errors='coerce').fillna(0)
     df['Stock'] = df['Stock'].astype(int)
     return df[['Producto', 'Precio_Compra', 'Precio', 'Stock']].sort_values('Producto')
 
 df_inv = obtener_datos()
-paginas = ["🛒 VENTA", "📦 STOCK"]
-if st.session_state.rol == "DUEÑO": paginas += ["📊 REPORTES", "📋 HISTORIAL", "📥 CARGAR", "🛠️ MANT."]
-tabs = st.tabs(paginas)
+menu = ["🛒 VENTA", "📦 STOCK"]
+if st.session_state.rol == "DUEÑO": menu += ["📊 REPORTES", "📋 HISTORIAL", "📥 CARGAR", "🛠️ MANT."]
+tabs = st.tabs(menu)
 
-with tabs[0]: # PESTAÑA VENTA
+with tabs[0]: # VENTA
     if st.session_state.boleta:
         st.snow(); b = st.session_state.boleta
-        st.success("✅ VENTA REALIZADA")
-        ticket_txt = f"*🚀 {st.session_state.tenant}*\n_{b['fecha']} {b['hora']}_\n\n"
-        for i in b['items']: ticket_txt += f"• {i['Cantidad']}x {i['Producto']} (S/{i['Subtotal']:g})\n"
-        ticket_txt += f"\n*TOTAL NETO: S/{b['t_neto']:g}*"
-        st.text_area("📄 Copiar Ticket para WhatsApp:", ticket_txt, height=150)
+        st.success("✅ ¡VENTA REALIZADA!")
+        # 1. Boleta Visual (La blanca)
+        st.markdown(f"""<div style="background-color:white;color:black;padding:20px;border:2px solid #333;max-width:350px;margin:auto;font-family:monospace;">
+            <h3 style="text-align:center;margin:0;">🦷 {st.session_state.tenant}</h3><p style="text-align:center;margin:0;font-size:12px;">{b['fecha']} {b['hora']}</p><hr>
+            {''.join([f'<div style="display:flex;justify-content:space-between;"><span>{i["Cantidad"]}x {i["Producto"]}</span><span>S/{i["Subtotal"]:g}</span></div>' for i in b['items']])}
+            <hr><div style="display:flex;justify-content:space-between;color:red;"><span>REBAJA:</span><span>- S/{b['rebaja']:g}</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:20px;"><b>NETO:</b><b>S/{b['t_neto']:g}</b></div>
+            <p style="text-align:center;border:1px solid #ccc;margin-top:10px;">PAGO: {b['metodo']}</p></div>""", unsafe_allow_html=True)
+        # 2. WhatsApp
+        t_w = f"*🦷 {st.session_state.tenant}*\n_{b['fecha']} {b['hora']}_\n" + "\n".join([f"• {i['Cantidad']}x {i['Producto']} (S/{i['Subtotal']:g})" for i in b['items']]) + f"\n\n*TOTAL: S/{b['t_neto']:g}*"
+        st.text_area("📄 Copiar para WhatsApp:", t_w, height=100)
+        # 3. Botón PDF
+        pdf_data = generar_pdf(b, st.session_state.tenant)
+        st.download_button(label="📥 DESCARGAR BOLETA PDF", data=pdf_data, file_name=f"Boleta_{b['fecha']}.pdf", mime="application/pdf", use_container_width=True)
         if st.button("⬅️ NUEVA VENTA", use_container_width=True): st.session_state.boleta = None; st.rerun()
     else:
-        bus_v = st.text_input("🔍 Buscar Producto:", key="bv").upper()
+        bus_v = st.text_input("🔍 Buscar:", key="bv").upper()
         p_v = [p for p in df_inv['Producto'].tolist() if bus_v in str(p)]
-        c1, c2 = st.columns(2); p_s = c1.selectbox("Seleccionar:", p_v, key="pv") if p_v else None; ct = c2.number_input("Cant:", min_value=1, value=1, key=f"cv_{p_s}")
+        c1, c2 = st.columns(2); p_s = c1.selectbox("Producto:", p_v, key="pv") if p_v else None; ct = c2.number_input("Cant:", min_value=1, value=1, key=f"cv_{p_s}")
         if p_s:
             idx = df_inv[df_inv['Producto'] == p_s].index
             p_venta = df_inv.at[idx[0], 'Precio']; s_act = df_inv.at[idx[0], 'Stock']
             st.info(f"💰 S/ {p_venta:g} | 📦 Stock: {s_act}")
-            if st.button("➕ Añadir al Carrito"):
+            if st.button("➕ Añadir"):
                 if ct <= s_act:
                     st.session_state.carrito.append({'Producto': p_s, 'Cantidad': int(ct), 'Precio': float(p_venta), 'Precio_Compra': float(df_inv.at[idx[0], 'Precio_Compra']), 'Subtotal': round(float(p_venta)*ct, 2)})
                     st.rerun()
         if st.session_state.carrito:
             st.table(pd.DataFrame(st.session_state.carrito)[['Producto', 'Cantidad', 'Subtotal']])
-            if st.button("🗑️ VACIAR CARRITO"): st.session_state.carrito = []; st.rerun()
+            if st.button("🗑️ VACIAR"): st.session_state.carrito = []; st.rerun()
             m_p = st.radio("Método:", ["💵 EFECTIVO", "🟣 YAPE", "🔵 PLIN"], horizontal=True)
-            rebaja = st.number_input("💸 Rebaja S/:", min_value=0.0, value=0.0, key="rbj")
+            rebaja = st.number_input("💸 Rebaja S/:", min_value=0.0, value=0.0)
             t_b = sum(i['Subtotal'] for i in st.session_state.carrito); t_n = max(0.0, t_b - rebaja)
             st.markdown(f"<h1 style='text-align:center; color:#2ecc71;'>S/ {t_n:g}</h1>", unsafe_allow_html=True)
-            if st.button("🚀 FINALIZAR VENTA", use_container_width=True, type="primary"): st.session_state.confirmar = True
+            if st.button("🚀 FINALIZAR", use_container_width=True, type="primary"): st.session_state.confirmar = True
             if st.session_state.confirmar:
-                st.warning(f"⚠️ ¿Confirmar cobro de S/ {t_n:g}?"); cc1, cc2 = st.columns(2)
-                if cc1.button("✅ SÍ, PROCESAR", use_container_width=True):
+                st.warning(f"⚠️ ¿Confirmar S/ {t_n:g}?"); cc1, cc2 = st.columns(2)
+                if cc1.button("✅ SÍ"):
                     f, h, uid = obtener_tiempo_peru()
                     for it in st.session_state.carrito:
                         tabla_ventas.put_item(Item={'TenantID': st.session_state.tenant, 'VentaID': f"V-{uid}", 'Fecha': f, 'Hora': h, 'Producto': it['Producto'], 'Cantidad': int(it['Cantidad']), 'Total': str(it['Subtotal']), 'Precio_Compra': str(it['Precio_Compra']), 'Metodo': m_p, 'Rebaja': str(rebaja)})
@@ -112,9 +128,9 @@ with tabs[0]: # PESTAÑA VENTA
                         tabla_stock.update_item(Key={'TenantID': st.session_state.tenant, 'Producto': it['Producto']}, UpdateExpression="SET Stock = :s", ExpressionAttributeValues={':s': s_ant - it['Cantidad']})
                     st.session_state.boleta = {'items': st.session_state.carrito, 't_neto': t_n, 'rebaja': rebaja, 'metodo': m_p, 'fecha': f, 'hora': h}
                     st.session_state.carrito = []; st.session_state.confirmar = False; st.rerun()
-                if cc2.button("❌ NO, CANCELAR", use_container_width=True): st.session_state.confirmar = False; st.rerun()
-with tabs[1]: # STOCK (LO VEN AMBOS)
-    st.subheader("📦 Consulta de Stock")
+                if cc2.button("❌ NO"): st.session_state.confirmar = False; st.rerun()
+with tabs[1]: # STOCK
+    st.subheader("📦 Consulta de Almacén")
     bus_s = st.text_input("🔍 Filtrar Stock:", key="bus_s").upper()
     df_f = df_inv[df_inv['Producto'].str.contains(bus_s, na=False)]
     def r_r(r): return ['color: #ff4b4b; font-weight: bold;'] * len(r) if r.Stock < 5 else [''] * len(r)
@@ -122,8 +138,8 @@ with tabs[1]: # STOCK (LO VEN AMBOS)
 
 if st.session_state.rol == "DUEÑO":
     with tabs[2]: # REPORTES
-        st.subheader("📊 Ganancia Neta y Métodos de Pago")
-        f_r = st.date_input("Seleccionar Día:", datetime.now(tz_peru), key="fr").strftime("%d/%m/%Y")
+        st.subheader("📊 Ganancia Neta")
+        f_r = st.date_input("Día:", datetime.now(tz_peru), key="fr").strftime("%d/%m/%Y")
         res_v = tabla_ventas.scan(FilterExpression=Attr('TenantID').eq(st.session_state.tenant) & Attr('Fecha').eq(f_r))
         v_d = res_v.get('Items', [])
         if v_d:
@@ -134,57 +150,55 @@ if st.session_state.rol == "DUEÑO":
             e_t, e_g = met("EFECTIVO"); y_t, y_g = met("YAPE"); p_t, p_g = met("PLIN")
             c1, c2, c3 = st.columns(3)
             c1.metric("💵 EFECTIVO", f"S/ {e_t:g}", f"Gana: S/ {e_g:g}"); c2.metric("🟣 YAPE", f"S/ {y_t:g}", f"Gana: S/ {y_g:g}"); c3.metric("🔵 PLIN", f"S/ {p_t:g}", f"Gana: S/ {p_g:g}")
-            st.divider(); st.metric("📈 GANANCIA NETA TOTAL", f"S/ {(df_v['Total'].sum() - df_v['Inv'].sum()):g}")
+            st.divider(); st.metric("📈 GANANCIA TOTAL", f"S/ {(df_v['Total'].sum() - df_v['Inv'].sum()):g}")
             st.dataframe(df_v[['Hora', 'Producto', 'Total', 'Metodo']], use_container_width=True, hide_index=True)
-        
-        st.subheader("🕵️ Alertas de Stock (Hoy)")
-        res_m_aud = tabla_movs.scan(FilterExpression=Attr('TenantID').eq(st.session_state.tenant) & Attr('Fecha').eq(f_r))
-        movs_aud = [m for m in res_m_aud.get('Items', []) if any(x in m['Tipo'] for x in ["REPOSICIÓN", "ENTRADA", "PRECIOS"])]
-        if movs_aud: st.dataframe(pd.DataFrame(movs_aud)[['Hora', 'Producto', 'Tipo']], use_container_width=True, hide_index=True)
-if st.session_state.rol == "DUEÑO":
+
     with tabs[3]: # HISTORIAL
-        st.subheader("📋 Historial Completo")
+        st.subheader("📋 Historial")
         f_h = st.date_input("Fecha:", datetime.now(tz_peru), key="fh").strftime("%d/%m/%Y")
         res_m = tabla_movs.scan(FilterExpression=Attr('TenantID').eq(st.session_state.tenant) & Attr('Fecha').eq(f_h))
         if res_m.get('Items'):
             df_m = pd.DataFrame(res_m.get('Items')).sort_values("Hora", ascending=False)
             st.dataframe(df_m[['Hora', 'Producto', 'Cantidad', 'Tipo']], use_container_width=True, hide_index=True)
+def registrar_kardex(producto, cantidad, tipo):
+    f, h, uid = obtener_tiempo_peru()
+    tabla_movs.put_item(Item={'TenantID': st.session_state.tenant, 'MovID': f"M-{uid}", 'Fecha': f, 'Hora': h, 'Producto': producto, 'Cantidad': int(cantidad), 'Tipo': tipo})
 
-    with tabs[4]: # CARGAR NUEVO
-        st.subheader("📥 Registro de Producto Nuevo")
+if st.session_state.rol == "DUEÑO":
+    with tabs[4]: # CARGAR
+        st.subheader("📥 Nuevo Producto")
         with st.form("fn"):
-            pn = st.text_input("NOMBRE").upper(); sn = st.number_input("STOCK INICIAL", min_value=1)
+            pn = st.text_input("NOMBRE").upper(); sn = st.number_input("STOCK", min_value=1)
             pc_n = st.number_input("COSTO", min_value=0.0); pv_n = st.number_input("VENTA", min_value=0.0)
             if st.form_submit_button("🚀 GUARDAR"):
                 if pn and df_inv[df_inv['Producto'] == pn].empty:
                     tabla_stock.put_item(Item={'TenantID': st.session_state.tenant, 'Producto': pn, 'Stock': int(sn), 'Precio': str(pv_n), 'Precio_Compra': str(pc_n)})
-                    registrar_kardex(pn, sn, "NUEVO PRODUCTO"); st.success("✅ Guardado"); import time; time.sleep(1); st.rerun()
-                else: st.error("❌ Ya existe o nombre vacío.")
+                    registrar_kardex(pn, sn, "NUEVO PRODUCTO"); st.success("✅ Guardado"); st.rerun()
 
     with tabs[5]: # MANTENIMIENTO
-        st.subheader("🛠️ Gestión de Almacén")
-        op = st.radio("Acción:", ["➕ REPONER STOCK", "📝 MODIFICAR PRECIOS", "🗑️ ELIMINAR"], horizontal=True)
-        bus_m = st.text_input("🔍 Buscar Producto:", key="bm").upper()
+        st.subheader("🛠️ Gestión")
+        op = st.radio("Acción:", ["➕ REPONER", "📝 PRECIOS", "🗑️ ELIMINAR"], horizontal=True)
+        bus_m = st.text_input("🔍 Buscar:", key="bm").upper()
         p_m = [p for p in df_inv['Producto'].tolist() if bus_m in str(p)]
         if p_m:
             p_s = st.selectbox("Seleccionar:", p_m, key="psm"); idx_m = df_inv[df_inv['Producto'] == p_s].index
             r_m_st = df_inv.at[idx_m[0], 'Stock']
-            if op == "➕ REPONER STOCK":
-                c_m = st.number_input("¿Cuánto entra?", min_value=1, key=f"cm_{p_s}") 
+            if op == "➕ REPONER":
+                c_m = st.number_input("¿Cuánto?", min_value=1, key=f"cm_{p_s}") 
                 if st.button("✅ ACTUALIZAR"):
                     n_t = int(r_m_st + c_m); tabla_stock.update_item(Key={'TenantID': st.session_state.tenant, 'Producto': p_s}, UpdateExpression="SET Stock = :s", ExpressionAttributeValues={':s': n_t})
-                    registrar_kardex(p_s, c_m, f"REPOSICIÓN: {r_m_st} -> {n_t}"); st.success("✅ Hecho"); import time; time.sleep(1); st.rerun()
-            elif op == "📝 MODIFICAR PRECIOS":
-                n_c = st.number_input("Costo:", value=float(df_inv.at[idx_m[0], 'Precio_Compra']))
-                n_v = st.number_input("Venta:", value=float(df_inv.at[idx_m[0], 'Precio']))
-                if st.button("💾 GUARDAR PRECIOS"):
-                    tabla_stock.update_item(Key={'TenantID': st.session_state.tenant, 'Producto': p_s}, UpdateExpression="SET Precio_Compra = :pc, Precio = :pv", ExpressionAttributeValues={':pc': str(n_c), ':pv': str(n_v)})
-                    registrar_kardex(p_s, 0, f"CAMBIO PRECIOS"); st.success("✅ Guardado"); st.rerun()
+                    registrar_kardex(p_s, c_m, f"REPOSICIÓN: {r_m_st} -> {n_t}"); st.success("✅ Hecho"); st.rerun()
+            elif op == "📝 PRECIOS":
+                nc = st.number_input("Costo:", value=float(df_inv.at[idx_m[0], 'Precio_Compra']))
+                nv = st.number_input("Venta:", value=float(df_inv.at[idx_m[0], 'Precio']))
+                if st.button("💾 GUARDAR"):
+                    tabla_stock.update_item(Key={'TenantID': st.session_state.tenant, 'Producto': p_s}, UpdateExpression="SET Precio_Compra = :pc, Precio = :pv", ExpressionAttributeValues={':pc': str(nc), ':pv': str(nv)})
+                    registrar_kardex(p_s, 0, "CAMBIO PRECIOS"); st.success("✅ Guardado"); st.rerun()
             else:
-                if st.button(f"🗑️ ELIMINAR DEFINITIVAMENTE {p_s}"):
+                if st.button("🗑️ ELIMINAR"):
                     tabla_stock.delete_item(Key={'TenantID': st.session_state.tenant, 'Producto': p_s})
-                    registrar_kardex(p_s, 0, "ELIMINADO"); st.warning("Borrado."); st.rerun()
+                    registrar_kardex(p_s, 0, "ELIMINADO"); st.rerun()
 
 with st.sidebar:
-    st.title(f"🏢 {st.session_state.tenant}"); st.write(f"Usuario: **{st.session_state.rol}**")
-    if st.button("🔴 CERRAR SESIÓN"): st.session_state.auth = False; st.rerun()
+    st.title(f"🏢 {st.session_state.tenant}"); st.write(f"Rol: **{st.session_state.rol}**")
+    if st.button("🔴 SALIR"): st.session_state.auth = False; st.rerun()
