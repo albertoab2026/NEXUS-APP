@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import boto3
-from datetime import datetime, timedelta  # Agregado timedelta para comparativas
+from datetime import datetime, timedelta
 import pytz
 from boto3.dynamodb.conditions import Attr, Key
 from fpdf import FPDF
@@ -235,11 +235,10 @@ with tabs[1]: # STOCK
         return [''] * len(fila)
     st.dataframe(df_mostrar.style.apply(estilo_filas, axis=1).format({"Precio": "{:.2f}", "Precio_Compra": "{:.2f}", "Stock": "{:d}"}), use_container_width=True, hide_index=True)
 
-# --- REPORTES ACTUALIZADO (INTELIGENCIA DE NEGOCIO) ---
+# --- REPORTES ACTUALIZADO ---
 with tabs[2]: 
     st.subheader("📊 Reporte de Ventas e Inteligencia")
     
-    # Manejo de fechas para comparativa (Lunes vs Lunes)
     fecha_input = st.date_input("Día a consultar:", datetime.now(tz_peru), key="fecha_rep")
     fecha_r = fecha_input.strftime("%d/%m/%Y")
     fecha_hace_7 = (fecha_input - timedelta(days=7)).strftime("%d/%m/%Y")
@@ -261,7 +260,6 @@ with tabs[2]:
             num_tickets = df_rep['VentaID'].nunique()
             ticket_promedio = total_venta_dia / num_tickets if num_tickets > 0 else Decimal('0.00')
 
-            # Lógica de Delta (Cálculo del numerito verde/rojo)
             if not df_pasado.empty:
                 total_pasado = df_pasado['Total'].apply(lambda x: Decimal(str(x))).sum()
                 delta_valor = f"S/ {float(total_venta_dia - total_pasado):.2f} vs semana pasada"
@@ -293,7 +291,6 @@ with tabs[2]:
             c2.metric("🟣 YAPE", f"S/ {float(ya_v):.2f}")
             c3.metric("🔵 PLIN", f"S/ {float(pl_v):.2f}")
             
-            # --- BOTÓN DE CIERRE ---
             st.divider()
             tipo_cierre = "TOTAL" if st.session_state.rol == "DUEÑO" else "DE MI TURNO"
             if st.button(f"🏁 GENERAR CIERRE {tipo_cierre}", use_container_width=True, type="primary"):
@@ -313,7 +310,8 @@ with tabs[2]:
                 df_top = df_rep.groupby('Producto')['Cantidad'].sum().sort_values(ascending=False).head(5)
                 st.bar_chart(df_top)
 
-            st.dataframe(df_rep[['Hora', 'Producto', 'Total', 'Metodo']], use_container_width=True, hide_index=True)
+            # ORDEN CRONOLÓGICO INVERSO EN VENTAS (Lo más nuevo arriba)
+            st.dataframe(df_rep.sort_values("Hora", ascending=False)[['Hora', 'Producto', 'Total', 'Metodo']], use_container_width=True, hide_index=True)
         else: st.info("No hay ventas en esta fecha.")
     else: st.info("Sin ventas registradas.")
 
@@ -327,6 +325,7 @@ if st.session_state.rol == "DUEÑO":
             df_hist_total = pd.DataFrame(items_movs_bruto)
             df_historial = df_hist_total[df_hist_total['Fecha'] == fecha_h]
             if not df_historial.empty:
+                # ORDEN CRONOLÓGICO INVERSO EN HISTORIAL (Lo más nuevo arriba)
                 st.dataframe(df_historial.sort_values("Hora", ascending=False)[['Hora', 'Producto', 'Cantidad', 'Tipo']], use_container_width=True, hide_index=True)
             else: st.info("Sin movimientos registrados hoy.")
         else: st.info("Historial vacío.")
