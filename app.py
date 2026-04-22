@@ -209,16 +209,27 @@ if not st.session_state.auth:
         intentar_login("DUEÑO")
     
     # PARCHE 5: NOMBRE EMPLEADO
-    with col_empleado:
-        nombre_emp = st.text_input("👤 Nombre vendedor:", key="nombre_emp_login", placeholder="Ej: JUAN", max_chars=20)
+        with col_empleado:
+        # PARCHE 5 V2: NOMBRE EMPLEADO QUE SÍ FUNCIONA
+        if 'nombre_emp_temp' not in st.session_state:
+            st.session_state.nombre_emp_temp = ""
+        
+        st.session_state.nombre_emp_temp = st.text_input(
+            "👤 Tu nombre:", 
+            value=st.session_state.nombre_emp_temp,
+            key="input_nombre_emp",
+            placeholder="Ej: JUAN",
+            max_chars=20
+        ).upper().strip()
+        
         if st.button("🧑‍💼 EMPLEADO", use_container_width=True):
-            if nombre_emp:
-                nombre_emp = nombre_emp.upper().strip()
-                if not re.match("^[A-Z0-9 ]*$", nombre_emp):
-                    st.error("❌ Solo letras y números en el nombre.")
-                else:
-                    st.session_state.usuario = nombre_emp
-                    intentar_login("EMPLEADO")
+            if not st.session_state.nombre_emp_temp:
+                st.warning("Pon tu nombre pa' entrar como empleado")
+            elif not re.match("^[A-Z0-9 ]*$", st.session_state.nombre_emp_temp):
+                st.error("❌ Solo letras y números en el nombre.")
+            else:
+                st.session_state.usuario = st.session_state.nombre_emp_temp
+                intentar_login("EMPLEADO")
             else:
                 st.warning("Pon tu nombre pa' entrar como empleado")
     st.stop()
