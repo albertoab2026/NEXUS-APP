@@ -142,6 +142,8 @@ if 'tenant' not in st.session_state:
     st.session_state.tenant = None
 if 'usuario' not in st.session_state:  # PARCHE 5: NOMBRE VENDEDOR
     st.session_state.usuario = None
+if 'nombre_emp_temp' not in st.session_state:  # PARCHE 5 V3
+    st.session_state.nombre_emp_temp = ""
 if 'carrito' not in st.session_state:
     st.session_state.carrito = []
 if 'boleta' not in st.session_state:
@@ -208,12 +210,8 @@ if not st.session_state.auth:
     if col_dueño.button("🔓 DUEÑO", use_container_width=True):
         intentar_login("DUEÑO")
     
-    # PARCHE 5: NOMBRE EMPLEADO
-        with col_empleado:
-        # PARCHE 5 V2: NOMBRE EMPLEADO CON INDENTACIÓN CORRECTA
-        if 'nombre_emp_temp' not in st.session_state:
-            st.session_state.nombre_emp_temp = ""
-        
+    # PARCHE 5 V3: NOMBRE EMPLEADO ARREGLADO - SIN WITH DENTRO DE WITH
+    with col_empleado:
         st.session_state.nombre_emp_temp = st.text_input(
             "👤 Tu nombre:", 
             value=st.session_state.nombre_emp_temp,
@@ -230,8 +228,6 @@ if not st.session_state.auth:
             else:
                 st.session_state.usuario = st.session_state.nombre_emp_temp
                 intentar_login("EMPLEADO")
-            else:
-                st.warning("Pon tu nombre pa' entrar como empleado")
     st.stop()
 
 # === CANDADOS DINÁMICOS POR PLAN - SE CARGAN DESPUÉS DEL LOGIN ===
