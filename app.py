@@ -44,24 +44,6 @@ except Exception as e:
     st.error(f"Error conexión AWS: {e}")
     st.stop()
 
-# === FUNCIÓN ACTUALIZADA: AHORA DEVUELVE TAMBIÉN EL NOMBRE DEL PLAN ===
-def obtener_limites_tenant():
-    """Lee Plan, MaxProductos y MaxStock desde NEXUS_TENANTS"""
-    try:
-        respuesta = tabla_tenants.get_item(Key={'TenantID': st.session_state.tenant})
-        if 'Item' in respuesta:
-            item = respuesta['Item']
-            # Si está suspendido o vencido, bloquea todo
-            if item.get('Estado')!= 'ACTIVO':
-                st.error("Tu plan está suspendido o vencido. Contacta a soporte para reactivar.")
-                st.stop()
-            # Devuelve los 3 valores: Plan, MaxProductos, MaxStock
-            return int(item['MaxProductos']), int(item['MaxStock']), item.get('Plan', 'BASICO')
-    except Exception as e:
-        st.error(f"Error cargando tu plan: {e}")
-        st.stop()
-    return 1500, 500, 'BASICO' # Valores por defecto si falla
-
 # === CONTAR PRODUCTOS EN DYNAMODB ===
 def contarProductosEnBD():
     """Cuenta cuántos productos hay en total para el tenant actual. Usa Select=COUNT pa' que sea barato."""
@@ -75,6 +57,42 @@ def contarProductosEnBD():
         st.error(f"Error contando productos: {e}")
         return 9999 # Si falla, bloquea por seguridad
 
+# === FUNCIÓN CON MODO LECTURA AUTOMÁTICO ===
+def obtener_limites_tenant():
+    """Lee Plan, límites y activa modo lectura si está pasado"""
+    try:
+        respuesta = tabla_tenants.get_item(Key={'TenantID': st.session_state.tenant})
+        if 'Item' in respuesta:
+            item = respuesta['Item']
+            # Si está suspendido, bloquea todo
+            if item.get('Estado')!= 'ACTIVO':
+                st.error("Tu plan está suspendido o vencido. Contacta a soporte para reactivar.")
+                st.stop()
+
+            max_prod = int(item['MaxProductos'])
+            max_stock = int(item['MaxStock'])
+            plan = item.get('Plan', 'BASICO')
+
+            # CHEQUEO DE MODO LECTURA: ¿Está pasado de su plan?
+            total_actual = contarProductosEnBD()
+
+            # Sacamos el stock máximo actual
+            df_temp = obtener_datos()
+            stock_max_actual = int(df_temp['Stock'].max()) if not df_temp.empty else 0
+
+            # ACTIVAR MODO LECTURA SI SE PASA
+            if total_actual > max_prod or stock_max_actual > max_stock:
+                st.session_state.modo_lectura = True
+                st.session_state.mensaje_lectura = f"⚠️ MODO LECTURA: Tienes {total_actual}/{max_prod} productos y stock máximo de {stock_max_actual}/{max_stock}. Solo puedes VENDER hasta regularizar tu plan {plan}."
+            else:
+                st.session_state.modo_lectura = False
+
+            return max_prod, max_stock, plan
+    except Exception as e:
+        st.error(f"Error cargando tu plan: {e}")
+        st.stop()
+    return 1500, 500, 'BASICO' # Valores por defecto si falla
+
 if 'auth' not in st.session_state:
     st.session_state.auth = False
 if 'rol' not in st.session_state:
@@ -87,6 +105,8 @@ if 'boleta' not in st.session_state:
     st.session_state.boleta = None
 if 'confirmar' not in st.session_state:
     st.session_state.confirmar = False
+if 'modo_lectura' not in st.session_state:
+    st.session_state.modo_lectura = False
 
 if not st.session_state.auth:
     st.markdown("<h1 style='text-align: center; color: #3498db;'>🚀 NEXUS BALLARTA SaaS</h1>", unsafe_allow_html=True)
@@ -123,9 +143,6 @@ if not st.session_state.auth:
         intentar_login("EMPLEADO")
     st.stop()
 
-# === CANDADOS DINÁMICOS POR PLAN - SE CARGAN DESPUÉS DEL LOGIN ===
-MAX_PRODUCTOS_TOTALES, MAX_STOCK_POR_PRODUCTO, PLAN_ACTUAL = obtener_limites_tenant()
-
 def obtener_datos():
     respuesta = tabla_stock.query(
         KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant)
@@ -139,11 +156,20 @@ def obtener_datos():
     df['Precio_Compra'] = pd.to_numeric(df['Precio_Compra'], errors='coerce').fillna(0.0)
     return df[['Producto', 'Precio_Compra', 'Precio', 'Stock']].sort_values('Producto')
 
+# === CANDADOS DINÁMICOS POR PLAN - SE CARGAN DESPUÉS DEL LOGIN ===
+MAX_PRODUCTOS_TOTALES, MAX_STOCK_POR_PRODUCTO, PLAN_ACTUAL = obtener_limites_tenant()
 df_inv = obtener_datos()
+
+# === AVISO DE MODO LECTURA SI ESTÁ PASADO ===
+if st.session_state.get('modo_lectura', False):
+    st.warning(st.session_state.mensaje_lectura)
 
 lista_pestanas = ["🛒 VENTA", "📦 STOCK", "📊 REPORTES"]
 if st.session_state.rol == "DUEÑO":
-    lista_pestanas += ["📋 HISTORIAL", "📥 CARGAR", "🛠️ MANT."]
+    if st.session_state.get('modo_lectura', False):
+        st.error("🔒 CARGAR y MANTENIMIENTO bloqueados. Estás pasado de tu plan. Solo puedes VENDER.")
+    else:
+        lista_pestanas += ["📋 HISTORIAL", "📥 CARGAR", "🛠️ MANT."]
 tabs = st.tabs(lista_pestanas)
 
 with tabs[0]: # VENTA
@@ -426,7 +452,7 @@ def registrar_kardex(producto_k, cantidad_k, tipo_k):
         'Usuario': st.session_state.rol
     })
 
-if st.session_state.rol == "DUEÑO":
+if st.session_state.rol == "DUEÑO" and not st.session_state.get('modo_lectura', False):
     with tabs[3]: # HISTORIAL
         st.subheader("📋 Historial de Movimientos")
         fecha_h = st.date_input("Fecha de movimientos:", datetime.now(tz_peru), key="fecha_hist").strftime("%d/%m/%Y")
