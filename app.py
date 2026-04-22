@@ -638,5 +638,13 @@ with st.sidebar:
     st.caption(f"{emoji_plan} **Plan {PLAN_ACTUAL}** | Límite: {len(df_inv)}/{MAX_PRODUCTOS_TOTALES} productos")
 
     if st.button("🔴 CERRAR SESIÓN"):
+        # PARCHE 5 V4: LIMPIAR TODO AL SALIR
         st.session_state.auth = False
+        st.session_state.rol = None
+        st.session_state.tenant = None
+        st.session_state.usuario = None
+        st.session_state.nombre_emp_temp = ""  # ESTA LÍNEA ARREGLA LO DE LEANDRO
+        st.session_state.carrito = []
+        st.session_state.boleta = None
+        st.session_state.confirmar = False
         st.rerun()
