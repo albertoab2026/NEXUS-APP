@@ -46,8 +46,14 @@ except Exception as e:
     print(f"ERROR AWS CONEXION: {e}")
     st.stop()
 
-def registrar_cierre(total_cierre, usuario_turno, tipo_turno, usuario_cierre):
-    f_c, h_c, uid_c = obtener_tiempo_peru()
+# === PARCHE 1: REGISTRAR_CIERRE AHORA ACEPTA FECHA ===
+def registrar_cierre(total_cierre, usuario_turno, tipo_turno, usuario_cierre, fecha_cierre=None):
+    if fecha_cierre is None:
+        f_c, h_c, uid_c = obtener_tiempo_peru()
+    else:
+        f_c = fecha_cierre
+        _, h_c, uid_c = obtener_tiempo_peru()
+    
     tabla_cierres.put_item(Item={
         'TenantID': st.session_state.tenant,
         'CierreID': f"C-{uid_c}",
@@ -66,16 +72,15 @@ def registrar_cierre(total_cierre, usuario_turno, tipo_turno, usuario_cierre):
         'usuario_cierre': usuario_cierre
     }
 
+# === PARCHE 2: AUTO-CIERRE SOLO DE 1AM A 6AM Y USA FECHA DE AYER ===
 def verificar_cierre_tardio():
-    # SOLO CORRE DESPUÉS DE LAS 1AM PARA EVITAR CAGADAS
     hora_actual = datetime.now(tz_peru).hour
-    if hora_actual < 1:
+    if hora_actual < 1 or hora_actual > 6:
         return None
     
     f_hoy, h_hoy, _ = obtener_tiempo_peru()
     ayer = (datetime.now(tz_peru) - timedelta(days=1)).strftime("%d/%m/%Y")
 
-    # === PARCHE: FILTRAR POR FECHA EN EL QUERY, NO EN PYTHON ===
     res_v = tabla_ventas.query(
         KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant),
         FilterExpression=Attr('Fecha').eq(ayer)
@@ -91,7 +96,7 @@ def verificar_cierre_tardio():
     if ventas_ayer and not cierres_ayer:
         total_pendiente = sum([Decimal(str(v['Total'])) for v in ventas_ayer])
         usuario_deudor = ventas_ayer[-1]['Usuario'] if ventas_ayer else "NADIE"
-        registrar_cierre(total_pendiente, usuario_deudor, "CIERRE TARDÍO", "SISTEMA")
+        registrar_cierre(total_pendiente, usuario_deudor, "CIERRE TARDÍO", "SISTEMA", fecha_cierre=ayer)
         st.warning(f"🚨 AUTO-CIERRE: Día {ayer} se cerró con S/{float(total_pendiente):.2f} porque nadie lo hizo.")
         return total_pendiente
     return None
@@ -318,6 +323,7 @@ with tabs[0]: # VENTA
 
         st.write("")
 
+        # === PARCHE: WHATSAPP SOLO PRO Y PREMIUM ===
         if PLAN_ACTUAL in ["PRO", "PREMIUM"]:
             texto_wa = f"*TICKET DE VENTA - {st.session_state.tenant}*\n"
             texto_wa += f"Fecha: {b['fecha']} {b['hora']}\n---\n"
@@ -504,6 +510,7 @@ with tabs[2]: # REPORTES
             num_tickets = df_rep['VentaID'].nunique()
             ticket_promedio = total_venta_dia / num_tickets if num_tickets > 0 else Decimal('0.00')
 
+            # === PARCHE: DELTA ARREGLADO PA' FLECHA ROJA/VERDE ===
             if not df_pasado.empty:
                 total_pasado = df_pasado['Total'].apply(lambda x: Decimal(str(x))).sum()
                 delta_num = float(total_venta_dia - total_pasado)
