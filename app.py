@@ -306,7 +306,6 @@ with tabs[0]: # VENTA
 
         st.write("")
 
-        # === PARCHE: WHATSAPP SOLO PRO Y PREMIUM ===
         if PLAN_ACTUAL in ["PRO", "PREMIUM"]:
             texto_wa = f"*TICKET DE VENTA - {st.session_state.tenant}*\n"
             texto_wa += f"Fecha: {b['fecha']} {b['hora']}\n---\n"
@@ -493,7 +492,6 @@ with tabs[2]: # REPORTES
             num_tickets = df_rep['VentaID'].nunique()
             ticket_promedio = total_venta_dia / num_tickets if num_tickets > 0 else Decimal('0.00')
 
-            # === PARCHE: DELTA ARREGLADO PA' FLECHA ROJA/VERDE ===
             if not df_pasado.empty:
                 total_pasado = df_pasado['Total'].apply(lambda x: Decimal(str(x))).sum()
                 delta_num = float(total_venta_dia - total_pasado)
@@ -539,8 +537,10 @@ with tabs[2]: # REPORTES
             usuario_turno_actual = st.session_state.usuario
             if cierres_hoy:
                 ultimo_cierre_hora = max([c['Hora'] for c in cierres_hoy])
+                hora_actual = datetime.now(tz_peru).hour
                 ventas_post = df_rep[df_rep['Hora'] > ultimo_cierre_hora]
-                if not ventas_post.empty:
+                # === PARCHE: POST-CIERRE SOLO DESPUÉS DE LAS 11PM ===
+                if not ventas_post.empty and hora_actual >= 23: # 23 = 11pm
                     venta_post_cierre = True
                     total_post = ventas_post['Total'].sum()
                     st.error(f"🚨 POST-CIERRE: Hay S/{float(total_post):.2f} vendidos DESPUÉS del último cierre de hoy a las {ultimo_cierre_hora}.")
