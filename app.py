@@ -46,7 +46,7 @@ except Exception as e:
     print(f"ERROR AWS CONEXION: {e}")
     st.stop()
 
-# === PARCHE 1: REGISTRAR_CIERRE AHORA ACEPTA FECHA ===
+# === PARCHE FINAL: REGISTRAR_CIERRE ACEPTA FECHA ===
 def registrar_cierre(total_cierre, usuario_turno, tipo_turno, usuario_cierre, fecha_cierre=None):
     if fecha_cierre is None:
         f_c, h_c, uid_c = obtener_tiempo_peru()
@@ -72,7 +72,7 @@ def registrar_cierre(total_cierre, usuario_turno, tipo_turno, usuario_cierre, fe
         'usuario_cierre': usuario_cierre
     }
 
-# === PARCHE 2: AUTO-CIERRE SOLO DE 1AM A 6AM Y USA FECHA DE AYER ===
+# === PARCHE FINAL: AUTO-CIERRE SOLO AYER Y SOLO 1AM-6AM ===
 def verificar_cierre_tardio():
     hora_actual = datetime.now(tz_peru).hour
     if hora_actual < 1 or hora_actual > 6:
@@ -117,7 +117,6 @@ def contarProductosEnBD():
 def obtener_datos():
     items = []
     last_key = None
-
     while len(items) < 2000:
         if last_key:
             respuesta = tabla_stock.query(
@@ -130,16 +129,13 @@ def obtener_datos():
                 KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant),
                 Limit=500
             )
-
         items.extend(respuesta.get('Items', []))
         last_key = respuesta.get('LastEvaluatedKey')
         if not last_key:
             break
-
     df = pd.DataFrame(items)
     if df.empty:
         return pd.DataFrame(columns=['Producto', 'Precio_Compra', 'Precio', 'Stock'])
-
     df['Stock'] = pd.to_numeric(df['Stock'], errors='coerce').fillna(0).astype(int)
     df['Precio'] = pd.to_numeric(df['Precio'], errors='coerce').fillna(0.0)
     df['Precio_Compra'] = pd.to_numeric(df['Precio_Compra'], errors='coerce').fillna(0.0)
@@ -153,21 +149,17 @@ def obtener_limites_tenant():
             if item.get('Estado')!= 'ACTIVO':
                 st.error("Tu plan está suspendido o vencido. Contacta a soporte para reactivar.")
                 st.stop()
-
             max_prod = int(item['MaxProductos'])
             max_stock = int(item['MaxStock'])
             plan = item.get('Plan', 'BASICO')
-
             total_actual = contarProductosEnBD()
             df_temp = obtener_datos()
             stock_max_actual = int(df_temp['Stock'].max()) if not df_temp.empty else 0
-
             if total_actual > max_prod or stock_max_actual > max_stock:
                 st.session_state.modo_lectura = True
                 st.session_state.mensaje_lectura = f"⚠️ MODO LECTURA: Tienes {total_actual}/{max_prod} productos y stock máximo de {stock_max_actual}/{max_stock}. Solo puedes VENDER hasta regularizar tu plan {plan}."
             else:
                 st.session_state.modo_lectura = False
-
             return max_prod, max_stock, plan
     except Exception as e:
         st.error("Error de sistema. Contacta a soporte.")
@@ -201,10 +193,11 @@ if 'caja_cerrada' not in st.session_state:
     st.session_state.caja_cerrada = False
 if 'ultimo_cierre' not in st.session_state:
     st.session_state.ultimo_cierre = None
+if 'ultima_verificacion_fecha' not in st.session_state:
+    st.session_state.ultima_verificacion_fecha = None
 # ===== LOGIN NUEVO CON NOMBRE EMPLEADO =====
 if not st.session_state.auth:
     st.markdown("<h1 style='text-align: center; color: #3498db;'>🚀 NEXUS BALLARTA SaaS</h1>", unsafe_allow_html=True)
-
     if st.session_state.tiempo_bloqueo:
         if datetime.now(tz_peru) < st.session_state.tiempo_bloqueo:
             tiempo_restante = (st.session_state.tiempo_bloqueo - datetime.now(tz_peru)).seconds
@@ -213,21 +206,16 @@ if not st.session_state.auth:
         else:
             st.session_state.intentos_fallidos = 0
             st.session_state.tiempo_bloqueo = None
-
     tenants_admin = [k for k in st.secrets if k not in ["tablas", "aws"] and not k.endswith("_emp")]
     tenant_seleccionado = st.selectbox("📍 Seleccione su Negocio:", [t.replace("_", " ") for t in tenants_admin])
     tenant_key = tenant_seleccionado.replace(" ", "_")
-
     clave_input = st.text_input("🔑 Contraseña:", type="password", key="login_pass").strip()[:30]
-
     col_dueño, col_empleado = st.columns(2)
-
     def intentar_login(tipo_usuario, nombre_emp=None):
         if not re.match("^[A-Za-z0-9]*$", clave_input):
             time.sleep(2)
             st.error("❌ No se permiten símbolos raros.")
             return
-
         if tipo_usuario == "DUEÑO":
             if tenant_key in st.secrets:
                 clave_correcta = st.secrets[tenant_key]["clave"]
@@ -243,7 +231,6 @@ if not st.session_state.auth:
             else:
                 st.error("Este negocio no tiene empleado configurado.")
                 return
-
         if clave_input == str(clave_correcta):
             st.session_state.auth = True
             st.session_state.tenant = tenant_seleccionado
@@ -259,10 +246,8 @@ if not st.session_state.auth:
                 st.stop()
             time.sleep(2)
             st.error(f"❌ Contraseña de {tipo_usuario} incorrecta. Intentos: {st.session_state.intentos_fallidos}/5")
-
     if col_dueño.button("🔓 DUEÑO", use_container_width=True):
         intentar_login("DUEÑO")
-
     with col_empleado:
         nombre_emp = st.text_input(
             "👤 Tu nombre:",
@@ -271,7 +256,6 @@ if not st.session_state.auth:
             placeholder="Ej: JUAN",
             max_chars=20
         ).upper().strip()
-
         if st.button("🧑‍💼 EMPLEADO", use_container_width=True):
             if not nombre_emp:
                 st.warning("Pon tu nombre pa' entrar como empleado")
@@ -280,13 +264,21 @@ if not st.session_state.auth:
             else:
                 st.session_state.nombre_emp_temp = nombre_emp
                 intentar_login("EMPLEADO", nombre_emp)
-
     st.stop()
 
-if st.session_state.auth and 'verifico_cierre' not in st.session_state:
-    with st.spinner('Verificando cierres pendientes...'):
-        verificar_cierre_tardio()
-    st.session_state.verifico_cierre = True
+# === PARCHE FINAL: SOLO VERIFICA ENTRE 1AM Y 6AM Y RESETEA DIARIO ===
+if st.session_state.auth:
+    f_actual, _, _ = obtener_tiempo_peru()
+    hora_actual_login = datetime.now(tz_peru).hour
+
+    if st.session_state.get('ultima_verificacion_fecha')!= f_actual:
+        st.session_state.verifico_cierre = False
+        st.session_state.ultima_verificacion_fecha = f_actual
+
+    if not st.session_state.get('verifico_cierre', False) and 1 <= hora_actual_login <= 6:
+        with st.spinner('Verificando cierres pendientes...'):
+            verificar_cierre_tardio()
+        st.session_state.verifico_cierre = True
 
 MAX_PRODUCTOS_TOTALES, MAX_STOCK_POR_PRODUCTO, PLAN_ACTUAL = obtener_limites_tenant()
 df_inv = obtener_datos()
@@ -305,12 +297,10 @@ with tabs[0]: # VENTA
     df_critico = df_inv[df_inv['Stock'] < 5].copy()
     if not df_critico.empty:
         st.warning(f"⚠️ ¡Atención! {len(df_critico)} productos tienen stock crítico (menos de 5 unidades).")
-
     if st.session_state.boleta:
         st.snow()
         b = st.session_state.boleta
         st.success("✅ VENTA REALIZADA CON ÉXITO")
-
         st.markdown(f"""<div style="background-color:white;color:black;padding:20px;border:2px solid #333;max-width:350px;margin:auto;font-family:monospace;">
             <h3 style="text-align:center;margin:0;">{st.session_state.tenant}</h3>
             <p style="text-align:center;margin:0;">{b['fecha']} {b['hora']}</p><hr>
@@ -320,10 +310,7 @@ with tabs[0]: # VENTA
             <div style="display:flex;justify-content:space-between;color:red;font-size:12px;"><span>DESCUENTO:</span><span>- S/{float(b['rebaja']):.2f}</span></div>
             <div style="display:flex;justify-content:space-between;font-size:18px;"><b>NETO:</b><b>S/{float(b['t_neto']):.2f}</b></div>
             <p style="text-align:center;font-size:10px;margin-top:10px;">*Documento de control interno*</p></div>""", unsafe_allow_html=True)
-
         st.write("")
-
-        # === PARCHE: WHATSAPP SOLO PRO Y PREMIUM ===
         if PLAN_ACTUAL in ["PRO", "PREMIUM"]:
             texto_wa = f"*TICKET DE VENTA - {st.session_state.tenant}*\n"
             texto_wa += f"Fecha: {b['fecha']} {b['hora']}\n---\n"
@@ -335,7 +322,6 @@ with tabs[0]: # VENTA
             st.link_button("📲 Enviar reporte por WhatsApp", wa_url, use_container_width=True)
         else:
             st.info("🔒 Enviar por WhatsApp solo disponible en planes PRO y PREMIUM")
-
         try:
             pdf = FPDF(orientation='P', unit='mm', format=(80, 200))
             pdf.add_page()
@@ -366,7 +352,6 @@ with tabs[0]: # VENTA
         except Exception as e:
             st.error("Error de sistema. Contacta a soporte.")
             print(f"ERROR PDF: {e}")
-
         if st.button("⬅️ NUEVA VENTA", use_container_width=True):
             st.session_state.boleta = None
             st.rerun()
@@ -385,7 +370,6 @@ with tabs[0]: # VENTA
         seleccion_formateada = col_sel.selectbox("Seleccionar Producto:", opciones_formateadas, index=0 if opciones_formateadas else None, key="sel_v_smart")
         p_seleccionado = mapping_nombres.get(seleccion_formateada) if seleccion_formateada else None
         cantidad_v = col_cant.number_input("Cant:", min_value=1, value=1, key=f"cant_{p_seleccionado}")
-
         if p_seleccionado:
             datos_p = df_inv[df_inv['Producto'] == p_seleccionado].iloc[0]
             en_el_carro = sum(item['Cantidad'] for item in st.session_state.carrito if item['Producto'] == p_seleccionado)
@@ -394,7 +378,6 @@ with tabs[0]: # VENTA
                 st.error("⚠️ Este producto no tiene stock físico.")
             else:
                 st.info(f"💡 Seleccionado: {p_seleccionado} | Disponible: {disponible_ahora}")
-
             if st.button("➕ Añadir al Carrito", use_container_width=True):
                 if cantidad_v <= disponible_ahora:
                     p_v_dec = to_decimal(datos_p.Precio)
@@ -402,7 +385,6 @@ with tabs[0]: # VENTA
                     st.rerun()
                 else:
                     st.error("❌ No puedes vender más de lo que hay en stock.")
-
         if st.session_state.carrito:
             st.table(pd.DataFrame(st.session_state.carrito)[['Producto', 'Cantidad', 'Subtotal']])
             if st.button("🗑️ VACIAR CARRITO"):
@@ -413,10 +395,8 @@ with tabs[0]: # VENTA
             total_bruto = sum(item['Subtotal'] for item in st.session_state.carrito)
             total_neto = max(Decimal('0.00'), total_bruto - to_decimal(rebaja_v))
             st.markdown(f"<h1 style='text-align:center; color:#2ecc71;'>S/ {float(total_neto):.2f}</h1>", unsafe_allow_html=True)
-
             if st.button("🚀 FINALIZAR VENTA", use_container_width=True, type="primary"):
                 st.session_state.confirmar = True
-
             if st.session_state.confirmar:
                 if st.button(f"✅ CONFIRMAR COBRO DE S/ {float(total_neto):.2f}", use_container_width=True):
                     f_v, h_v, uid_v = obtener_tiempo_peru()
@@ -443,12 +423,10 @@ with tabs[0]: # VENTA
                         except dynamodb.meta.client.exceptions.ConditionalCheckFailedException:
                             st.error(f"❌ ¡CRÍTICO! El stock de '{item_v['Producto']}' cambió justo ahora y ya no hay suficiente. Venta cancelada.")
                             st.stop()
-
                     st.session_state.boleta = {'items': st.session_state.carrito, 't_neto': total_neto, 'rebaja': to_decimal(rebaja_v), 'metodo': metodo_p, 'fecha': f_v, 'hora': h_v}
                     st.session_state.carrito = []
                     st.session_state.confirmar = False
                     st.rerun()
-
 with tabs[1]: # STOCK
     st.subheader("📦 Consulta de Almacén")
     col_filtro, col_excel = st.columns([3, 1])
@@ -465,16 +443,13 @@ with tabs[1]: # STOCK
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
             use_container_width=True
         )
-
     df_mostrar = df_inv[df_inv['Producto'].str.contains(filtro_stock, na=False)]
-
     def estilo_filas(fila):
         if fila.Stock <= 0:
             return ['background-color: #721c24; color: white; font-weight: bold;'] * len(fila)
         elif fila.Stock < 5:
             return ['color: #ff4b4b; font-weight: bold;'] * len(fila)
         return [''] * len(fila)
-
     st.dataframe(
         df_mostrar.style.apply(estilo_filas, axis=1).format({"Precio": "{:.2f}", "Precio_Compra": "{:.2f}", "Stock": "{:d}"}),
         use_container_width=True,
@@ -488,70 +463,54 @@ with tabs[1]: # STOCK
     )
 with tabs[2]: # REPORTES
     st.subheader("📊 Reporte de Ventas e Inteligencia")
-
     fecha_input = st.date_input("Día a consultar:", datetime.now(tz_peru), key="fecha_rep")
     fecha_r = fecha_input.strftime("%d/%m/%Y")
     fecha_hace_7 = (fecha_input - timedelta(days=7)).strftime("%d/%m/%Y")
-
     res_v = tabla_ventas.query(KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant))
     datos_ventas_bruto = res_v.get('Items', [])
-
     if datos_ventas_bruto:
         df_rep_total = pd.DataFrame(datos_ventas_bruto)
         df_rep = df_rep_total[df_rep_total['Fecha'] == fecha_r].copy()
         df_pasado = df_rep_total[df_rep_total['Fecha'] == fecha_hace_7]
-
         if not df_rep.empty:
             for columna in ['Total', 'Precio_Compra', 'Cantidad']:
                 df_rep[columna] = df_rep[columna].apply(lambda x: Decimal(str(x)))
-
             df_rep['Inversion_F'] = df_rep['Precio_Compra'] * df_rep['Cantidad']
             total_venta_dia = df_rep['Total'].sum()
             num_tickets = df_rep['VentaID'].nunique()
             ticket_promedio = total_venta_dia / num_tickets if num_tickets > 0 else Decimal('0.00')
-
-            # === PARCHE: DELTA ARREGLADO PA' FLECHA ROJA/VERDE ===
             if not df_pasado.empty:
                 total_pasado = df_pasado['Total'].apply(lambda x: Decimal(str(x))).sum()
                 delta_num = float(total_venta_dia - total_pasado)
             else:
                 delta_num = None
-
             kpi1, kpi2, kpi3 = st.columns(3)
             kpi1.metric("💰 VENTA TOTAL", f"S/ {float(total_venta_dia):.2f}", delta=delta_num)
             if delta_num is not None:
                 st.caption("vs semana pasada")
             kpi2.metric("🎫 TICKET PROMEDIO", f"S/ {float(ticket_promedio):.2f}", delta=f"{num_tickets} Tickets hoy")
-
             if st.session_state.rol == "DUEÑO":
                 ganancia_total_dia = total_venta_dia - df_rep['Inversion_F'].sum()
                 kpi3.metric("📈 GANANCIA NETA", f"S/ {float(ganancia_total_dia):.2f}")
             else:
                 kpi3.metric("👤 USUARIO", st.session_state.usuario)
-
             st.divider()
-
             def calcular_metodo(nombre_metodo):
                 filtrado = df_rep[df_rep['Metodo'].str.contains(nombre_metodo, na=False)]
                 return filtrado['Total'].sum() if not filtrado.empty else Decimal('0.00')
-
             ef_v = calcular_metodo("EFECTIVO")
             ya_v = calcular_metodo("YAPE")
             pl_v = calcular_metodo("PLIN")
-
             c1, c2, c3 = st.columns(3)
             c1.metric("💵 EFECTIVO", f"S/ {float(ef_v):.2f}")
             c2.metric("🟣 YAPE", f"S/ {float(ya_v):.2f}")
             c3.metric("🔵 PLIN", f"S/ {float(pl_v):.2f}")
-
             st.divider()
             f_hoy, _, _ = obtener_tiempo_peru()
-
             res_cierres_hoy = tabla_cierres.query(
                 KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant)
             )
             cierres_hoy = [c for c in res_cierres_hoy.get('Items', []) if c['Fecha'] == f_hoy]
-
             venta_post_cierre = False
             usuario_turno_actual = st.session_state.usuario
             if cierres_hoy:
@@ -559,12 +518,11 @@ with tabs[2]: # REPORTES
                 hora_actual = datetime.now(tz_peru).hour
                 ventas_post = df_rep[df_rep['Hora'] > ultimo_cierre_hora]
                 # === PARCHE: POST-CIERRE SOLO DESPUÉS DE LAS 11PM ===
-                if not ventas_post.empty and hora_actual >= 23: # 23 = 11pm
+                if not ventas_post.empty and hora_actual >= 23:
                     venta_post_cierre = True
                     total_post = ventas_post['Total'].sum()
                     st.error(f"🚨 POST-CIERRE: Hay S/{float(total_post):.2f} vendidos DESPUÉS del último cierre de hoy a las {ultimo_cierre_hora}.")
                     usuario_turno_actual = ventas_post['Usuario'].iloc[-1]
-
             if not cierres_hoy or venta_post_cierre:
                 tipo_cierre = "CIERRE POST-CIERRE" if venta_post_cierre else "CIERRE TURNO"
                 if st.button(f"🏁 GENERAR {tipo_cierre}", use_container_width=True, type="primary"):
@@ -574,8 +532,6 @@ with tabs[2]: # REPORTES
                         tipo_turno=tipo_cierre,
                         usuario_cierre=st.session_state.usuario
                     )
-
-                    # === PARCHE: WHATSAPP SOLO PRO Y PREMIUM ===
                     if PLAN_ACTUAL in ["PRO", "PREMIUM"]:
                         msg_wa = f"*CIERRE {tipo_cierre} - {st.session_state.tenant}*\n"
                         msg_wa += f"📅 Fecha: {fecha_r}\n"
@@ -595,11 +551,9 @@ with tabs[2]: # REPORTES
             else:
                 ultimo = cierres_hoy[-1]
                 st.success(f"✅ Día {f_hoy} cerrado a las {ultimo['Hora']}. Caja de: {ultimo['UsuarioTurno']}. Cerrado por: {ultimo['UsuarioCierre']}")
-
             if st.session_state.rol == "DUEÑO":
                 st.divider()
                 st.subheader("🔐 PANEL DUEÑO - CIERRE REMOTO")
-
                 if not cierres_hoy:
                     res_v_all = tabla_ventas.query(KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant))
                     df_total = pd.DataFrame(res_v_all.get('Items', []))
@@ -609,12 +563,10 @@ with tabs[2]: # REPORTES
                         total_hoy = df_hoy_v['Total'].sum() if not df_hoy_v.empty else Decimal('0.00')
                     else:
                         total_hoy = Decimal('0.00')
-
                     if total_hoy > 0:
                         st.error(f"🚨 OJO: Hoy {f_hoy} hay S/{float(total_hoy):.2f} vendido y NADIE CERRÓ CAJA.")
                         usuario_deudor = df_hoy_v['Usuario'].iloc[-1] if not df_hoy_v.empty else "EMPLEADO"
                         st.warning(f"Caja pendiente de: {usuario_deudor}")
-
                         if st.button("🏁 CERRAR DÍA AHORA DESDE CELULAR", type="primary", use_container_width=True):
                             registrar_cierre(
                                 total_cierre=total_hoy,
@@ -631,17 +583,14 @@ with tabs[2]: # REPORTES
                 else:
                     u_cierre = cierres_hoy[-1]
                     st.success(f"✅ Día {f_hoy} ya cerrado a las {u_cierre['Hora']} por {u_cierre['UsuarioCierre']}. Caja de: {u_cierre['UsuarioTurno']}")
-
             if st.session_state.rol == "DUEÑO":
                 st.divider()
                 st.subheader("🔝 Top 5 Productos")
                 df_top = df_rep.groupby('Producto')['Cantidad'].sum().sort_values(ascending=False).head(5)
                 st.bar_chart(df_top)
-
             cols_mostrar = ['Hora', 'Producto', 'Total', 'Metodo']
             if 'Usuario' in df_rep.columns:
                 cols_mostrar.append('Usuario')
-
             st.dataframe(
                 df_rep.sort_values("Hora", ascending=False)[cols_mostrar],
                 use_container_width=True,
@@ -729,10 +678,8 @@ if st.session_state.rol == "DUEÑO" and not st.session_state.get('modo_lectura',
                     df_bulk = pd.read_excel(archivo_subido) if archivo_subido.name.endswith('xlsx') else pd.read_csv(archivo_subido)
                     df_bulk.columns = [str(c).strip().title() for c in df_bulk.columns]
                     st.write("Vista previa:", df_bulk.head(3))
-
                     total_actual = contarProductosEnBD()
                     espacios_libres = MAX_PRODUCTOS_TOTALES - total_actual
-
                     if len(df_bulk) > espacios_libres:
                         st.error(f"❌ Tu archivo tiene {len(df_bulk)} productos pero solo te quedan {espacios_libres} espacios.\n\nLímite de tu plan: {MAX_PRODUCTOS_TOTALES} productos totales.")
                     elif df_bulk['Stock'].max() > MAX_STOCK_POR_PRODUCTO:
@@ -786,10 +733,8 @@ if st.session_state.rol == "DUEÑO" and not st.session_state.get('modo_lectura',
 with st.sidebar:
     st.title(f"🏢 {st.session_state.tenant}")
     st.write(f"Usuario: **{st.session_state.usuario}**")
-
     emoji_plan = {"BASICO": "🔵", "PRO": "🟣", "PREMIUM": "🟡"}.get(PLAN_ACTUAL, "⚪")
     st.caption(f"{emoji_plan} **Plan {PLAN_ACTUAL}** | Límite: {len(df_inv)}/{MAX_PRODUCTOS_TOTALES} productos")
-
     if st.button("🔴 CERRAR SESIÓN"):
         st.session_state.auth = False
         st.session_state.rol = None
@@ -800,4 +745,5 @@ with st.sidebar:
         st.session_state.boleta = None
         st.session_state.confirmar = False
         st.session_state.verifico_cierre = False
+        st.session_state.ultima_verificacion_fecha = None
         st.rerun()        
