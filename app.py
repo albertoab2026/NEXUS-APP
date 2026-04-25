@@ -139,28 +139,39 @@ def contarProductosEnBD():
         print(f"ERROR CONTEO: {e}")
         return 9999
 
-@st.cache_data(ttl=60)
+@st.cache_data(ttl=10)  # Cache solo 10 segundos
 def obtener_datos():
+    tenant_limpio = st.session_state.tenant.strip()  # <-- ESTA ES LA CLAVE CTM
+    st.write("DEBUG - Tenant que busca:", repr(tenant_limpio))  # Temporal para ver
+    
     items = []
     last_key = None
     while len(items) < 2000:
         if last_key:
             respuesta = tabla_stock.query(
-                KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant),
+                KeyConditionExpression=Key('TenantID').eq(tenant_limpio),  # <-- Usa tenant_limpio
                 Limit=500,
                 ExclusiveStartKey=last_key
             )
         else:
             respuesta = tabla_stock.query(
-                KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant),
+                KeyConditionExpression=Key('TenantID').eq(tenant_limpio),  # <-- Usa tenant_limpio
                 Limit=500
             )
         items.extend(respuesta.get('Items', []))
         last_key = respuesta.get('LastEvaluatedKey')
         if not last_key:
             break
+    
+    st.write("DEBUG - Items encontrados:", len(items))  # Temporal para ver
+    
     df = pd.DataFrame(items)
     if df.empty:
+        return pd.DataFrame(columns=['Producto', 'Precio_Compra', 'Precio', 'Stock'])
+    df['Stock'] = pd.to_numeric(df['Stock'], errors='coerce').fillna(0).astype(int)
+    df['Precio'] = pd.to_numeric(df['Precio'], errors='coerce').fillna(0.0)
+    df['Precio_Compra'] = pd.to_numeric(df['Precio_Compra'], errors='coerce').fillna(0.0)
+    return df[['Producto', 'Precio_Compra', 'Precio', 'Stock']].sort_values('Producto')
         return pd.DataFrame(columns=['Producto', 'Precio_Compra', 'Precio', 'Stock'])
     df['Stock'] = pd.to_numeric(df['Stock'], errors='coerce').fillna(0).astype(int)
     df['Precio'] = pd.to_numeric(df['Precio'], errors='coerce').fillna(0.0)
