@@ -53,12 +53,12 @@ except Exception as e:
 def verificar_suscripcion(tenant_id):
     try:
         tenant = tabla_tenants.get_item(Key={'TenantID': tenant_id}).get('Item', {})
-        if tenant.get('EstadoPago') == 'SUSPENDIDO': 
+        if tenant.get('EstadoPago') == 'SUSPENDIDO':
             return False, "SUSPENDIDO"
         fecha_cobro_str = tenant.get('ProximoCobro', '01/01/2000')
         fecha_cobro = datetime.strptime(fecha_cobro_str, '%d/%m/%Y').date()
         hoy = datetime.now(tz_peru).date()
-        if fecha_cobro < hoy - timedelta(days=5): 
+        if fecha_cobro < hoy - timedelta(days=5):
             return False, f"VENCIDO - Fecha límite: {fecha_cobro_str}"
         return True, "ACTIVO"
     except Exception as e:
@@ -177,6 +177,7 @@ def obtener_limites_tenant():
 
         item = respuesta['Item']
 
+        # === NUEVA VALIDACIÓN DE PAGO ===
         if item.get('EstadoPago') == 'SUSPENDIDO':
             st.error("⛔ Tu cuenta está SUSPENDIDA por falta de pago. Contacta a soporte para reactivar.")
             st.stop()
@@ -186,8 +187,9 @@ def obtener_limites_tenant():
         hoy = datetime.now(tz_peru).date()
 
         if fecha_cobro < hoy - timedelta(days=5):
-            st.error(f"⛔ Tu suscripción VENCIO el {fecha_cobro_str}. Contacta a soporte para renovar.")
+            st.error(f"⛔ Tu suscripción VENCIÓ el {fecha_cobro_str}. Tienes 5 días de gracia vencidos. Contacta a soporte.")
             st.stop()
+        # === FIN VALIDACIÓN PAGO ===
 
         max_prod = int(item.get('MaxProductos', 0))
         max_stock = int(item.get('MaxStock', 0))
