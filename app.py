@@ -142,7 +142,6 @@ def contarProductosEnBD():
         st.error("Error de sistema. Contacta a soporte.")
         print(f"ERROR CONTEO: {e}")
         return 9999
-
 @st.cache_data(ttl=10)
 def obtener_datos():
     tenant_limpio = st.session_state.tenant.strip()
@@ -233,7 +232,6 @@ def obtener_limites_tenant():
         st.error("Error de sistema leyendo tu plan. Contacta a soporte.")
         print(f"ERROR PLAN: {e}")
         st.stop()
-
 if 'auth' not in st.session_state:
     st.session_state.auth = False
 if 'rol' not in st.session_state:
@@ -391,7 +389,6 @@ if st.session_state.rol == "DUEÑO":
     else:
         lista_pestanas += ["📋 HISTORIAL", "📥 CARGAR", "🛠️ MANT."]
 tabs = st.tabs(lista_pestanas)
-
 with tabs[0]:
     df_critico = df_inv[df_inv['Stock'] < 5].copy()
     if not df_critico.empty:
@@ -526,7 +523,99 @@ with tabs[0]:
                     st.session_state.carrito = []
                     st.session_state.confirmar = False
                     st.rerun()
-        with col_masiva:
+
+with tabs[1]:
+    st.subheader("📦 Inventario Actual")
+    if not df_inv.empty:
+        col_f1, col_f2 = st.columns(2)
+        with col_f1:
+            buscar_stock = st.text_input("🔍 Buscar producto:", key="buscar_stock").upper()
+        with col_f2:
+            orden = st.selectbox("Ordenar por:", ["Producto A-Z", "Stock Menor", "Stock Mayor", "Precio Menor", "Precio Mayor"])
+
+        df_filtrado = df_inv.copy()
+        if buscar_stock:
+            df_filtrado = df_filtrado[df_filtrado['Producto'].str.contains(buscar_stock)]
+
+        if orden == "Stock Menor":
+            df_filtrado = df_filtrado.sort_values('Stock')
+        elif orden == "Stock Mayor":
+            df_filtrado = df_filtrado.sort_values('Stock', ascending=False)
+        elif orden == "Precio Menor":
+            df_filtrado = df_filtrado.sort_values('Precio')
+        elif orden == "Precio Mayor":
+            df_filtrado = df_filtrado.sort_values('Precio', ascending=False)
+
+        st.dataframe(
+            df_filtrado[['Producto', 'Stock', 'Precio_Compra', 'Precio']],
+            use_container_width=True,
+            hide_index=True
+        )
+
+        stock_bajo = df_filtrado[df_filtrado['Stock'] < 5]
+        if not stock_bajo.empty:
+            st.warning(f"⚠️ Stock crítico: {len(stock_bajo)} productos con menos de 5 unidades")
+            st.dataframe(stock_bajo[['Producto', 'Stock']], hide_index=True)
+    else:
+        st.info("No hay productos en inventario. Usa CARGAR para subir tu Excel.")
+
+with tabs[2]:
+    st.subheader("📊 Reportes de Ventas")
+    col_f1, col_f2 = st.columns(2)
+    with col_f1:
+        fecha_inicio = st.date_input("Desde:", value=datetime.now(tz_peru).date() - timedelta(days=7))
+    with col_f2:
+        fecha_fin = st.date_input("Hasta:", value=datetime.now(tz_peru).date())
+
+    if st.button("📈 Generar Reporte", use_container_width=True):
+        res_reporte = tabla_ventas.query(
+            KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant),
+            FilterExpression=Attr('Fecha').between(fecha_inicio.strftime('%d/%m/%Y'), fecha_fin.strftime('%d/%m/%Y'))
+        )
+        ventas = res_reporte.get('Items', [])
+
+        if ventas:
+            df_ventas = pd.DataFrame(ventas)
+            df_ventas['Total'] = pd.to_numeric(df_ventas['Total'], errors='coerce')
+            df_ventas['Cantidad'] = pd.to_numeric(df_ventas['Cantidad'], errors='coerce')
+
+            total_vendido = df_ventas['Total'].sum()
+            total_items = df_ventas['Cantidad'].sum()
+
+            col_m1, col_m2, col_m3 = st.columns(3)
+            col_m1.metric("💰 Total Vendido", f"S/ {float(total_vendido):.2f}")
+            col_m2.metric("📦 Items Vendidos", f"{int(total_items)}")
+            col_m3.metric("🧾 Transacciones", f"{len(ventas)}")
+
+            st.divider()
+            st.subheader("Top Productos Vendidos")
+            top_prod = df_ventas.groupby('Producto')['Cantidad'].sum().sort_values(ascending=False).head(10)
+            st.bar_chart(top_prod)
+
+            st.divider()
+            st.dataframe(df_ventas[['Fecha', 'Hora', 'Producto', 'Cantidad', 'Total', 'Metodo', 'Usuario']], use_container_width=True)
+        else:
+            st.info("No hay ventas en ese rango de fechas.")
+with tabs[3]:
+    if st.session_state.rol == "DUEÑO" and not st.session_state.get('modo_lectura', False):
+        st.subheader("📋 Historial de Movimientos - Kardex")
+        res_movs = tabla_movs.query(
+            KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant),
+            ScanIndexForward=False,
+            Limit=200
+        )
+        movs = res_movs.get('Items', [])
+        if movs:
+            df_movs = pd.DataFrame(movs)
+            st.dataframe(df_movs[['Fecha', 'Hora', 'Producto', 'Cantidad', 'Tipo', 'Usuario']], use_container_width=True)
+        else:
+            st.info("No hay movimientos registrados.")
+
+# === ESTA ES LA PESTAÑA QUE TENÍA EL ERROR - YA ARREGLADA ===
+with tabs[4]:
+    if st.session_state.rol == "DUEÑO" and not st.session_state.get('modo_lectura', False):
+        col_carga, col_masiva = st.columns(2) # <-- ESTA LÍNEA ARREGLA TU ERROR CTM
+        with col_carga:
             st.subheader("📂 Carga Masiva (Excel/CSV)")
             st.caption(f"Columnas: Producto, Precio_Compra, Precio, Stock | Máx: 500 por carga")
             archivo_subido = st.file_uploader("Subir archivo", type=['xlsx', 'csv'], key="bulk_upload")
@@ -589,7 +678,13 @@ with tabs[0]:
                     st.error("Error de sistema. Contacta a soporte.")
                     print(f"ERROR CARGA: {e}")
 
-    with tabs[5]:
+        with col_masiva:
+            st.subheader("📊 Info Carga")
+            st.info(f"Productos actuales: {len(df_inv)}/{MAX_PRODUCTOS_TOTALES}")
+            st.info(f"Stock máx permitido: {MAX_STOCK_POR_PRODUCTO}")
+            st.caption("Usa la columna izquierda para subir tu Excel")
+with tabs[5]:
+    if st.session_state.rol == "DUEÑO" and not st.session_state.get('modo_lectura', False):
         st.subheader("🛠️ Gestión de Almacén")
         opcion_m = st.radio("Acción:", ["➕ REPONER STOCK", "📝 MODIFICAR PRECIOS", "🗑️ ELIMINAR"], horizontal=True)
         buscar_m = st.text_input("🔍 Buscar para gestionar:", key="input_mantenimiento").upper()
@@ -675,4 +770,4 @@ with st.sidebar:
         st.session_state.confirmar = False
         st.session_state.verifico_cierre = False
         st.session_state.ultima_verificacion_fecha = None
-        st.rerun()                    
+        st.rerun()
