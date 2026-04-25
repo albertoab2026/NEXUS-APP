@@ -10,6 +10,7 @@ import re
 import urllib.parse
 from decimal import Decimal, ROUND_HALF_UP
 import io
+import uuid
 
 # --- 0. CONFIGURACIÓN ---
 TABLA_STOCK = st.secrets["tablas"]["stock"]
@@ -17,6 +18,7 @@ TABLA_VENTAS = st.secrets["tablas"]["ventas"]
 TABLA_MOVS = st.secrets["tablas"]["movs"]
 TABLA_TENANTS = st.secrets["tablas"]["tenants"]
 TABLA_CIERRES = st.secrets["tablas"]["cierres"]
+TABLA_PAGOS = st.secrets["tablas"]["pagos"]
 
 st.set_page_config(page_title="NEXUS BALLARTA SaaS", layout="wide", page_icon="🚀")
 tz_peru = pytz.timezone('America/Lima')
@@ -41,10 +43,35 @@ try:
     tabla_movs = dynamodb.Table(TABLA_MOVS)
     tabla_tenants = dynamodb.Table(TABLA_TENANTS)
     tabla_cierres = dynamodb.Table(TABLA_CIERRES)
+    tabla_pagos = dynamodb.Table(TABLA_PAGOS)
 except Exception as e:
     st.error("Error de sistema. Contacta a soporte.")
     print(f"ERROR AWS CONEXION: {e}")
     st.stop()
+
+# ========== SISTEMA COBROS NEXUS ==========
+def verificar_suscripcion(tenant_id):
+    try:
+        tenant = tabla_tenants.get_item(Key={'TenantID': tenant_id}).get('Item', {})
+        if tenant.get('EstadoPago') == 'SUSPENDIDO': 
+            return False, "SUSPENDIDO"
+        fecha_cobro_str = tenant.get('ProximoCobro', '01/01/2000')
+        fecha_cobro = datetime.strptime(fecha_cobro_str, '%d/%m/%Y').date()
+        hoy = datetime.now(tz_peru).date()
+        if fecha_cobro < hoy - timedelta(days=5): 
+            return False, f"VENCIDO - Fecha límite: {fecha_cobro_str}"
+        return True, "ACTIVO"
+    except Exception as e:
+        print(f"ERROR VERIFICAR SUSCRIPCION: {e}")
+        return True, "ERROR"
+
+if st.session_state.get('auth') and st.session_state.get('tenant'):
+    activo, motivo = verificar_suscripcion(st.session_state['tenant'])
+    if not activo:
+        st.error(f"⛔ ACCESO BLOQUEADO: {motivo}")
+        st.error("Contacta a soporte para regularizar tu pago y reactivar tu acceso.")
+        st.stop()
+# ========== FIN SISTEMA COBROS ==========
 # === PARCHE FINAL: REGISTRAR_CIERRE ACEPTA FECHA ===
 def registrar_cierre(total_cierre, usuario_turno, tipo_turno, usuario_cierre, fecha_cierre=None):
     if fecha_cierre is None:
@@ -139,8 +166,7 @@ def obtener_datos():
     df['Precio'] = pd.to_numeric(df['Precio'], errors='coerce').fillna(0.0)
     df['Precio_Compra'] = pd.to_numeric(df['Precio_Compra'], errors='coerce').fillna(0.0)
     return df[['Producto', 'Precio_Compra', 'Precio', 'Stock']].sort_values('Producto')
-
-# === PARCHE: ELIMINADO DEFAULT 1500 TRUCHO ===
+# === PARCHE: USA EstadoPago Y ProximoCobro ===
 def obtener_limites_tenant():
     try:
         respuesta = tabla_tenants.get_item(Key={'TenantID': st.session_state.tenant})
@@ -151,13 +177,22 @@ def obtener_limites_tenant():
 
         item = respuesta['Item']
 
-        if item.get('Estado')!= 'ACTIVO':
-            st.error("Tu plan está suspendido o vencido. Contacta a soporte para reactivar.")
+        if item.get('EstadoPago') == 'SUSPENDIDO':
+            st.error("⛔ Tu cuenta está SUSPENDIDA por falta de pago. Contacta a soporte para reactivar.")
+            st.stop()
+
+        fecha_cobro_str = item.get('ProximoCobro', '01/01/2000')
+        fecha_cobro = datetime.strptime(fecha_cobro_str, '%d/%m/%Y').date()
+        hoy = datetime.now(tz_peru).date()
+
+        if fecha_cobro < hoy - timedelta(days=5):
+            st.error(f"⛔ Tu suscripción VENCIO el {fecha_cobro_str}. Contacta a soporte para renovar.")
             st.stop()
 
         max_prod = int(item.get('MaxProductos', 0))
         max_stock = int(item.get('MaxStock', 0))
         plan = item.get('Plan', 'SIN_PLAN')
+        precio = item.get('PrecioMensual', 0)
 
         if max_prod == 0 or max_stock == 0:
             st.error("🚨 Tu tenant no tiene MaxProductos o MaxStock configurado en DynamoDB.")
@@ -173,12 +208,13 @@ def obtener_limites_tenant():
         else:
             st.session_state.modo_lectura = False
 
-        return max_prod, max_stock, plan
+        return max_prod, max_stock, plan, precio
 
     except Exception as e:
         st.error("Error de sistema leyendo tu plan. Contacta a soporte.")
         print(f"ERROR PLAN: {e}")
         st.stop()
+
 if 'auth' not in st.session_state:
     st.session_state.auth = False
 if 'rol' not in st.session_state:
@@ -208,7 +244,6 @@ if 'ultimo_cierre' not in st.session_state:
 if 'ultima_verificacion_fecha' not in st.session_state:
     st.session_state.ultima_verificacion_fecha = None
 
-# ===== LOGIN NUEVO CON NOMBRE EMPLEADO =====
 if not st.session_state.auth:
     st.markdown("<h1 style='text-align: center; color: #3498db;'>🚀 NEXUS BALLARTA SaaS</h1>", unsafe_allow_html=True)
     if st.session_state.tiempo_bloqueo:
@@ -279,21 +314,18 @@ if not st.session_state.auth:
                 intentar_login("EMPLEADO", nombre_emp)
     st.stop()
 
-# === PARCHE FINAL: SOLO VERIFICA ENTRE 1AM Y 6AM Y RESETEA DIARIO ===
 if st.session_state.auth:
     f_actual, _, _ = obtener_tiempo_peru()
     hora_actual_login = datetime.now(tz_peru).hour
-
     if st.session_state.get('ultima_verificacion_fecha')!= f_actual:
         st.session_state.verifico_cierre = False
         st.session_state.ultima_verificacion_fecha = f_actual
-
     if not st.session_state.get('verifico_cierre', False) and 1 <= hora_actual_login <= 6:
         with st.spinner('Verificando cierres pendientes...'):
             verificar_cierre_tardio()
         st.session_state.verifico_cierre = True
 
-MAX_PRODUCTOS_TOTALES, MAX_STOCK_POR_PRODUCTO, PLAN_ACTUAL = obtener_limites_tenant()
+MAX_PRODUCTOS_TOTALES, MAX_STOCK_POR_PRODUCTO, PLAN_ACTUAL, PRECIO_ACTUAL = obtener_limites_tenant()
 df_inv = obtener_datos()
 
 if st.session_state.get('modo_lectura', False):
@@ -306,7 +338,7 @@ if st.session_state.rol == "DUEÑO":
     else:
         lista_pestanas += ["📋 HISTORIAL", "📥 CARGAR", "🛠️ MANT."]
 tabs = st.tabs(lista_pestanas)
-with tabs[0]: # VENTA
+with tabs[0]:
     df_critico = df_inv[df_inv['Stock'] < 5].copy()
     if not df_critico.empty:
         st.warning(f"⚠️ ¡Atención! {len(df_critico)} productos tienen stock crítico (menos de 5 unidades).")
@@ -440,6 +472,7 @@ with tabs[0]: # VENTA
                     st.session_state.carrito = []
                     st.session_state.confirmar = False
                     st.rerun()
+
 def registrar_kardex(producto_k, cantidad_k, tipo_k):
     f_k, h_k, uid_k = obtener_tiempo_peru()
     tabla_movs.put_item(Item={
@@ -451,9 +484,8 @@ def registrar_kardex(producto_k, cantidad_k, tipo_k):
         'Tipo': tipo_k,
         'Usuario': st.session_state.usuario
     })
-
 if st.session_state.rol == "DUEÑO" and not st.session_state.get('modo_lectura', False):
-    with tabs[3]: # HISTORIAL
+    with tabs[3]:
         st.subheader("📋 Historial de Movimientos")
         fecha_h = st.date_input("Fecha de movimientos:", datetime.now(tz_peru), key="fecha_hist").strftime("%d/%m/%Y")
         res_m = tabla_movs.query(KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant))
@@ -480,7 +512,7 @@ if st.session_state.rol == "DUEÑO" and not st.session_state.get('modo_lectura',
             else: st.info("Sin movimientos registrados hoy.")
         else: st.info("Historial vacío.")
 
-    with tabs[4]: # CARGAR
+    with tabs[4]:
         col_individual, col_masiva = st.columns(2)
         with col_individual:
             st.subheader("📥 Registro Individual")
@@ -516,7 +548,6 @@ if st.session_state.rol == "DUEÑO" and not st.session_state.get('modo_lectura',
                     st.write("Vista previa:", df_bulk.head(3))
                     total_actual = contarProductosEnBD()
                     espacios_libres = MAX_PRODUCTOS_TOTALES - total_actual
-
                     if len(df_bulk) > 500:
                         st.error("❌ Por rendimiento, sube máximo 500 productos por vez. Divide tu Excel.")
                         st.stop()
@@ -526,28 +557,22 @@ if st.session_state.rol == "DUEÑO" and not st.session_state.get('modo_lectura',
                     if df_bulk['Stock'].max() > MAX_STOCK_POR_PRODUCTO:
                         st.error(f"❌ Hay productos con stock mayor a {MAX_STOCK_POR_PRODUCTO}. Corrige tu Excel.")
                         st.stop()
-
                     if st.button("⚡ PROCESAR CARGA", use_container_width=True):
                         barra_progreso = st.progress(0)
                         total_items = len(df_bulk)
                         errores = []
                         productos_ok = []
-
-                        # === PARCHE: BATCH_WRITER CON MANEJO DE ERRORES ===
                         with tabla_stock.batch_writer() as batch:
                             for i, fila in df_bulk.iterrows():
                                 try:
                                     p_bulk = str(fila['Producto']).upper().strip()
                                     if not p_bulk:
                                         raise ValueError("Producto sin nombre")
-
                                     costo_val = to_decimal(pd.to_numeric(fila['Precio_Compra'], errors='coerce') or 0.0)
                                     precio_val = to_decimal(pd.to_numeric(fila['Precio'], errors='coerce') or 0.0)
                                     stock_val = int(pd.to_numeric(fila['Stock'], errors='coerce') or 0)
-
                                     if stock_val <= 0:
                                         raise ValueError(f"Stock debe ser > 0 en {p_bulk}")
-
                                     batch.put_item(Item={
                                         'TenantID': st.session_state.tenant,
                                         'Producto': p_bulk,
@@ -556,17 +581,11 @@ if st.session_state.rol == "DUEÑO" and not st.session_state.get('modo_lectura',
                                         'Stock': stock_val
                                     })
                                     productos_ok.append({'Producto': p_bulk, 'Stock': stock_val})
-
                                 except Exception as e_item:
                                     errores.append(f"Fila {i+2}: {fila.get('Producto', 'SIN_NOMBRE')} - {str(e_item)}")
-
                                 barra_progreso.progress((i + 1) / total_items)
-
-                        # Registrar kardex solo de los que sí se guardaron
                         for item_ok in productos_ok:
                             registrar_kardex(item_ok['Producto'], item_ok['Stock'], "CARGA MASIVA")
-
-                        # REPORTE FINAL
                         items_ok = len(productos_ok)
                         if errores:
                             st.error(f"⚠️ Carga parcial: {items_ok}/{total_items} productos guardados")
@@ -575,14 +594,13 @@ if st.session_state.rol == "DUEÑO" and not st.session_state.get('modo_lectura',
                                     st.write(f"❌ {error}")
                         else:
                             st.success(f"✅ Carga perfecta: {items_ok} productos guardados")
-
                         time.sleep(2)
                         st.rerun()
-
                 except Exception as e:
                     st.error("Error de sistema. Contacta a soporte.")
                     print(f"ERROR CARGA: {e}")
-    with tabs[5]: # MANTENIMIENTO
+
+    with tabs[5]:
         st.subheader("🛠️ Gestión de Almacén")
         opcion_m = st.radio("Acción:", ["➕ REPONER STOCK", "📝 MODIFICAR PRECIOS", "🗑️ ELIMINAR"], horizontal=True)
         buscar_m = st.text_input("🔍 Buscar para gestionar:", key="input_mantenimiento").upper()
@@ -611,12 +629,48 @@ if st.session_state.rol == "DUEÑO" and not st.session_state.get('modo_lectura',
                 if st.button(f"🗑️ ELIMINAR {p_sel_m}"):
                     tabla_stock.delete_item(Key={'TenantID': st.session_state.tenant, 'Producto': p_sel_m})
                     registrar_kardex(p_sel_m, 0, "BORRADO"); st.warning("Eliminado"); time.sleep(2); st.rerun()
-
 with st.sidebar:
     st.title(f"🏢 {st.session_state.tenant}")
     st.write(f"Usuario: **{st.session_state.usuario}**")
     emoji_plan = {"BASICO": "🔵", "PRO": "🟣", "PREMIUM": "🟡"}.get(PLAN_ACTUAL, "⚪")
-    st.caption(f"{emoji_plan} **Plan {PLAN_ACTUAL}** | Límite: {len(df_inv)}/{MAX_PRODUCTOS_TOTALES} productos")
+    st.caption(f"{emoji_plan} **Plan {PLAN_ACTUAL}** | S/ {float(PRECIO_ACTUAL):.0f}/mes")
+    st.caption(f"Límite: {len(df_inv)}/{MAX_PRODUCTOS_TOTALES} productos")
+
+    # ========== PANEL ADMIN COBROS ==========
+    if st.session_state.rol == "DUEÑO":
+        st.sidebar.markdown("---")
+        st.sidebar.subheader("💰 Gestión de Cobros")
+        with st.sidebar.expander("Registrar Pago Cliente"):
+            tenants_res = tabla_tenants.scan()
+            tenants_list = [t['TenantID'] for t in tenants_res.get('Items', [])]
+            tenant_sel = st.selectbox("Cliente", tenants_list, key="cobro_tenant")
+            monto = st.number_input("Monto S/.", min_value=0.0, step=10.0, key="cobro_monto")
+            meses = st.number_input("Meses pagados", min_value=1, max_value=12, value=1, key="cobro_meses")
+            if st.button("💵 Registrar Pago", key="btn_cobro"):
+                t_data = tabla_tenants.get_item(Key={'TenantID': tenant_sel}).get('Item', {})
+                prox_cobro_str = t_data.get('ProximoCobro', datetime.now(tz_peru).strftime('%d/%m/%Y'))
+                prox_cobro = datetime.strptime(prox_cobro_str, '%d/%m/%Y')
+                if prox_cobro.date() < datetime.now(tz_peru).date():
+                    prox_cobro = datetime.now(tz_peru)
+                nueva_fecha = (prox_cobro + timedelta(days=30*meses)).strftime('%d/%m/%Y')
+                tabla_tenants.update_item(
+                    Key={'TenantID': tenant_sel},
+                    UpdateExpression="SET ProximoCobro=:f, EstadoPago=:e",
+                    ExpressionAttributeValues={':f': nueva_fecha, ':e': 'ACTIVO'}
+                )
+                tabla_pagos.put_item(Item={
+                    'PagoID': str(uuid.uuid4()),
+                    'TenantID': tenant_sel,
+                    'FechaRegistro': datetime.now(tz_peru).isoformat(),
+                    'Monto': to_decimal(monto),
+                    'Meses': int(meses),
+                    'UsuarioRegistro': st.session_state.usuario
+                })
+                st.success(f"Pago registrado. Próximo cobro: {nueva_fecha}")
+                time.sleep(2)
+                st.rerun()
+    # ========== FIN PANEL ==========
+
     if st.button("🔴 CERRAR SESIÓN"):
         st.session_state.auth = False
         st.session_state.rol = None
