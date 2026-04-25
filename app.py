@@ -638,8 +638,8 @@ with st.sidebar:
     st.caption(f"{emoji_plan} **Plan {PLAN_ACTUAL}** | S/ {float(PRECIO_ACTUAL):.0f}/mes")
     st.caption(f"Límite: {len(df_inv)}/{MAX_PRODUCTOS_TOTALES} productos")
 
-    # ========== PANEL ADMIN COBROS ==========
-    if st.session_state.rol == "DUEÑO":
+        # ========== PANEL ADMIN COBROS ==========
+    if st.session_state.rol == "DUEÑO" and st.session_state.tenant == "ADMIN NEXUS":
         st.sidebar.markdown("---")
         st.sidebar.subheader("💰 Gestión de Cobros")
         with st.sidebar.expander("Registrar Pago Cliente"):
