@@ -48,7 +48,6 @@ except Exception as e:
     st.error("Error de sistema. Contacta a soporte.")
     print(f"ERROR AWS CONEXION: {e}")
     st.stop()
-
 # ========== SISTEMA COBROS NEXUS ==========
 def verificar_suscripcion(tenant_id):
     try:
@@ -72,7 +71,6 @@ if st.session_state.get('auth') and st.session_state.get('tenant'):
         st.error("Contacta a soporte para regularizar tu pago y reactivar tu acceso.")
         st.stop()
 # ========== FIN SISTEMA COBROS ==========
-# === PARCHE FINAL: REGISTRAR_CIERRE ACEPTA FECHA ===
 def registrar_cierre(total_cierre, usuario_turno, tipo_turno, usuario_cierre, fecha_cierre=None):
     if fecha_cierre is None:
         f_c, h_c, uid_c = obtener_tiempo_peru()
@@ -98,7 +96,6 @@ def registrar_cierre(total_cierre, usuario_turno, tipo_turno, usuario_cierre, fe
         'usuario_cierre': usuario_cierre
     }
 
-# === PARCHE FINAL: AUTO-CIERRE SOLO AYER Y SOLO 1AM-6AM ===
 def verificar_cierre_tardio():
     hora_actual = datetime.now(tz_peru).hour
     if hora_actual < 1 or hora_actual > 6:
@@ -126,8 +123,7 @@ def verificar_cierre_tardio():
         st.warning(f"🚨 AUTO-CIERRE: Día {ayer} se cerró con S/{float(total_pendiente):.2f} porque nadie lo hizo.")
         return total_pendiente
     return None
-
-def contarProductosEnBD():
+  def contarProductosEnBD():
     try:
         respuesta = tabla_stock.query(
             KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant),
@@ -139,32 +135,32 @@ def contarProductosEnBD():
         print(f"ERROR CONTEO: {e}")
         return 9999
 
-@st.cache_data(ttl=10)  # Cache solo 10 segundos
+@st.cache_data(ttl=10)
 def obtener_datos():
-    tenant_limpio = st.session_state.tenant.strip()  # <-- ESTA ES LA CLAVE CTM
-    st.write("DEBUG - Tenant que busca:", repr(tenant_limpio))  # Temporal para ver
-    
+    tenant_limpio = st.session_state.tenant.strip()
+    st.write("DEBUG - Tenant que busca:", repr(tenant_limpio))
+
     items = []
     last_key = None
     while len(items) < 2000:
         if last_key:
             respuesta = tabla_stock.query(
-                KeyConditionExpression=Key('TenantID').eq(tenant_limpio),  # <-- Usa tenant_limpio
+                KeyConditionExpression=Key('TenantID').eq(tenant_limpio),
                 Limit=500,
                 ExclusiveStartKey=last_key
             )
         else:
             respuesta = tabla_stock.query(
-                KeyConditionExpression=Key('TenantID').eq(tenant_limpio),  # <-- Usa tenant_limpio
+                KeyConditionExpression=Key('TenantID').eq(tenant_limpio),
                 Limit=500
             )
         items.extend(respuesta.get('Items', []))
         last_key = respuesta.get('LastEvaluatedKey')
         if not last_key:
             break
-    
-    st.write("DEBUG - Items encontrados:", len(items))  # Temporal para ver
-    
+
+    st.write("DEBUG - Items encontrados:", len(items))
+
     df = pd.DataFrame(items)
     if df.empty:
         return pd.DataFrame(columns=['Producto', 'Precio_Compra', 'Precio', 'Stock'])
@@ -172,12 +168,7 @@ def obtener_datos():
     df['Precio'] = pd.to_numeric(df['Precio'], errors='coerce').fillna(0.0)
     df['Precio_Compra'] = pd.to_numeric(df['Precio_Compra'], errors='coerce').fillna(0.0)
     return df[['Producto', 'Precio_Compra', 'Precio', 'Stock']].sort_values('Producto')
-        return pd.DataFrame(columns=['Producto', 'Precio_Compra', 'Precio', 'Stock'])
-    df['Stock'] = pd.to_numeric(df['Stock'], errors='coerce').fillna(0).astype(int)
-    df['Precio'] = pd.to_numeric(df['Precio'], errors='coerce').fillna(0.0)
-    df['Precio_Compra'] = pd.to_numeric(df['Precio_Compra'], errors='coerce').fillna(0.0)
-    return df[['Producto', 'Precio_Compra', 'Precio', 'Stock']].sort_values('Producto')
-# === PARCHE: USA EstadoPago Y ProximoCobro ===
+
 def obtener_limites_tenant():
     try:
         respuesta = tabla_tenants.get_item(Key={'TenantID': st.session_state.tenant})
@@ -188,7 +179,6 @@ def obtener_limites_tenant():
 
         item = respuesta['Item']
 
-        # === NUEVA VALIDACIÓN DE PAGO ===
         if item.get('EstadoPago') == 'SUSPENDIDO':
             st.error("⛔ Tu cuenta está SUSPENDIDA por falta de pago. Contacta a soporte para reactivar.")
             st.stop()
@@ -200,7 +190,6 @@ def obtener_limites_tenant():
         if fecha_cobro < hoy - timedelta(days=5):
             st.error(f"⛔ Tu suscripción VENCIÓ el {fecha_cobro_str}. Tienes 5 días de gracia vencidos. Contacta a soporte.")
             st.stop()
-        # === FIN VALIDACIÓN PAGO ===
 
         max_prod = int(item.get('MaxProductos', 0))
         max_stock = int(item.get('MaxStock', 0))
@@ -227,7 +216,6 @@ def obtener_limites_tenant():
         st.error("Error de sistema leyendo tu plan. Contacta a soporte.")
         print(f"ERROR PLAN: {e}")
         st.stop()
-
 if 'auth' not in st.session_state:
     st.session_state.auth = False
 if 'rol' not in st.session_state:
@@ -326,7 +314,6 @@ if not st.session_state.auth:
                 st.session_state.nombre_emp_temp = nombre_emp
                 intentar_login("EMPLEADO", nombre_emp)
     st.stop()
-
 if st.session_state.auth:
     f_actual, _, _ = obtener_tiempo_peru()
     hora_actual_login = datetime.now(tz_peru).hour
@@ -351,6 +338,7 @@ if st.session_state.rol == "DUEÑO":
     else:
         lista_pestanas += ["📋 HISTORIAL", "📥 CARGAR", "🛠️ MANT."]
 tabs = st.tabs(lista_pestanas)
+
 with tabs[0]:
     df_critico = df_inv[df_inv['Stock'] < 5].copy()
     if not df_critico.empty:
@@ -485,119 +473,6 @@ with tabs[0]:
                     st.session_state.carrito = []
                     st.session_state.confirmar = False
                     st.rerun()
-
-def registrar_kardex(producto_k, cantidad_k, tipo_k):
-    f_k, h_k, uid_k = obtener_tiempo_peru()
-    tabla_movs.put_item(Item={
-        'TenantID': st.session_state.tenant,
-        'MovID': f"M-{uid_k}",
-        'Fecha': f_k, 'Hora': h_k,
-        'Producto': producto_k,
-        'Cantidad': int(cantidad_k),
-        'Tipo': tipo_k,
-        'Usuario': st.session_state.usuario
-    })
-if st.session_state.rol == "DUEÑO" and not st.session_state.get('modo_lectura', False):
-    with tabs[3]:
-        st.subheader("📋 Historial de Movimientos")
-        fecha_h = st.date_input("Fecha de movimientos:", datetime.now(tz_peru), key="fecha_hist").strftime("%d/%m/%Y")
-        res_m = tabla_movs.query(KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant))
-        items_movs_bruto = res_m.get('Items', [])
-        if items_movs_bruto:
-            df_hist_total = pd.DataFrame(items_movs_bruto)
-            df_historial = df_hist_total[df_hist_total['Fecha'] == fecha_h]
-            if not df_historial.empty:
-                cols_hist = ['Hora', 'Producto', 'Cantidad', 'Tipo']
-                if 'Usuario' in df_historial.columns:
-                    cols_hist.append('Usuario')
-                st.dataframe(
-                    df_historial.sort_values("Hora", ascending=False)[cols_hist],
-                    use_container_width=True,
-                    hide_index=True,
-                    column_config={
-                        "Hora": st.column_config.TextColumn("Hora", width="small"),
-                        "Producto": st.column_config.TextColumn("Producto", width="medium"),
-                        "Cantidad": st.column_config.NumberColumn("Cant", width="small"),
-                        "Tipo": st.column_config.TextColumn("Tipo", width="medium"),
-                        "Usuario": st.column_config.TextColumn("Usuario", width="small"),
-                    }
-                )
-            else: st.info("Sin movimientos registrados hoy.")
-        else: st.info("Historial vacío.")
-
-    with tabs[4]:
-        col_individual, col_masiva = st.columns(2)
-        with col_individual:
-            st.subheader("📥 Registro Individual")
-            st.info(f"📦 **Plan {PLAN_ACTUAL}**: {MAX_PRODUCTOS_TOTALES} productos | {MAX_STOCK_POR_PRODUCTO} stock máximo por producto")
-            with st.form("formulario_carga"):
-                p_nombre = st.text_input("NOMBRE DEL PRODUCTO").upper()
-                p_stock = st.number_input("STOCK INICIAL", min_value=1)
-                p_costo = st.number_input("PRECIO COSTO (COMPRA)", min_value=0.0)
-                p_venta = st.number_input("PRECIO VENTA", min_value=0.0)
-                if st.form_submit_button("🚀 GUARDAR PRODUCTO"):
-                    if p_nombre:
-                        if p_stock > MAX_STOCK_POR_PRODUCTO:
-                            st.error(f"❌ Tu plan permite máximo {MAX_STOCK_POR_PRODUCTO} unidades por producto.")
-                        elif not df_inv[df_inv['Producto'] == p_nombre].empty:
-                            st.error(f"❌ El producto '{p_nombre}' ya existe. Usa MANTENIMIENTO para reponer.")
-                        else:
-                            total_actual = contarProductosEnBD()
-                            if total_actual >= MAX_PRODUCTOS_TOTALES:
-                                st.error(f"❌ Llegaste al límite de {MAX_PRODUCTOS_TOTALES} productos de tu plan.\n\nPara más capacidad, actualiza tu plan.")
-                            else:
-                                tabla_stock.put_item(Item={'TenantID': st.session_state.tenant, 'Producto': p_nombre, 'Stock': int(p_stock), 'Precio': to_decimal(p_venta), 'Precio_Compra': to_decimal(p_costo)})
-                                registrar_kardex(p_nombre, p_stock, "ENTRADA (NUEVO)")
-                                st.success(f"✅ ¡Guardado! Te quedan {MAX_PRODUCTOS_TOTALES - total_actual - 1} espacios."); time.sleep(2); st.rerun()
-
-        with col_masiva:
-            st.subheader("📂 Carga Masiva (Excel/CSV)")
-            st.caption(f"Columnas: Producto, Precio_Compra, Precio, Stock | Máx: 500 por carga")
-            archivo_subido = st.file_uploader("Subir archivo", type=['xlsx', 'csv'], key="bulk_upload")
-            if archivo_subido:
-                try:
-                    df_bulk = pd.read_excel(archivo_subido) if archivo_subido.name.endswith('xlsx') else pd.read_csv(archivo_subido)
-                    df_bulk.columns = [str(c).strip().title() for c in df_bulk.columns]
-                    st.write("Vista previa:", df_bulk.head(3))
-                    total_actual = contarProductosEnBD()
-                    espacios_libres = MAX_PRODUCTOS_TOTALES - total_actual
-                    if len(df_bulk) > 500:
-                        st.error("❌ Por rendimiento, sube máximo 500 productos por vez. Divide tu Excel.")
-                        st.stop()
-                    if len(df_bulk) > espacios_libres:
-                        st.error(f"❌ Tu archivo tiene {len(df_bulk)} productos pero solo te quedan {espacios_libres} espacios.")
-                        st.stop()
-                    if df_bulk['Stock'].max() > MAX_STOCK_POR_PRODUCTO:
-                        st.error(f"❌ Hay productos con stock mayor a {MAX_STOCK_POR_PRODUCTO}. Corrige tu Excel.")
-                        st.stop()
-                    if st.button("⚡ PROCESAR CARGA", use_container_width=True):
-                        barra_progreso = st.progress(0)
-                        total_items = len(df_bulk)
-                        errores = []
-                        productos_ok = []
-                        with tabla_stock.batch_writer() as batch:
-                            for i, fila in df_bulk.iterrows():
-                                try:
-                                    p_bulk = str(fila['Producto']).upper().strip()
-                                    if not p_bulk:
-                                        raise ValueError("Producto sin nombre")
-                                    costo_val = to_decimal(pd.to_numeric(fila['Precio_Compra'], errors='coerce') or 0.0)
-                                    precio_val = to_decimal(pd.to_numeric(fila['Precio'], errors='coerce') or 0.0)
-                                    stock_val = int(pd.to_numeric(fila['Stock'], errors='coerce') or 0)
-                                    if stock_val <= 0:
-                                        raise ValueError(f"Stock debe ser > 0 en {p_bulk}")
-                                    batch.put_item(Item={
-                                        'TenantID': st.session_state.tenant,
-                                        'Producto': p_bulk,
-                                        'Precio_Compra': costo_val,
-                                        'Precio': precio_val,
-                                        'Stock': stock_val
-                                    })
-                                    productos_ok.append({'Producto': p_bulk, 'Stock': stock_val})
-                                except Exception as e_item:
-                                    errores.append(f"Fila {i+2}: {fila.get('Producto', 'SIN_NOMBRE')} - {str(e_item)}")
-                                barra_progreso.progress((i + 1) / total_items)
-                        for item_ok in productos_ok:
                             registrar_kardex(item_ok['Producto'], item_ok['Stock'], "CARGA MASIVA")
                         items_ok = len(productos_ok)
                         if errores:
@@ -642,6 +517,7 @@ if st.session_state.rol == "DUEÑO" and not st.session_state.get('modo_lectura',
                 if st.button(f"🗑️ ELIMINAR {p_sel_m}"):
                     tabla_stock.delete_item(Key={'TenantID': st.session_state.tenant, 'Producto': p_sel_m})
                     registrar_kardex(p_sel_m, 0, "BORRADO"); st.warning("Eliminado"); time.sleep(2); st.rerun()
+
 with st.sidebar:
     st.title(f"🏢 {st.session_state.tenant}")
     st.write(f"Usuario: **{st.session_state.usuario}**")
@@ -649,7 +525,7 @@ with st.sidebar:
     st.caption(f"{emoji_plan} **Plan {PLAN_ACTUAL}** | S/ {float(PRECIO_ACTUAL):.0f}/mes")
     st.caption(f"Límite: {len(df_inv)}/{MAX_PRODUCTOS_TOTALES} productos")
 
-        # ========== PANEL ADMIN COBROS ==========
+    # ========== PANEL ADMIN COBROS ==========
     if st.session_state.rol == "DUEÑO" and st.session_state.tenant == "ADMIN NEXUS":
         st.sidebar.markdown("---")
         st.sidebar.subheader("💰 Gestión de Cobros")
