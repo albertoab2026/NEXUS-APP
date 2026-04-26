@@ -597,11 +597,9 @@ with tabs[2]:
         else:
             st.info("No hay ventas en ese rango de fechas.")
 with tabs[3]:
-with tabs[3]:
     if st.session_state.rol == "DUEÑO" and not st.session_state.get('modo_lectura', False):
         st.subheader("📋 Historial de Movimientos - Kardex")
 
-        # === FILTROS NUEVOS ===
         col_f1, col_f2, col_f3 = st.columns(3)
         with col_f1:
             fecha_inicio_h = st.date_input("Desde:", value=datetime.now(tz_peru).date() - timedelta(days=30), key="hist_desde")
@@ -611,7 +609,6 @@ with tabs[3]:
             buscar_prod_h = st.text_input("🔍 Producto:", key="hist_buscar").upper()
 
         if st.button("🔎 BUSCAR MOVIMIENTOS", use_container_width=True, type="primary"):
-            # Scan con filtro de fecha
             res_movs = tabla_movs.query(
                 KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant),
                 FilterExpression=Attr('Fecha').between(
@@ -625,7 +622,6 @@ with tabs[3]:
 
             if movs:
                 df_movs = pd.DataFrame(movs)
-                # Filtro por producto si escribió algo
                 if buscar_prod_h:
                     df_movs = df_movs[df_movs['Producto'].str.contains(buscar_prod_h)]
 
@@ -636,8 +632,6 @@ with tabs[3]:
                         use_container_width=True,
                         hide_index=True
                     )
-
-                    # Descargar CSV
                     csv = df_movs.to_csv(index=False).encode('utf-8')
                     st.download_button(
                         "📥 Descargar CSV",
@@ -652,7 +646,6 @@ with tabs[3]:
                 st.info("No hay movimientos en ese rango de fechas.")
         else:
             st.caption("Selecciona fechas y dale BUSCAR MOVIMIENTOS")
-
 # === ESTA ES LA PESTAÑA QUE TENÍA EL ERROR - YA ARREGLADA ===
 with tabs[4]:
     if st.session_state.rol == "DUEÑO" and not st.session_state.get('modo_lectura', False):
