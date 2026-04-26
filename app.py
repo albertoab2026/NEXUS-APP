@@ -26,41 +26,50 @@ DESARROLLADOR = "Alberto Ballarta - Software Engineer"
 st.set_page_config(page_title="NEXUS BALLARTA", layout="wide", page_icon="🚀", initial_sidebar_state="collapsed")
 tz_peru = pytz.timezone('America/Lima')
 
-# === CSS OPTIMIZADO CELULARES ===
+# === CSS FIX DARK MODE ===
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
         * {font-family: 'Poppins', sans-serif;}
-    .main {background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);}
-    .block-container {background: white; border-radius: 20px; padding: 2rem; box-shadow: 0 20px 60px rgba(0,0,0,0.3);}
-        div[data-testid="stMetric"] {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            padding: 20px; border-radius: 15px; box-shadow: 0 8px 16px rgba(102,126,234,0.3); border: none;
-            transition: transform 0.2s, box-shadow 0.2s;
+    .main {background: linear-gradient(135deg, #667eea 0%, #764ba2 100%)!important;}
+    .block-container {
+            background: white!important; 
+            color: #262730!important;
+            border-radius: 20px; 
+            padding: 2rem; 
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
         }
-        div[data-testid="stMetric"]:active {transform: scale(0.98);}
+    .block-container p,.block-container h1,.block-container h2,.block-container h3, 
+    .block-container h4,.block-container label,.block-container span,
+    .stMarkdown,.stText,.stCaption {
+            color: #262730!important;
+        }
+        div[data-testid="stMetric"] {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%)!important;
+            padding: 20px; border-radius: 15px; box-shadow: 0 8px 16px rgba(102,126,234,0.3); border: none;
+        }
         div[data-testid="stMetric"] label {color: white!important; font-weight: 600;}
         div[data-testid="stMetric"] [data-testid="stMetricValue"] {color: white!important; font-size: 36px;}
     .stButton>button {
             border-radius: 12px; font-weight: 600; border: none;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;
-            transition: transform 0.1s, box-shadow 0.2s; box-shadow: 0 4px 12px rgba(102,126,234,0.4);
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%)!important; 
+            color: white!important; box-shadow: 0 4px 12px rgba(102,126,234,0.4);
         }
-    .stButton>button:active {transform: scale(0.95); box-shadow: 0 2px 8px rgba(102,126,234,0.4);}
-    .stTabs [data-baseweb="tab-list"] {gap: 8px; background: #f8f9fa; padding: 10px; border-radius: 15px;}
-    .stTabs [data-baseweb="tab"] {border-radius: 10px; padding: 10px 20px; font-weight: 600;}
-    .stTabs [aria-selected="true"] {background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;}
-    .stTextInput>div>div>input,.stNumberInput>div>div>input {
-            border-radius: 10px; border: 2px solid #e0e0e0; padding: 12px;
+    .stTabs [data-baseweb="tab-list"] {gap: 8px; background: #f8f9fa!important; padding: 10px; border-radius: 15px;}
+    .stTabs [data-baseweb="tab"] {border-radius: 10px; padding: 10px 20px; font-weight: 600; color: #262730!important;}
+    .stTabs [aria-selected="true"] {background: linear-gradient(135deg, #667eea 0%, #764ba2 100%)!important; color: white!important;}
+    .stTextInput>div>div>input,.stNumberInput>div>div>input,.stSelectbox>div>div,.stDateInput input {
+            border-radius: 10px; border: 2px solid #e0e0e0!important; padding: 12px;
+            background: white!important; color: #262730!important;
         }
-    .stTextInput>div>div>input:focus,.stNumberInput>div>div>input:focus {
-            border-color: #667eea; box-shadow: 0 0 0 3px rgba(102,126,234,0.1);
-        }
-        [data-testid="stSidebar"] {background: linear-gradient(180deg, #667eea 0%, #764ba2 100%);}
+    .stSelectbox label,.stTextInput label,.stNumberInput label,.stDateInput label,.stRadio label {color: #262730!important;}
+        [data-testid="stSidebar"] {background: linear-gradient(180deg, #667eea 0%, #764ba2 100%)!important;}
         [data-testid="stSidebar"] * {color: white!important;}
-        [data-testid="stSidebar"].stButton>button {background: white; color: #667eea;}
-    .dataframe {border-radius: 12px; overflow: hidden; box-shadow: 0 4px 12px rgba(0,0,0,0.1);}
-    .streamlit-expanderHeader {background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); border-radius: 10px; font-weight: 600;}
+        [data-testid="stSidebar"].stButton>button {background: white!important; color: #667eea!important;}
+    .dataframe {border-radius: 12px; overflow: hidden; background: white!important; color: #262730!important;}
+    .dataframe th {background: #f8f9fa!important; color: #262730!important;}
+    .dataframe td {color: #262730!important;}
+    .streamlit-expanderHeader {background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)!important; border-radius: 10px; font-weight: 600; color: #262730!important;}
     .stAlert {border-radius: 12px; border-left: 5px solid;}
     </style>
 """, unsafe_allow_html=True)
@@ -111,9 +120,7 @@ def obtener_datos():
         df['Precio_Compra'] = pd.to_numeric(df['Precio_Compra'], errors='coerce').fillna(0.0)
         df['Producto'] = df['Producto'].astype(str)
         return df[['Producto', 'Precio_Compra', 'Precio', 'Stock']].sort_values('Producto')
-    except Exception as e:
-        print(f"ERROR obtener_datos: {e}")
-        return pd.DataFrame(columns=['Producto', 'Precio_Compra', 'Precio', 'Stock'])
+    except: return pd.DataFrame(columns=['Producto', 'Precio_Compra', 'Precio', 'Stock'])
 
 def registrar_kardex(prod, cant, tipo, total=0, pc=0, metodo=""):
     f, h, uid = obtener_tiempo_peru()
@@ -657,10 +664,14 @@ if st.session_state.rol == "DUEÑO" and len(tabs) > 5:
         col1.metric("Plan Actual", PLAN_ACTUAL)
         col2.metric("Precio Mensual", f"S/ {PRECIO_ACTUAL}")
         col3.metric("Productos", f"{contarProductosEnBD()}/{MAX_PRODUCTOS_TOTALES}")
+        
+        # NOTA MAQUILLADA EN LETRAS PEQUEÑAS
+        st.caption("💡 *Todos los planes incluyen instalación y configuración inicial sin costo adicional. Servicio por única vez al contratar.*")
 
-        if st.button("📲 CONTACTAR SOPORTE", use_container_width=True, key="btn_soporte"):
-            texto = f"Hola, soy {st.session_state.tenant}. Necesito ayuda con mi plan {PLAN_ACTUAL}"
-            st.link_button("WhatsApp Soporte", f"https://wa.me/{NUMERO_SOPORTE}?text={urllib.parse.quote(texto)}", use_container_width=True)
+        st.write("---")
+        st.subheader("📲 Soporte Técnico")
+        texto_soporte = f"Hola Alberto, soy {st.session_state.usuario} de {st.session_state.tenant}. Necesito ayuda con mi plan {PLAN_ACTUAL}."
+        st.link_button("💬 HABLAR CON SOPORTE POR WHATSAPP", f"https://wa.me/{NUMERO_SOPORTE}?text={urllib.parse.quote(texto_soporte)}", use_container_width=True, type="primary")
 
 # === SIDEBAR ===
 with st.sidebar:
@@ -682,3 +693,4 @@ with st.sidebar:
     st.caption(f"Plan: {PLAN_ACTUAL}")
     st.caption(f"Versión 3.0")
     st.caption(DESARROLLADOR)
+    st.caption("✨ Instalación inicial incluida en todos los planes")
