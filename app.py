@@ -26,22 +26,22 @@ DESARROLLADOR = "Alberto Ballarta - Software Engineer"
 st.set_page_config(page_title="NEXUS BALLARTA", layout="wide", page_icon="🚀", initial_sidebar_state="collapsed")
 tz_peru = pytz.timezone('America/Lima')
 
-# === CSS FIX DARK MODE ===
+# === CSS FIX DARK MODE + TABLAS ===
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
         * {font-family: 'Poppins', sans-serif;}
-    .main {background: linear-gradient(135deg, #667eea 0%, #764ba2 100%)!important;}
-    .block-container {
+   .main {background: linear-gradient(135deg, #667eea 0%, #764ba2 100%)!important;}
+   .block-container {
             background: white!important; 
             color: #262730!important;
             border-radius: 20px; 
             padding: 2rem; 
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
         }
-    .block-container p,.block-container h1,.block-container h2,.block-container h3, 
-    .block-container h4,.block-container label,.block-container span,
-    .stMarkdown,.stText,.stCaption {
+   .block-container p,.block-container h1,.block-container h2,.block-container h3, 
+   .block-container h4,.block-container label,.block-container span,
+   .stMarkdown,.stText,.stCaption {
             color: #262730!important;
         }
         div[data-testid="stMetric"] {
@@ -50,27 +50,39 @@ st.markdown("""
         }
         div[data-testid="stMetric"] label {color: white!important; font-weight: 600;}
         div[data-testid="stMetric"] [data-testid="stMetricValue"] {color: white!important; font-size: 36px;}
-    .stButton>button {
+   .stButton>button {
             border-radius: 12px; font-weight: 600; border: none;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%)!important; 
             color: white!important; box-shadow: 0 4px 12px rgba(102,126,234,0.4);
         }
-    .stTabs [data-baseweb="tab-list"] {gap: 8px; background: #f8f9fa!important; padding: 10px; border-radius: 15px;}
-    .stTabs [data-baseweb="tab"] {border-radius: 10px; padding: 10px 20px; font-weight: 600; color: #262730!important;}
-    .stTabs [aria-selected="true"] {background: linear-gradient(135deg, #667eea 0%, #764ba2 100%)!important; color: white!important;}
-    .stTextInput>div>div>input,.stNumberInput>div>div>input,.stSelectbox>div>div,.stDateInput input {
+   .stTabs [data-baseweb="tab-list"] {gap: 8px; background: #f8f9fa!important; padding: 10px; border-radius: 15px;}
+   .stTabs [data-baseweb="tab"] {border-radius: 10px; padding: 10px 20px; font-weight: 600; color: #262730!important;}
+   .stTabs [aria-selected="true"] {background: linear-gradient(135deg, #667eea 0%, #764ba2 100%)!important; color: white!important;}
+   .stSelectbox>div>div {
+            background: white!important; 
+            border: 2px solid #e0e0e0!important; 
+            border-radius: 10px!important;
+        }
+   .stSelectbox>div>div>div {color: #262730!important;}
+   .stSelectbox svg {fill: #262730!important;}
+   .stTextInput>div>div>input,.stNumberInput>div>div>input,.stDateInput input {
             border-radius: 10px; border: 2px solid #e0e0e0!important; padding: 12px;
             background: white!important; color: #262730!important;
         }
-    .stSelectbox label,.stTextInput label,.stNumberInput label,.stDateInput label,.stRadio label {color: #262730!important;}
+   .stSelectbox label,.stTextInput label,.stNumberInput label,.stDateInput label,.stRadio label {color: #262730!important;}
         [data-testid="stSidebar"] {background: linear-gradient(180deg, #667eea 0%, #764ba2 100%)!important;}
         [data-testid="stSidebar"] * {color: white!important;}
         [data-testid="stSidebar"].stButton>button {background: white!important; color: #667eea!important;}
-    .dataframe {border-radius: 12px; overflow: hidden; background: white!important; color: #262730!important;}
-    .dataframe th {background: #f8f9fa!important; color: #262730!important;}
-    .dataframe td {color: #262730!important;}
-    .streamlit-expanderHeader {background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)!important; border-radius: 10px; font-weight: 600; color: #262730!important;}
-    .stAlert {border-radius: 12px; border-left: 5px solid;}
+   .stDataFrame {background: white!important;}
+   .stDataFrame [data-testid="stTable"] {background: white!important;}
+   .stDataFrame table {background: white!important; color: #262730!important;}
+   .stDataFrame th {background: #f8f9fa!important; color: #262730!important; position: sticky!important; top: 0!important; z-index: 10!important;}
+   .stDataFrame td {background: white!important; color: #262730!important;}
+   .stDataFrame tr:nth-child(even) td {background: #f9f9f9!important;}
+   .stDataFrame tr:hover td {background: #e3f2fd!important;}
+   .streamlit-expanderHeader {background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)!important; border-radius: 10px; font-weight: 600; color: #262730!important;}
+   .stAlert {border-radius: 12px; border-left: 5px solid;}
+   .element-container {overflow-x: auto!important;}
     </style>
 """, unsafe_allow_html=True)
 
@@ -446,7 +458,19 @@ with tabs[2]:
         st.write("---")
 
         with st.expander("🧾 VER TICKETS DEL DÍA - MÁS RECIENTE ARRIBA", expanded=True):
-            st.dataframe(df_v[['Hora', 'Producto', 'Cantidad', 'Total', 'Metodo', 'Usuario']], use_container_width=True, hide_index=True)
+            st.dataframe(
+                df_v[['Hora', 'Producto', 'Cantidad', 'Total', 'Metodo', 'Usuario']], 
+                use_container_width=True, 
+                hide_index=True,
+                column_config={
+                    "Hora": st.column_config.TextColumn("Hora", width="small"),
+                    "Producto": st.column_config.TextColumn("Producto", width="large"),
+                    "Cantidad": st.column_config.NumberColumn("Cantidad", width="small"),
+                    "Total": st.column_config.NumberColumn("Total", format="S/ %.2f", width="small"),
+                    "Metodo": st.column_config.TextColumn("Metodo", width="small"),
+                    "Usuario": st.column_config.TextColumn("Usuario", width="small")
+                }
+            )
 
         df_ef = df_v[df_v['Metodo'].str.contains('EFECTIVO')]
         df_yape = df_v[df_v['Metodo'].str.contains('YAPE')]
@@ -490,7 +514,21 @@ if st.session_state.rol == "DUEÑO" and len(tabs) > 3:
             df_h['Costo'] = df_h['Precio_Compra'] * df_h['Cantidad']
             df_h['Ganancia'] = df_h.apply(lambda r: r['Total'] - r['Costo'] if r['Tipo'] == 'VENTA' else 0, axis=1)
 
-            st.dataframe(df_h[['Hora', 'Producto', 'Tipo', 'Cantidad', 'Total', 'Costo', 'Ganancia', 'Usuario']], use_container_width=True, hide_index=True)
+            st.dataframe(
+                df_h[['Hora', 'Producto', 'Tipo', 'Cantidad', 'Total', 'Costo', 'Ganancia', 'Usuario']], 
+                use_container_width=True, 
+                hide_index=True,
+                column_config={
+                    "Hora": st.column_config.TextColumn("Hora", width="small"),
+                    "Producto": st.column_config.TextColumn("Producto", width="medium"),
+                    "Tipo": st.column_config.TextColumn("Tipo", width="small"),
+                    "Cantidad": st.column_config.NumberColumn("Cantidad", width="small"),
+                    "Total": st.column_config.NumberColumn("Total", format="S/ %.2f", width="small"),
+                    "Costo": st.column_config.NumberColumn("Costo", format="S/ %.2f", width="small"),
+                    "Ganancia": st.column_config.NumberColumn("Ganancia", format="S/ %.2f", width="small"),
+                    "Usuario": st.column_config.TextColumn("Usuario", width="small")
+                }
+            )
 
             df_v_h = df_h[df_h['Tipo'] == 'VENTA']
             if not df_v_h.empty:
