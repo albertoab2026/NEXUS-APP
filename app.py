@@ -163,7 +163,7 @@ with tabs[0]:
     if ya_cerro:
         st.warning(f"⚠️ YA CERRASTE CAJA HOY A LAS {hora_cierre}")
         st.info("Las ventas que hagas ahora son POST-CIERRE. Se sumarán al reporte de mañana.")
-        if st.button("🔓 REABRIR CAJA - SOLO DUEÑO", use_container_width=True) and st.session_state.rol == "DUEÑO":
+        if st.button("🔓 REABRIR CAJA - SOLO DUEÑO", use_container_width=True, key="btn_reabrir_caja") and st.session_state.rol == "DUEÑO":
             for c in res_cierre.get('Items', []):
                 tabla_cierres.delete_item(Key={'TenantID': st.session_state.tenant, 'CierreID': c['CierreID']})
             st.success("✅ Caja reabierta"); time.sleep(1); st.rerun()
@@ -214,13 +214,13 @@ with tabs[0]:
             df_boleta[['Fecha', 'Hora', 'Producto', 'Cantidad', 'Precio', 'Subtotal', 'Metodo', 'Descuento', 'Total_Neto']].to_excel(w, index=False, sheet_name='Ticket')
 
         col1, col2 = st.columns(2)
-        col1.download_button("📄 PDF 80mm", pdf_output, f"Ticket_{b['fecha'].replace('/','')}.pdf", "application/pdf", use_container_width=True)
-        col2.download_button("📊 EXCEL", buf_excel.getvalue(), f"Ticket_{b['fecha'].replace('/','')}.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
+        col1.download_button("📄 PDF 80mm", pdf_output, f"Ticket_{b['fecha'].replace('/','')}.pdf", "application/pdf", use_container_width=True, key="btn_pdf_boleta")
+        col2.download_button("📊 EXCEL", buf_excel.getvalue(), f"Ticket_{b['fecha'].replace('/','')}.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True, key="btn_excel_boleta")
 
         if tiene_whatsapp_habilitado():
             texto = f"*TICKET - {st.session_state.tenant}*\n{b['fecha']} {b['hora']}\n---\n" + "\n".join([f"{i['Cantidad']}x {i['Producto']} - S/{float(i['Subtotal']):.2f}" for i in b['items']]) + f"\n---\n*TOTAL: S/{float(b['t_neto']):.2f}*\nMetodo: {b['metodo']}"
             st.link_button("📲 WhatsApp", f"https://wa.me/?text={urllib.parse.quote(texto)}", use_container_width=True)
-        if st.button("⬅️ NUEVA VENTA", use_container_width=True): st.session_state.boleta = None; st.rerun()
+        if st.button("⬅️ NUEVA VENTA", use_container_width=True, key="btn_nueva_venta"): st.session_state.boleta = None; st.rerun()
     else:
         st.subheader("🛍️ Nueva Venta")
         busq = st.text_input("🔍 Buscar:", key="bv").upper()
@@ -238,21 +238,21 @@ with tabs[0]:
             en_carro = sum(i['Cantidad'] for i in st.session_state.carrito if i['Producto'] == p_sel)
             disp = dp.Stock - en_carro
             st.info(f"Disponible: {disp}")
-            if st.button("➕ Añadir", use_container_width=True):
+            if st.button("➕ Añadir", use_container_width=True, key="btn_add_carrito"):
                 if cant <= disp:
                     st.session_state.carrito.append({'Producto': p_sel, 'Cantidad': int(cant), 'Precio': to_decimal(dp.Precio), 'Precio_Compra': to_decimal(dp.Precio_Compra), 'Subtotal': to_decimal(dp.Precio) * int(cant)})
                     st.rerun()
                 else: st.error("❌ Sin stock")
         if st.session_state.carrito:
             st.table(pd.DataFrame(st.session_state.carrito)[['Producto', 'Cantidad', 'Subtotal']])
-            if st.button("🗑️ VACIAR"): st.session_state.carrito = []; st.rerun()
-            metodo = st.radio("Pago:", ["💵 EFECTIVO", "🟣 YAPE", "🔵 PLIN"], horizontal=True)
-            rebaja = st.number_input("💸 Descuento:", min_value=0.0, value=0.0)
+            if st.button("🗑️ VACIAR", key="btn_vaciar_carrito"): st.session_state.carrito = []; st.rerun()
+            metodo = st.radio("Pago:", ["💵 EFECTIVO", "🟣 YAPE", "🔵 PLIN"], horizontal=True, key="radio_metodo")
+            rebaja = st.number_input("💸 Descuento:", min_value=0.0, value=0.0, key="num_rebaja")
             total = max(Decimal('0.00'), sum(i['Subtotal'] for i in st.session_state.carrito) - to_decimal(rebaja))
             st.markdown(f"<h1 style='text-align:center;color:#2ecc71;'>S/ {float(total):.2f}</h1>", unsafe_allow_html=True)
-            if st.button("🚀 FINALIZAR", use_container_width=True, type="primary"): st.session_state.confirmar = True
+            if st.button("🚀 FINALIZAR", use_container_width=True, type="primary", key="btn_finalizar"): st.session_state.confirmar = True
             if st.session_state.confirmar:
-                if st.button(f"✅ CONFIRMAR S/ {float(total):.2f}", use_container_width=True):
+                if st.button(f"✅ CONFIRMAR S/ {float(total):.2f}", use_container_width=True, key="btn_confirmar_venta"):
                     f, h, uid = obtener_tiempo_peru()
                     for item in st.session_state.carrito:
                         tabla_stock.update_item(Key={'TenantID': st.session_state.tenant, 'Producto': item['Producto']}, UpdateExpression="SET Stock = Stock - :s", ConditionExpression="Stock >= :s", ExpressionAttributeValues={':s': item['Cantidad']})
@@ -272,7 +272,7 @@ with tabs[1]:
             st.dataframe(df_f[['Producto', 'Stock', 'Precio_Compra', 'Precio']], use_container_width=True, hide_index=True)
             buf = io.BytesIO()
             with pd.ExcelWriter(buf, engine='openpyxl') as w: df_f.to_excel(w, index=False)
-            st.download_button("📥 DESCARGAR RESULTADOS", buf.getvalue(), f"Inventario_{st.session_state.tenant}_{datetime.now(tz_peru).strftime('%Y%m%d')}.xlsx", use_container_width=True)
+            st.download_button("📥 DESCARGAR RESULTADOS", buf.getvalue(), f"Inventario_{st.session_state.tenant}_{datetime.now(tz_peru).strftime('%Y%m%d')}.xlsx", use_container_width=True, key="btn_desc_inv")
             bajo = df_f[df_f['Stock'] < 5]
             if not bajo.empty: st.warning(f"⚠️ Stock crítico: {len(bajo)} productos"); st.dataframe(bajo[['Producto', 'Stock']], hide_index=True)
         else:
@@ -285,8 +285,8 @@ with tabs[1]:
 with tabs[2]:
     if st.session_state.rol == "DUEÑO":
         col_f1, col_f2 = st.columns([3,1])
-        fecha = col_f1.date_input("Día:", value=datetime.now(tz_peru).date(), label_visibility="collapsed")
-        if col_f2.button("🔄 ACTUALIZAR", use_container_width=True): st.cache_data.clear(); st.rerun()
+        fecha = col_f1.date_input("Día:", value=datetime.now(tz_peru).date(), label_visibility="collapsed", key="date_reportes")
+        if col_f2.button("🔄 ACTUALIZAR", use_container_width=True, key="btn_actualizar_reportes"): st.cache_data.clear(); st.rerun()
 
         fecha_iso = fecha.strftime('%Y-%m-%d')
         fecha_sem_pasada = (fecha - timedelta(days=7)).strftime('%Y-%m-%d')
@@ -361,7 +361,7 @@ if st.session_state.rol == "DUEÑO" and not st.session_state.get('modo_lectura',
         st.subheader("📋 Kardex")
         col_h1, col_h2 = st.columns([3,1])
         fecha_b = col_h1.date_input("📅 Fecha:", value=datetime.now(tz_peru).date(), key="hf", label_visibility="collapsed")
-        if col_h2.button("🔄 ACTUALIZAR", use_container_width=True): st.cache_data.clear(); st.rerun()
+        if col_h2.button("🔄 ACTUALIZAR", use_container_width=True, key="btn_actualizar_historial"): st.cache_data.clear(); st.rerun()
 
         # CARGA AUTO DEL DÍA
         res = tabla_movs.query(IndexName='TenantID-FechaISO-index', KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant) & Key('FechaISO').eq(fecha_b.strftime('%Y-%m-%d')), Limit=500)
@@ -374,8 +374,8 @@ if st.session_state.rol == "DUEÑO" and not st.session_state.get('modo_lectura',
             st.info(f"No hay movimientos el {fecha_b.strftime('%d/%m/%Y')}")
 
         with st.expander("📥 DESCARGAR MES"):
-            mes = st.date_input("Mes:", value=datetime.now(tz_peru).date().replace(day=1))
-            if st.button("📊 EXCEL MES", use_container_width=True):
+            mes = st.date_input("Mes:", value=datetime.now(tz_peru).date().replace(day=1), key="date_mes_descarga")
+            if st.button("📊 EXCEL MES", use_container_width=True, key="btn_excel_mes"):
                 inicio = mes.replace(day=1).strftime('%Y-%m-%d')
                 fin = (mes.replace(month=mes.month+1, day=1) - timedelta(days=1)).strftime('%Y-%m-%d') if mes.month < 12 else (mes.replace(year=mes.year+1, month=1, day=1) - timedelta(days=1)).strftime('%Y-%m-%d')
                 res = tabla_movs.query(IndexName='TenantID-FechaISO-index', KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant) & Key('FechaISO').between(inicio, fin))
@@ -383,20 +383,20 @@ if st.session_state.rol == "DUEÑO" and not st.session_state.get('modo_lectura',
                 if not df_m.empty:
                     buf = io.BytesIO()
                     with pd.ExcelWriter(buf, engine='openpyxl') as w: df_m.to_excel(w, index=False)
-                    st.download_button("📥 DESCARGAR", buf.getvalue(), f"Kardex_{mes.strftime('%Y%m')}.xlsx", use_container_width=True)
+                    st.download_button("📥 DESCARGAR", buf.getvalue(), f"Kardex_{mes.strftime('%Y%m')}.xlsx", use_container_width=True, key="btn_download_mes")
 
     # TAB 4: CARGAR
     with tabs[4]:
         st.subheader("📂 Carga Masiva")
         st.caption(f"Columnas: Producto, Precio_Compra, Precio, Stock | Máx: 500")
-        archivo = st.file_uploader("Excel/CSV", type=['xlsx', 'csv'])
+        archivo = st.file_uploader("Excel/CSV", type=['xlsx', 'csv'], key="file_carga")
         if archivo:
             df_b = pd.read_excel(archivo) if archivo.name.endswith('xlsx') else pd.read_csv(archivo)
             df_b.columns = [str(c).strip().title() for c in df_b.columns]
             st.write(df_b.head(3))
             if len(df_b) > 500: st.error("❌ Máx 500"); st.stop()
             if contarProductosEnBD() + len(df_b) > MAX_PRODUCTOS_TOTALES: st.error(f"❌ Solo {MAX_PRODUCTOS_TOTALES - contarProductosEnBD()} espacios"); st.stop()
-            if st.button("⚡ PROCESAR", use_container_width=True):
+            if st.button("⚡ PROCESAR", use_container_width=True, key="btn_procesar_carga"):
                 barra = st.progress(0)
                 with tabla_stock.batch_writer() as batch:
                     for i, f in df_b.iterrows():
@@ -411,38 +411,38 @@ if st.session_state.rol == "DUEÑO" and not st.session_state.get('modo_lectura',
         st.subheader("🛠️ Mantenimiento")
         with st.expander("➕ CREAR PRODUCTO"):
             c1, c2 = st.columns(2)
-            np = c1.text_input("Nombre:").upper().strip()
-            nc = c1.number_input("Precio Compra:", min_value=0.0)
-            nv = c2.number_input("Precio Venta:", min_value=0.0)
-            ns = c2.number_input("Stock:", min_value=1, value=1)
-            if st.button("💾 CREAR", use_container_width=True):
+            np = c1.text_input("Nombre:", key="txt_nombre_new").upper().strip()
+            nc = c1.number_input("Precio Compra:", min_value=0.0, key="num_pc_new")
+            nv = c2.number_input("Precio Venta:", min_value=0.0, key="num_pv_new")
+            ns = c2.number_input("Stock:", min_value=1, value=1, key="num_stock_new")
+            if st.button("💾 CREAR", use_container_width=True, key="btn_crear_prod"):
                 if np and ns > 0 and contarProductosEnBD() < MAX_PRODUCTOS_TOTALES:
                     tabla_stock.put_item(Item={'TenantID': st.session_state.tenant, 'Producto': np, 'Precio_Compra': to_decimal(nc), 'Precio': to_decimal(nv), 'Stock': int(ns)})
                     registrar_kardex(np, ns, "PRODUCTO NUEVO", to_decimal(nv) * ns, to_decimal(nc), "")
                     st.success(f"✅ {np} creado"); time.sleep(1); st.rerun()
         st.divider()
-        acc = st.radio("Acción:", ["➕ REPONER", "📝 PRECIOS", "🗑️ ELIMINAR"], horizontal=True)
-        busq_m = st.text_input("🔍 Buscar:").upper()
+        acc = st.radio("Acción:", ["➕ REPONER", "📝 PRECIOS", "🗑️ ELIMINAR"], horizontal=True, key="radio_acc_mant")
+        busq_m = st.text_input("🔍 Buscar:", key="txt_busq_mant").upper()
         lista = [p for p in df_inv['Producto'].tolist() if busq_m in str(p)]
         if lista:
-            p_sel = st.selectbox("Producto:", lista)
+            p_sel = st.selectbox("Producto:", lista, key="sel_prod_mant")
             idx = df_inv[df_inv['Producto'] == p_sel].index[0]
             if acc == "➕ REPONER":
-                cant = st.number_input("Ingreso:", min_value=1)
-                if st.button("✅ ACTUALIZAR"):
+                cant = st.number_input("Ingreso:", min_value=1, key="num_repo_mant")
+                if st.button("✅ ACTUALIZAR", key="btn_actualizar_repo"):
                     nuevo = int(df_inv.at[idx, 'Stock'] + cant)
                     if nuevo <= MAX_STOCK_POR_PRODUCTO:
                         tabla_stock.update_item(Key={'TenantID': st.session_state.tenant, 'Producto': p_sel}, UpdateExpression="SET Stock = :s", ExpressionAttributeValues={':s': nuevo})
                         registrar_kardex(p_sel, cant, f"REPOSICIÓN", 0, 0, ""); st.success("✅"); time.sleep(1); st.rerun()
                     else: st.error(f"❌ Máx {MAX_STOCK_POR_PRODUCTO}")
             elif acc == "📝 PRECIOS":
-                nc = st.number_input("Costo:", value=float(df_inv.at[idx, 'Precio_Compra']))
-                nv = st.number_input("Venta:", value=float(df_inv.at[idx, 'Precio']))
-                if st.button("💾 GUARDAR"):
+                nc = st.number_input("Costo:", value=float(df_inv.at[idx, 'Precio_Compra']), key="num_pc_edit")
+                nv = st.number_input("Venta:", value=float(df_inv.at[idx, 'Precio']), key="num_pv_edit")
+                if st.button("💾 GUARDAR", key="btn_guardar_precios"):
                     tabla_stock.update_item(Key={'TenantID': st.session_state.tenant, 'Producto': p_sel}, UpdateExpression="SET Precio_Compra=:pc,Precio=:pv", ExpressionAttributeValues={':pc': to_decimal(nc), ':pv': to_decimal(nv)})
                     registrar_kardex(p_sel, 0, "CAMBIO PRECIOS", 0, 0, ""); st.success("✅"); time.sleep(1); st.rerun()
             else:
-                if st.button(f"🗑️ ELIMINAR {p_sel}"):
+                if st.button(f"🗑️ ELIMINAR {p_sel}", key="btn_eliminar_prod"):
                     tabla_stock.delete_item(Key={'TenantID': st.session_state.tenant, 'Producto': p_sel})
                     registrar_kardex(p_sel, 0, "BORRADO", 0, 0, ""); st.warning("Eliminado"); time.sleep(1); st.rerun()
 # === SIDEBAR ===
@@ -453,7 +453,7 @@ if st.session_state.auth:
         st.caption(f"{'🔵' if PLAN_ACTUAL=='BASICO' else '🟣' if PLAN_ACTUAL=='PRO' else '🟡'} **Plan {PLAN_ACTUAL}** | S/ {float(PRECIO_ACTUAL):.0f}/mes")
 
         st.markdown("---")
-        if st.button("🔒 CERRAR CAJA", use_container_width=True, type="primary"):
+        if st.button("🔒 CERRAR CAJA", use_container_width=True, type="primary", key="btn_cerrar_caja_sidebar"):
             f_hoy, _, _ = obtener_tiempo_peru()
             res_c = tabla_cierres.query(KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant), FilterExpression=Attr('Fecha').eq(f_hoy) & Attr('UsuarioTurno').eq(st.session_state.usuario))
             cierres = res_c.get('Items', [])
@@ -491,7 +491,7 @@ if st.session_state.auth:
 
                     if users:
                         st.warning(f"⚠️ {len(users)} empleado(s) no cerraron")
-                        u_sel = st.selectbox("Empleado:", list(users.keys()))
+                        u_sel = st.selectbox("Empleado:", list(users.keys()), key="sel_emp_tardio")
                         st.metric("Pendiente", f"S/ {float(users[u_sel]):.2f}")
                         if st.button("🔒 CERRAR CAJA EMPLEADO", use_container_width=True, key="cerrar_tardio"):
                             registrar_cierre(users[u_sel], u_sel, "CIERRE TARDÍO DUEÑO", st.session_state.usuario, ayer)
@@ -510,6 +510,6 @@ if st.session_state.auth:
         st.markdown("---")
         st.caption(f"📲 Soporte: +{NUMERO_SOPORTE}")
         st.caption(f"💳 Yape/Plin: {YAPE_SOPORTE}")
-        if st.button("🔴 CERRAR SESIÓN"):
+        if st.button("🔴 CERRAR SESIÓN", key="btn_logout"):
             for k in list(st.session_state.keys()): del st.session_state[k]
             st.rerun()                    
