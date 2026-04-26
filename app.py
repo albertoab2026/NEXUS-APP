@@ -172,7 +172,6 @@ def obtener_datos():
     df['Precio_Compra'] = pd.to_numeric(df['Precio_Compra'], errors='coerce').fillna(0.0)
     return df[['Producto', 'Precio_Compra', 'Precio', 'Stock']].sort_values('Producto')
 
-# === KARDEX PARCHADO CON FechaISO ===
 def registrar_kardex(producto_k, cantidad_k, tipo_k):
     f_k, h_k, uid_k = obtener_tiempo_peru()
     fecha_iso = datetime.now(tz_peru).strftime("%Y-%m-%d")
@@ -386,8 +385,6 @@ if st.session_state.rol == "DUEÑO":
     else:
         lista_pestanas += ["📋 HISTORIAL", "📥 CARGAR", "🛠️ MANT."]
 tabs = st.tabs(lista_pestanas)
-
-# === TAB 0: VENTA ===
 with tabs[0]:
     df_critico = df_inv[df_inv['Stock'] < 5].copy()
     if not df_critico.empty:
@@ -523,7 +520,6 @@ with tabs[0]:
                     st.session_state.carrito = []
                     st.session_state.confirmar = False
                     st.rerun()
-# === TAB 1: STOCK ===
 with tabs[1]:
     st.subheader("📦 Inventario Actual")
     if not df_inv.empty:
@@ -552,6 +548,19 @@ with tabs[1]:
             hide_index=True
         )
 
+        # === DESCARGAR EXCEL ===
+        buffer = io.BytesIO()
+        with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
+            df_filtrado.to_excel(writer, sheet_name='Inventario', index=False)
+        
+        st.download_button(
+            label="📥 DESCARGAR INVENTARIO EXCEL",
+            data=buffer.getvalue(),
+            file_name=f"Inventario_{st.session_state.tenant}_{datetime.now(tz_peru).strftime('%Y%m%d')}.xlsx",
+            mime="application/vnd.ms-excel",
+            use_container_width=True
+        )
+
         stock_bajo = df_filtrado[df_filtrado['Stock'] < 5]
         if not stock_bajo.empty:
             st.warning(f"⚠️ Stock crítico: {len(stock_bajo)} productos con menos de 5 unidades")
@@ -559,25 +568,21 @@ with tabs[1]:
     else:
         st.info("No hay productos en inventario. Usa CARGAR para subir tu Excel.")
 
-# === TAB 2: REPORTES PARCHADO CON QUERY ===
+# === TAB 2: REPORTES COMO LA FOTO + SEPARADO YAPE/PLIN ===
 with tabs[2]:
     if st.session_state.rol == "DUEÑO" and not st.session_state.get('modo_lectura', False):
-        st.subheader("📊 Reporte Diario de Ventas")
-
-        col_r1, col_r2 = st.columns([1, 2])
-        with col_r1:
-            fecha_reporte = st.date_input(
-                "📅 Selecciona el día:",
-                value=datetime.now(tz_peru).date(),
-                key="rep_fecha"
-            )
-        with col_r2:
-            st.write("")
-            btn_generar = st.button("📈 GENERAR REPORTE", use_container_width=True, type="primary")
-
-        if btn_generar:
+        st.subheader("Día a consultar:")
+        
+        fecha_reporte = st.date_input(
+            "",
+            value=datetime.now(tz_peru).date(),
+            key="rep_fecha",
+            label_visibility="collapsed"
+        )
+        
+        if st.button("📈 GENERAR REPORTE", use_container_width=True, type="primary"):
             fecha_iso = fecha_reporte.strftime('%Y-%m-%d')
-
+            
             try:
                 res_movs = tabla_movs.query(
                     IndexName='TenantID-FechaISO-index',
@@ -586,77 +591,102 @@ with tabs[2]:
                     ScanIndexForward=False
                 )
                 movs = res_movs.get('Items', [])
-
+                
             except Exception as e:
-                st.error("Error: Verifica que el índice TenantID-FechaISO-index esté Activo")
-                st.error(f"Detalle: {e}")
+                st.error(f"Error: {e}")
                 st.stop()
 
             if movs:
                 df_movs = pd.DataFrame(movs)
                 df_ventas = df_movs[df_movs['Tipo'] == 'VENTA'].copy()
-                df_ingresos = df_movs[df_movs['Tipo'].str.contains('INGRESO|REPOSICIÓN|CARGA', na=False)].copy()
 
                 if not df_ventas.empty:
                     df_ventas['Cantidad'] = pd.to_numeric(df_ventas['Cantidad'])
-
-                    total_vendido = df_ventas['Cantidad'].sum()
-                    num_ventas = len(df_ventas)
-                    num_ingresos = len(df_ingresos)
-
-                    st.subheader(f"Resumen del {fecha_reporte.strftime('%d/%m/%Y')}")
-
-                    col_met1, col_met2, col_met3, col_met4 = st.columns(4)
-                    col_met1.metric("Unidades Vendidas", f"{total_vendido}")
-                    col_met2.metric("N° Ventas", f"{num_ventas}")
-                    col_met3.metric("Ticket Promedio", f"{total_vendido/num_ventas:.1f}" if num_ventas > 0 else "0")
-                    col_met4.metric("Ingresos Stock", f"{num_ingresos}")
-
+                    df_ventas['Total'] = pd.to_numeric(df_ventas['Total']) if 'Total' in df_ventas.columns else df_ventas['Cantidad']
+                    df_ventas['Precio_Compra'] = pd.to_numeric(df_ventas['Precio_Compra']) if 'Precio_Compra' in df_ventas.columns else 0
+                    
+                    # === MÉTRICAS COMO LA FOTO ===
+                    venta_total = df_ventas['Total'].sum() if 'Total' in df_ventas.columns else 0
+                    tickets = len(df_ventas)
+                    ticket_promedio = venta_total / tickets if tickets > 0 else 0
+                    
+                    # Ganancia = Total - Costo
+                    if 'Precio_Compra' in df_ventas.columns:
+                        costo_total = (df_ventas['Precio_Compra'] * df_ventas['Cantidad']).sum()
+                        ganancia = venta_total - costo_total
+                    else:
+                        ganancia = 0
+                    
+                    # === VENTA TOTAL ===
+                    st.markdown("### 💰 VENTA TOTAL")
+                    st.markdown(f"<h1 style='margin:0;font-size:48px;'>S/ {float(venta_total):.2f}</h1>", unsafe_allow_html=True)
+                    
+                    # Comparación semana pasada
+                    fecha_semana_pasada = fecha_reporte - timedelta(days=7)
+                    fecha_iso_semana = fecha_semana_pasada.strftime('%Y-%m-%d')
+                    try:
+                        res_semana = tabla_movs.query(
+                            IndexName='TenantID-FechaISO-index',
+                            KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant) &
+                                                 Key('FechaISO').eq(fecha_iso_semana)
+                        )
+                        ventas_semana = [m for m in res_semana.get('Items', []) if m['Tipo'] == 'VENTA']
+                        total_semana = sum([float(m.get('Total', 0)) for m in ventas_semana])
+                        diferencia = venta_total - total_semana
+                        color = "#2ecc71" if diferencia >= 0 else "#e74c3c"
+                        st.markdown(f"<div style='background:{color};color:white;padding:4px 12px;border-radius:20px;display:inline-block;font-size:14px;'>↑ S/ {diferencia:.2f} vs semana pasada</div>", unsafe_allow_html=True)
+                    except:
+                        pass
+                    
+                    st.write("")
+                    
+                    # === TICKET PROMEDIO ===
+                    st.markdown("### 🧾 TICKET PROMEDIO")
+                    st.markdown(f"<h1 style='margin:0;font-size:48px;'>S/ {float(ticket_promedio):.2f}</h1>", unsafe_allow_html=True)
+                    st.markdown(f"<div style='background:#2ecc71;color:white;padding:4px 12px;border-radius:20px;display:inline-block;font-size:14px;'>↑ {tickets} Tickets hoy</div>", unsafe_allow_html=True)
+                    
+                    st.write("")
+                    
+                    # === GANANCIA NETA ===
+                    st.markdown("### 📈 GANANCIA NETA")
+                    st.markdown(f"<h1 style='margin:0;font-size:48px;'>S/ {float(ganancia):.2f}</h1>", unsafe_allow_html=True)
+                    
                     st.divider()
-
-                    col_top1, col_top2 = st.columns(2)
-                    with col_top1:
-                        st.subheader("🔥 Top Vendidos")
-                        top_vendidos = df_ventas.groupby('Producto')['Cantidad'].sum().sort_values(ascending=False).head(5)
-                        st.dataframe(top_vendidos, use_container_width=True)
-
-                    with col_top2:
-                        st.subheader("📦 Stock Ingresado")
-                        if not df_ingresos.empty:
-                            df_ingresos['Cantidad'] = pd.to_numeric(df_ingresos['Cantidad'])
-                            top_ingresos = df_ingresos.groupby('Producto')['Cantidad'].sum().sort_values(ascending=False).head(5)
-                            st.dataframe(top_ingresos, use_container_width=True)
-                        else:
-                            st.info("Sin ingresos hoy")
-
-                    st.divider()
-
-                    st.subheader("⏰ Ventas por Hora")
-                    df_ventas['Hora'] = pd.to_datetime(df_ventas['Hora'], format='%H:%M:%S').dt.hour
-                    ventas_hora = df_ventas.groupby('Hora')['Cantidad'].sum()
-                    st.bar_chart(ventas_hora)
-
-                    csv = df_ventas.to_csv(index=False).encode('utf-8')
-                    st.download_button(
-                        "📥 Descargar Ventas del Día",
-                        csv,
-                        f"Reporte_{fecha_iso}.csv",
-                        "text/csv",
-                        use_container_width=True
-                    )
+                    
+                    # === POR MÉTODO DE PAGO SEPARADO ===
+                    if 'Metodo' in df_ventas.columns:
+                        # EFECTIVO
+                        df_efectivo = df_ventas[df_ventas['Metodo'].str.contains('EFECTIVO', na=False)]
+                        if not df_efectivo.empty:
+                            total_efectivo = df_efectivo['Total'].sum()
+                            st.markdown("### 💵 EFECTIVO")
+                            st.markdown(f"<h1 style='margin:0;font-size:48px;'>S/ {float(total_efectivo):.2f}</h1>", unsafe_allow_html=True)
+                            st.write("")
+                        
+                        # YAPE
+                        df_yape = df_ventas[df_ventas['Metodo'].str.contains('YAPE', na=False)]
+                        if not df_yape.empty:
+                            total_yape = df_yape['Total'].sum()
+                            st.markdown("### 🟣 YAPE")
+                            st.markdown(f"<h1 style='margin:0;font-size:48px;'>S/ {float(total_yape):.2f}</h1>", unsafe_allow_html=True)
+                            st.write("")
+                        
+                        # PLIN
+                        df_plin = df_ventas[df_ventas['Metodo'].str.contains('PLIN', na=False)]
+                        if not df_plin.empty:
+                            total_plin = df_plin['Total'].sum()
+                            st.markdown("### 🔵 PLIN")
+                            st.markdown(f"<h1 style='margin:0;font-size:48px;'>S/ {float(total_plin):.2f}</h1>", unsafe_allow_html=True)
                 else:
                     st.warning(f"No hay VENTAS registradas el {fecha_reporte.strftime('%d/%m/%Y')}")
-                    if not df_ingresos.empty:
-                        st.info(f"Pero sí hay {len(df_ingresos)} ingresos de stock ese día")
             else:
                 st.info(f"No hay movimientos el {fecha_reporte.strftime('%d/%m/%Y')}")
-
-# === TAB 3: HISTORIAL PARCHADO CON QUERY ===
+# === TAB 3: HISTORIAL ===
 with tabs[3]:
     if st.session_state.rol == "DUEÑO" and not st.session_state.get('modo_lectura', False):
         st.subheader("📋 Historial de Movimientos - Kardex")
 
-        col_f1, col_f2 = st.columns([1, 1])
+        col_f1, col_f2, col_f3 = st.columns([1, 1, 1])
         with col_f1:
             fecha_buscar = st.date_input(
                 "📅 Buscar por fecha:",
@@ -665,8 +695,61 @@ with tabs[3]:
             )
         with col_f2:
             buscar_prod_h = st.text_input("🔍 Producto:", key="hist_buscar").upper()
+        with col_f3:
+            st.write("")
+            btn_buscar_hist = st.button("🔎 BUSCAR MOVIMIENTOS", use_container_width=True, type="primary")
 
-        if st.button("🔎 BUSCAR MOVIMIENTOS", use_container_width=True, type="primary"):
+        # === DESCARGAR KARDEX COMPLETO DEL MES ===
+        with st.expander("📥 DESCARGAR KARDEX COMPLETO"):
+            col_d1, col_d2 = st.columns(2)
+            with col_d1:
+                mes_descarga = st.date_input("Mes a descargar:", value=datetime.now(tz_peru).date().replace(day=1))
+            with col_d2:
+                st.write("")
+                if st.button("📊 GENERAR EXCEL DEL MES", use_container_width=True):
+                    inicio_mes = mes_descarga.replace(day=1).strftime('%Y-%m-%d')
+                    if mes_descarga.month == 12:
+                        fin_mes = mes_descarga.replace(year=mes_descarga.year+1, month=1, day=1) - timedelta(days=1)
+                    else:
+                        fin_mes = mes_descarga.replace(month=mes_descarga.month+1, day=1) - timedelta(days=1)
+                    fin_mes = fin_mes.strftime('%Y-%m-%d')
+                    
+                    with st.spinner('Consultando DynamoDB...'):
+                        res_movs = tabla_movs.query(
+                            IndexName='TenantID-FechaISO-index',
+                            KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant) &
+                                                 Key('FechaISO').between(inicio_mes, fin_mes),
+                            ScanIndexForward=False
+                        )
+                        movs_mes = res_movs.get('Items', [])
+                        
+                        while 'LastEvaluatedKey' in res_movs:
+                            res_movs = tabla_movs.query(
+                                IndexName='TenantID-FechaISO-index',
+                                KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant) &
+                                                     Key('FechaISO').between(inicio_mes, fin_mes),
+                                ScanIndexForward=False,
+                                ExclusiveStartKey=res_movs['LastEvaluatedKey']
+                            )
+                            movs_mes.extend(res_movs.get('Items', []))
+                    
+                    if movs_mes:
+                        df_mes = pd.DataFrame(movs_mes)
+                        buffer_mes = io.BytesIO()
+                        with pd.ExcelWriter(buffer_mes, engine='openpyxl') as writer:
+                            df_mes.to_excel(writer, sheet_name='Kardex', index=False)
+                        
+                        st.download_button(
+                            label=f"📥 DESCARGAR {len(movs_mes)} MOVIMIENTOS",
+                            data=buffer_mes.getvalue(),
+                            file_name=f"Kardex_{st.session_state.tenant}_{mes_descarga.strftime('%Y%m')}.xlsx",
+                            mime="application/vnd.ms-excel",
+                            use_container_width=True
+                        )
+                    else:
+                        st.info("No hay movimientos ese mes")
+
+        if btn_buscar_hist:
             fecha_iso = fecha_buscar.strftime('%Y-%m-%d')
 
             try:
@@ -706,7 +789,8 @@ with tabs[3]:
                     st.info(f"No hay movimientos de '{buscar_prod_h}' el {fecha_buscar.strftime('%d/%m/%Y')}")
             else:
                 st.info(f"No hay movimientos el {fecha_buscar.strftime('%d/%m/%Y')}")
-# === TAB 4: CARGA MASIVA ===
+
+# === TAB 4: CARGAR MASIVO ===
 with tabs[4]:
     if st.session_state.rol == "DUEÑO" and not st.session_state.get('modo_lectura', False):
         col_carga, col_masiva = st.columns(2)
@@ -779,10 +863,44 @@ with tabs[4]:
             st.info(f"Stock máx permitido: {MAX_STOCK_POR_PRODUCTO}")
             st.caption("Usa la columna izquierda para subir tu Excel")
 
-# === TAB 5: MANTENIMIENTO ===
+# === TAB 5: MANTENIMIENTO CON CREAR PRODUCTO ===
 with tabs[5]:
     if st.session_state.rol == "DUEÑO" and not st.session_state.get('modo_lectura', False):
         st.subheader("🛠️ Gestión de Almacén")
+
+        # === CREAR PRODUCTO INDIVIDUAL ===
+        with st.expander("➕ CREAR PRODUCTO NUEVO"):
+            col_n1, col_n2 = st.columns(2)
+            with col_n1:
+                nuevo_prod = st.text_input("Nombre Producto:", key="nuevo_p").upper().strip()
+                nuevo_costo = st.number_input("Precio Compra:", min_value=0.0, value=0.0, key="nuevo_c")
+            with col_n2:
+                nuevo_precio = st.number_input("Precio Venta:", min_value=0.0, value=0.0, key="nuevo_v")
+                nuevo_stock = st.number_input("Stock Inicial:", min_value=1, value=1, key="nuevo_s")
+            
+            if st.button("💾 CREAR PRODUCTO", use_container_width=True):
+                if not nuevo_prod:
+                    st.warning("Pon el nombre CTM")
+                elif nuevo_stock <= 0:
+                    st.warning("Stock debe ser > 0")
+                elif nuevo_stock > MAX_STOCK_POR_PRODUCTO:
+                    st.error(f"❌ Stock máximo: {MAX_STOCK_POR_PRODUCTO}")
+                else:
+                    total_actual = contarProductosEnBD()
+                    if total_actual >= MAX_PRODUCTOS_TOTALES:
+                        st.error(f"❌ Límite de {MAX_PRODUCTOS_TOTALES} productos")
+                    else:
+                        tabla_stock.put_item(Item={
+                            'TenantID': st.session_state.tenant,
+                            'Producto': nuevo_prod,
+                            'Precio_Compra': to_decimal(nuevo_costo),
+                            'Precio': to_decimal(nuevo_precio),
+                            'Stock': int(nuevo_stock)
+                        })
+                        registrar_kardex(nuevo_prod, nuevo_stock, "PRODUCTO NUEVO")
+                        st.success(f"✅ {nuevo_prod} creado"); time.sleep(1); st.rerun()
+        
+        st.divider()
         opcion_m = st.radio("Acción:", ["➕ REPONER STOCK", "📝 MODIFICAR PRECIOS", "🗑️ ELIMINAR"], horizontal=True)
         buscar_m = st.text_input("🔍 Buscar para gestionar:", key="input_mantenimiento").upper()
         lista_m = [p for p in df_inv['Producto'].tolist() if buscar_m in str(p)]
@@ -868,4 +986,4 @@ with st.sidebar:
         st.session_state.confirmar = False
         st.session_state.verifico_cierre = False
         st.session_state.ultima_verificacion_fecha = None
-        st.rerun()                
+        st.rerun()
