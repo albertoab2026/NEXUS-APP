@@ -23,56 +23,181 @@ NUMERO_SOPORTE = "51914282688"
 YAPE_SOPORTE = "Alberto Ballarta"
 DESARROLLADOR = "Alberto Ballarta - Software Engineer"
 
-st.set_page_config(page_title="NEXUS BALLARTA", layout="wide", page_icon="🚀", initial_sidebar_state="collapsed")
+st.set_page_config(
+    page_title="NEXUS BALLARTA - Sistema POS",
+    layout="wide",
+    page_icon="💎",
+    initial_sidebar_state="collapsed",
+    menu_items={
+        'About': "NEXUS BALLARTA v3.0 - Sistema de Punto de Venta Empresarial"
+    }
+)
 tz_peru = pytz.timezone('America/Lima')
 
-# === CSS ===
+# === CSS - PALETA ENTERPRISE ===
 st.markdown("""
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
-        * {font-family: 'Poppins', sans-serif;}
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+        * {font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;}
+
     html, body, [class*="stApp"], [data-testid="stAppViewContainer"], [data-testid="stHeader"] {
             color-scheme: light only!important;
             forced-color-adjust: none!important;
             -webkit-forced-color-adjust: none!important;
         }
-.main {background: linear-gradient(135deg, #667eea 0%, #764ba2 100%)!important;}
-.block-container {
-            background: white!important;
-            color: #262730!important;
+
+   .main {background: linear-gradient(135deg, #667eea 0%, #764ba2 100%)!important;}
+
+   .block-container {
+            background: #ffffff!important;
+            color: #0f172a!important;
+            border-radius: 24px;
+            padding: 3rem;
+            box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
+            border: 1px solid rgba(255,255,255,0.3);
+            margin-top: 2rem;
+            backdrop-filter: blur(10px);
+        }
+
+   .block-container p,.block-container h1,.block-container h2,.block-container h3,
+   .block-container h4,.block-container label,.block-container span,
+   .stMarkdown,.stText,.stCaption {
+            color: #0f172a!important;
+        }
+
+    h1 {font-weight: 900!important; letter-spacing: -0.03em; font-size: 3rem!important;}
+    h2 {font-weight: 800!important; letter-spacing: -0.02em; font-size: 2rem!important;}
+    h3 {font-weight: 700!important; letter-spacing: -0.02em; font-size: 1.5rem!important;}
+
+    /* HERO LOGIN */
+   .hero-login {
+            text-align: center;
+            padding: 60px 20px 40px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             border-radius: 20px;
-            padding: 2rem;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            margin: -3rem -3rem 2rem -3rem;
+            color: white;
         }
-.block-container p,.block-container h1,.block-container h2,.block-container h3,
-.block-container h4,.block-container label,.block-container span,
-.stMarkdown,.stText,.stCaption {
-            color: #262730!important;
+   .hero-login h1 {
+            font-size: 4rem!important;
+            font-weight: 900!important;
+            margin: 0;
+            color: white!important;
+            text-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
-        div[data-testid="stMetric"] {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%)!important;
-            padding: 20px; border-radius: 15px; box-shadow: 0 8px 16px rgba(102,126,234,0.3); border: none;
+   .hero-login p {
+            font-size: 1.25rem;
+            opacity: 0.95;
+            margin: 10px 0 0 0;
+            color: white!important;
+            font-weight: 500;
         }
-        div[data-testid="stMetric"] label {color: white!important; font-weight: 600;}
-        div[data-testid="stMetric"] [data-testid="stMetricValue"] {color: white!important; font-size: 36px;}
-        div[data-testid="stMetric"] [data-testid="stMetricDelta"] {color: white!important; font-size: 14px;}
-.stButton>button {
-            border-radius: 12px; font-weight: 600; border: none;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%)!important;
-            color: white!important; box-shadow: 0 4px 12px rgba(102,126,234,0.4);
+   .hero-badge {
+            display: inline-block;
+            background: rgba(255,255,255,0.2);
+            backdrop-filter: blur(10px);
+            padding: 8px 20px;
+            border-radius: 50px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-top: 15px;
+            border: 1px solid rgba(255,255,255,0.3);
         }
-.stTabs [data-baseweb="tab-list"] {gap: 8px; background: #f8f9fa!important; padding: 10px; border-radius: 15px;}
-.stTabs [data-baseweb="tab"] {border-radius: 10px; padding: 10px 20px; font-weight: 600; color: #262730!important;}
-.stTabs [aria-selected="true"] {background: linear-gradient(135deg, #667eea 0%, #764ba2 100%)!important; color: white!important;}
+
+    /* MÉTRICAS */
+    div[data-testid="stMetric"] {
+            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)!important;
+            padding: 28px;
+            border-radius: 16px;
+            box-shadow: 0 10px 15px -3px rgba(59,130,246,0.3);
+            border: none;
+        }
+    div[data-testid="stMetric"] label {
+            color: rgba(255,255,255,0.9)!important;
+            font-weight: 600;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+    div[data-testid="stMetric"] [data-testid="stMetricValue"] {
+            color: white!important;
+            font-size: 42px;
+            font-weight: 800;
+            letter-spacing: -0.03em;
+        }
+    div[data-testid="stMetric"] [data-testid="stMetricDelta"] {
+            color: #86efac!important;
+            font-size: 15px;
+            font-weight: 700;
+        }
+
+    /* BOTONES */
+   .stButton>button {
+            border-radius: 10px;
+            font-weight: 700;
+            border: none;
+            background: #3b82f6!important;
+            color: white!important;
+            box-shadow: 0 1px 3px 0 rgba(0,0,0,0.1), 0 1px 2px 0 rgba(0,0,0,0.06);
+            height: 52px!important;
+            font-size: 16px!important;
+            letter-spacing: -0.01em;
+            transition: all 0.15s ease;
+        }
+   .stButton>button:hover {
+            background: #2563eb!important;
+            box-shadow: 0 10px 15px -3px rgba(59,130,246,0.4);
+            transform: translateY(-2px);
+        }
+   .stButton>button:active {
+            transform: translateY(0px);
+        }
+
+    button[kind="primary"] {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%)!important;
+            box-shadow: 0 4px 6px -1px rgba(16,185,129,0.3)!important;
+        }
+    button[kind="primary"]:hover {
+            background: linear-gradient(135deg, #059669 0%, #047857 100%)!important;
+            box-shadow: 0 10px 15px -3px rgba(16,185,129,0.4)!important;
+        }
+
+    /* TABS */
+   .stTabs [data-baseweb="tab-list"] {
+            gap: 6px;
+            background: #f1f5f9!important;
+            padding: 8px;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+        }
+   .stTabs [data-baseweb="tab"] {
+            border-radius: 8px;
+            padding: 12px 24px;
+            font-weight: 600;
+            color: #64748b!important;
+            font-size: 15px;
+            transition: all 0.15s;
+        }
+   .stTabs [data-baseweb="tab"]:hover {
+            color: #334155!important;
+            background: rgba(255,255,255,0.5);
+        }
+   .stTabs [aria-selected="true"] {
+            background: white!important;
+            color: #0f172a!important;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+    /* BOTONES DE PAGO */
     button[key="btn_yape"] {
             background: linear-gradient(135deg, #720e9e 0%, #5a0b7a 100%)!important;
             color: white!important;
             font-size: 24px!important;
             font-weight: 800!important;
             height: 100px!important;
-            border: 4px solid #5a0b7a!important;
-            border-radius: 15px!important;
-            box-shadow: 0 8px 16px rgba(114,14,158,0.4)!important;
+            border: none!important;
+            border-radius: 16px!important;
+            box-shadow: 0 10px 15px -3px rgba(114,14,158,0.4)!important;
         }
     button[key="btn_plin"] {
             background: linear-gradient(135deg, #00b9e5 0%, #0094b8 100%)!important;
@@ -80,64 +205,219 @@ st.markdown("""
             font-size: 24px!important;
             font-weight: 800!important;
             height: 100px!important;
-            border: 4px solid #0094b8!important;
-            border-radius: 15px!important;
-            box-shadow: 0 8px 16px rgba(0,185,229,0.4)!important;
+            border: none!important;
+            border-radius: 16px!important;
+            box-shadow: 0 10px 15px -3px rgba(0,185,229,0.4)!important;
         }
     button[key="btn_efectivo"] {
-            background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%)!important;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%)!important;
             color: white!important;
             font-size: 24px!important;
             font-weight: 800!important;
             height: 100px!important;
-            border: 4px solid #27ae60!important;
-            border-radius: 15px!important;
-            box-shadow: 0 8px 16px rgba(46,204,113,0.4)!important;
+            border: none!important;
+            border-radius: 16px!important;
+            box-shadow: 0 10px 15px -3px rgba(16,185,129,0.4)!important;
         }
-    button[key="btn_yape"]:active, button[key="btn_plin"]:active, button[key="btn_efectivo"]:active {
-            transform: scale(0.95)!important;
+    button[key="btn_yape"]:hover, button[key="btn_plin"]:hover, button[key="btn_efectivo"]:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 20px 25px -5px rgba(0,0,0,0.3)!important;
         }
-.stSelectbox>div {
+
+    /* INPUTS */
+   .stSelectbox>div {
             background: white!important;
-            border: 2px solid #e0e0e0!important;
+            border: 1px solid #cbd5e1!important;
             border-radius: 10px!important;
+            font-weight: 500;
+            transition: all 0.15s;
         }
-.stSelectbox>div>div>div {color: #262730!important;}
-.stSelectbox svg {fill: #262730!important;}
+   .stSelectbox>div:hover {
+            border-color: #94a3b8!important;
+        }
+   .stSelectbox>div:focus-within {
+            border-color: #3b82f6!important;
+            box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+        }
+   .stSelectbox>div>div>div {color: #0f172a!important; font-weight: 500;}
+   .stSelectbox svg {fill: #64748b!important;}
+
     [data-baseweb="select"] {background-color: white!important;}
-    [data-baseweb="select"] > div {background-color: white!important; color: #262730!important;}
-    [data-baseweb="popover"] {background-color: white!important;}
-    [data-baseweb="menu"] {background-color: white!important;}
-    [data-baseweb="menu"] li {background-color: white!important; color: #262730!important;}
-    [data-baseweb="menu"] li:hover {background-color: #e3f2fd!important;}
-.stTextInput>div>div>input,.stNumberInput>div>div>input,.stDateInput input {
-            border-radius: 10px; border: 2px solid #e0e0e0!important; padding: 12px;
-            background: white!important; color: #262730!important;
+    [data-baseweb="select"] > div {background-color: white!important; color: #0f172a!important;}
+    [data-baseweb="popover"] {
+            background-color: white!important;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
         }
+    [data-baseweb="menu"] {background-color: white!important; padding: 8px;}
+    [data-baseweb="menu"] li {
+            background-color: white!important;
+            color: #0f172a!important;
+            font-weight: 500;
+            border-radius: 8px;
+            margin: 2px 0;
+        }
+    [data-baseweb="menu"] li:hover {background-color: #f1f5f9!important;}
+
+   .stTextInput>div>input,.stNumberInput>div>div>input,.stDateInput input {
+            border-radius: 10px;
+            border: 1px solid #cbd5e1!important;
+            padding: 14px 18px;
+            background: white!important;
+            color: #0f172a!important;
+            font-weight: 500;
+            font-size: 15px;
+            transition: all 0.15s;
+        }
+   .stTextInput>div>input:hover,.stNumberInput>div>div>input:hover,.stDateInput input:hover {
+            border-color: #94a3b8!important;
+        }
+   .stTextInput>div>input:focus,.stNumberInput>div>div>input:focus,.stDateInput input:focus {
+            border-color: #3b82f6!important;
+            box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
+            outline: none;
+        }
+
     [data-testid="stNumberInput"] {background: white!important;}
     [data-testid="stNumberInput"] input {
             background-color: white!important;
-            color: #262730!important;
+            color: #0f172a!important;
+            font-weight: 500;
         }
     [data-testid="stNumberInput"] button {
-            background-color: #f0f0f0!important;
-            color: #262730!important;
+            background-color: #f8fafc!important;
+            color: #64748b!important;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
         }
-.stSelectbox label,.stTextInput label,.stNumberInput label,.stDateInput label,.stRadio label {color: #262730!important;}
-        [data-testid="stSidebar"] {background: linear-gradient(180deg, #667eea 0%, #764ba2 100%)!important;}
-        [data-testid="stSidebar"] * {color: white!important;}
-        [data-testid="stSidebar"].stButton>button {background: white!important; color: #667eea!important;}
+    [data-testid="stNumberInput"] button:hover {
+            background-color: #f1f5f9!important;
+            border-color: #cbd5e1;
+        }
+
+   .stSelectbox label,.stTextInput label,.stNumberInput label,.stDateInput label,.stRadio label {
+            color: #334155!important;
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 8px;
+            display: block;
+        }
+
+    /* SIDEBAR */
+    [data-testid="stSidebar"] {
+            background: #0f172a!important;
+            border-right: 1px solid #1e293b;
+        }
+    [data-testid="stSidebar"] * {color: white!important;}
+    [data-testid="stSidebar"].stButton>button {
+            background: #3b82f6!important;
+            color: white!important;
+            font-weight: 600;
+            border: none;
+            box-shadow: 0 4px 6px -1px rgba(59,130,246,0.3);
+        }
+    [data-testid="stSidebar"].stButton>button:hover {
+            background: #2563eb!important;
+            box-shadow: 0 10px 15px -3px rgba(59,130,246,0.4);
+        }
+
+    /* EXPANDERS */
     [data-testid="stExpander"] {
             background-color: white!important;
-            border: 1px solid #e0e0e0!important;
+            border: 1px solid #e2e8f0!important;
+            border-radius: 14px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
         }
     [data-testid="stExpander"] summary {
-            background-color: #f5f7fa!important;
-            color: #262730!important;
+            background: #f8fafc!important;
+            color: #0f172a!important;
+            font-weight: 600;
+            border-radius: 14px;
+            padding: 16px 20px;
+            border: none;
+            transition: all 0.15s;
         }
-    [data-testid="stExpander"] > div {background-color: white!important;}
-.streamlit-expanderHeader {background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)!important; border-radius: 10px; font-weight: 600; color: #262730!important;}
-.stAlert {border-radius: 12px; border-left: 5px solid;}
+    [data-testid="stExpander"] summary:hover {
+            background: #f1f5f9!important;
+        }
+    [data-testid="stExpander"] > div {
+            background-color: white!important;
+            padding: 8px 20px 20px 20px;
+        }
+
+   .streamlit-expanderHeader {
+            background: #f8fafc!important;
+            border-radius: 14px;
+            font-weight: 600;
+            color: #0f172a!important;
+            border: 1px solid #e2e8f0;
+        }
+
+    /* ALERTAS */
+   .stAlert {
+            border-radius: 12px;
+            border-left: 4px solid;
+            font-weight: 500;
+            padding: 18px 20px;
+        }
+    div[data-testid="stAlert"][data-baseweb="notification"] {
+            background-color: #eff6ff;
+            border-left-color: #3b82f6;
+            color: #1e40af;
+        }
+
+    /* DATAFRAME */
+   .stDataFrame {
+            border: 1px solid #e2e8f0!important;
+            border-radius: 14px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+   .stDataFrame [data-testid="stTable"] {
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+    /* CHECKBOX */
+   .stCheckbox {
+            font-weight: 500;
+            color: #334155;
+        }
+
+    /* SUCCESS/ERROR/WARNING */
+   .stSuccess {
+            background-color: #f0fdf4;
+            border-left: 4px solid #10b981;
+            color: #065f46;
+            border-radius: 12px;
+            padding: 16px 20px;
+            font-weight: 500;
+        }
+   .stError {
+            background-color: #fef2f2;
+            border-left: 4px solid #ef4444;
+            color: #991b1b;
+            border-radius: 12px;
+            padding: 16px 20px;
+            font-weight: 500;
+        }
+   .stWarning {
+            background-color: #fffbeb;
+            border-left: 4px solid #f59e0b;
+            color: #92400e;
+            border-radius: 12px;
+            padding: 16px 20px;
+            font-weight: 500;
+        }
+   .stInfo {
+            background-color: #eff6ff;
+            border-left: 4px solid #3b82f6;
+            color: #1e40af;
+            border-radius: 12px;
+            padding: 16px 20px;
+            font-weight: 500;
+        }
     </style>
 """, unsafe_allow_html=True)
 # FIN PARTE 1/8
@@ -235,7 +515,7 @@ for k in ['auth','rol','tenant','usuario','carrito','boleta','confirmar','modo_l
         elif k == 'metodo_pago': st.session_state[k] = "💵 EFECTIVO"
         else: st.session_state[k] = None
 # FIN PARTE 2/8
-# === LOGIN CON SEGURIDAD ===
+# === LOGIN CON SEGURIDAD + HERO PREMIUM ===
 if not st.session_state.auth:
     if st.session_state.bloqueo_hasta and datetime.now() < st.session_state.bloqueo_hasta:
         tiempo_restante = (st.session_state.bloqueo_hasta - datetime.now()).seconds
@@ -245,34 +525,34 @@ if not st.session_state.auth:
         time.sleep(1)
         st.rerun()
 
+    # HERO SECTION PREMIUM - SIN FLORO
     st.markdown("""
-        <div style='text-align:center; padding: 40px 0;'>
-            <h1 style='font-size: 3.5rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin:0;'>
-                🚀 NEXUS BALLARTA
-            </h1>
-            <p style='color: #666; font-size: 1.1rem; margin-top: 10px;'>Sistema de Gestión Empresarial</p>
-            <p style='color: #999; font-size: 0.85rem;'>{}</p>
+        <div class='hero-login'>
+            <h1>💎 NEXUS BALLARTA</h1>
+            <p>Sistema de Punto de Venta Empresarial</p>
+            <div class='hero-badge'>🚀 Tecnología de Alto Rendimiento</div>
         </div>
-    """.format(DESARROLLADOR), unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
 
     col1, col2, col3 = st.columns([1,2,1])
     with col2:
         with st.container():
-            st.markdown("### 🔐 Acceso Seguro")
+            st.markdown("### 🔐 Acceso Seguro a tu Negocio")
             tenants = [k for k in st.secrets if k not in ["tablas", "aws"] and not k.endswith("_emp")]
-            t_sel = st.selectbox("📍 Selecciona tu Negocio:", [t.replace("_", " ") for t in tenants])
+            t_sel = st.selectbox("📍 Selecciona tu Negocio:", [t.replace("_", " ") for t in tenants], label_visibility="collapsed")
             t_key = t_sel.replace(" ", "_")
 
             tab_dueno, tab_empleado = st.tabs(["👑 DUEÑO", "👤 EMPLEADO"])
 
             with tab_dueno:
-                clave = st.text_input("🔑 Contraseña:", type="password", key="clave_dueno").strip()[:30]
+                st.markdown("##### Acceso Administrador")
+                clave = st.text_input("🔑 Contraseña:", type="password", key="clave_dueno", placeholder="Ingresa tu contraseña").strip()[:30]
                 if st.session_state.intentos_login > 0:
                     st.caption(f"⚠️ Intentos fallidos: {st.session_state.intentos_login}/5")
                 if st.button("🔓 INGRESAR COMO DUEÑO", use_container_width=True, type="primary"):
                     if clave == str(st.secrets[t_key]["clave"]):
                         st.session_state.update({'auth':True,'tenant':t_sel,'rol':'DUEÑO','usuario':'DUEÑO','intentos_login':0})
-                        st.success("✅ Acceso concedido")
+                        st.success("✅ Bienvenido de vuelta")
                         time.sleep(0.5)
                         st.rerun()
                     else:
@@ -286,14 +566,15 @@ if not st.session_state.auth:
                         st.rerun()
 
             with tab_empleado:
-                nombre = st.text_input("👤 Tu nombre:", max_chars=20, key="nombre_emp").upper().strip()
-                clave_emp = st.text_input("🔑 Contraseña:", type="password", key="clave_emp").strip()[:30]
+                st.markdown("##### Acceso Operativo")
+                nombre = st.text_input("👤 Tu nombre:", max_chars=20, key="nombre_emp", placeholder="Ej: JUAN").upper().strip()
+                clave_emp = st.text_input("🔑 Contraseña:", type="password", key="clave_emp", placeholder="Contraseña del equipo").strip()[:30]
                 if st.session_state.intentos_login > 0:
                     st.caption(f"⚠️ Intentos fallidos: {st.session_state.intentos_login}/5")
                 if st.button("🧑‍💼 INGRESAR COMO EMPLEADO", use_container_width=True, type="primary"):
                     if nombre and clave_emp == str(st.secrets[f"{t_key}_emp"]["clave"]):
                         st.session_state.update({'auth':True,'tenant':t_sel,'rol':'EMPLEADO','usuario':nombre,'intentos_login':0})
-                        st.success("✅ Acceso concedido")
+                        st.success(f"✅ Bienvenido {nombre}")
                         time.sleep(0.5)
                         st.rerun()
                     else:
@@ -305,6 +586,10 @@ if not st.session_state.auth:
                             st.error(f"❌ Datos incorrectos. Te quedan {5 - st.session_state.intentos_login} intentos")
                         time.sleep(2)
                         st.rerun()
+
+            st.write("")
+            st.caption("🔒 Conexión segura SSL | 💎 NEXUS v3.0 Enterprise")
+            st.caption("Soporte 24/7: +51 914 282 688")
     st.stop()
 
 # === POST LOGIN ===
@@ -336,13 +621,13 @@ with tabs[0]:
     if st.session_state.boleta:
         b = st.session_state.boleta
         st.success("✅ VENTA REALIZADA")
-        st.markdown(f"""<div style="background:white;color:black;padding:20px;border:2px solid #667eea;max-width:350px;margin:auto;font-family:monospace;border-radius:15px;box-shadow:0 8px 20px rgba(102,126,234,0.3);">
-            <h3 style="text-align:center;margin:0;color:#667eea;">{st.session_state.tenant}</h3>
-            <p style="text-align:center;margin:0;">{b['fecha']} {b['hora']}</p><hr style="border-color:#667eea;">
+        st.markdown(f"""<div style="background:white;color:black;padding:20px;border:2px solid #3b82f6;max-width:350px;margin:auto;font-family:monospace;border-radius:16px;box-shadow:0 10px 15px -3px rgba(59,130,246,0.3);">
+            <h3 style="text-align:center;margin:0;color:#3b82f6;">{st.session_state.tenant}</h3>
+            <p style="text-align:center;margin:0;">{b['fecha']} {b['hora']}</p><hr style="border-color:#3b82f6;">
             {''.join([f'<div style="display:flex;justify-content:space-between;"><span>{i["Cantidad"]}x {i["Producto"]}</span><span>S/{float(i["Subtotal"]):.2f}</span></div>' for i in b['items']])}
-            <hr style="border-color:#667eea;"><div style="display:flex;justify-content:space-between;"><span>MÉTODO:</span><span>{b['metodo']}</span></div>
-            <div style="display:flex;justify-content:space-between;color:#e74c3c;"><span>DESC:</span><span>- S/{float(b['rebaja']):.2f}</span></div>
-            <div style="display:flex;justify-content:space-between;font-size:18px;color:#667eea;"><b>NETO:</b><b>S/{float(b['t_neto']):.2f}</b></div>""", unsafe_allow_html=True)
+            <hr style="border-color:#3b82f6;"><div style="display:flex;justify-content:space-between;"><span>MÉTODO:</span><span>{b['metodo']}</span></div>
+            <div style="display:flex;justify-content:space-between;color:#ef4444;"><span>DESC:</span><span>- S/{float(b['rebaja']):.2f}</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:18px;color:#3b82f6;"><b>NETO:</b><b>S/{float(b['t_neto']):.2f}</b></div>""", unsafe_allow_html=True)
 
         pdf = FPDF(orientation='P', unit='mm', format=(80, 200))
         pdf.add_page()
@@ -416,7 +701,7 @@ with tabs[0]:
                     else: st.error("❌ Sin stock")
             if st.session_state.carrito:
                 for idx, item in enumerate(st.session_state.carrito):
-                    c1, c2 = st.columns([3,1]) # ARREGLADO: 2 COLUMNAS
+                    c1, c2 = st.columns([3,1])
                     c1.write(f"{item['Producto']} x{item['Cantidad']}")
                     c2.write(f"S/{float(item['Subtotal']):.2f}")
                 if st.button("🗑️ VACIAR", key="btn_vaciar_carrito"): st.session_state.carrito = []; st.rerun()
@@ -443,11 +728,11 @@ with tabs[0]:
                         st.rerun()
 
                 metodo = st.session_state.metodo_pago
-                st.markdown(f"<h3 style='text-align:center;color:#667eea;'>Seleccionado: {metodo}</h3>", unsafe_allow_html=True)
+                st.markdown(f"<h3 style='text-align:center;color:#3b82f6;'>Seleccionado: {metodo}</h3>", unsafe_allow_html=True)
 
                 rebaja = st.number_input("💸 Descuento:", min_value=0.0, value=0.0, key="num_rebaja")
                 total = max(Decimal('0.00'), sum(i['Subtotal'] for i in st.session_state.carrito) - to_decimal(rebaja))
-                st.markdown(f"<h1 style='text-align:center;color:#667eea;font-size:3rem;'>S/ {float(total):.2f}</h1>", unsafe_allow_html=True)
+                st.markdown(f"<h1 style='text-align:center;color:#3b82f6;font-size:3rem;'>S/ {float(total):.2f}</h1>", unsafe_allow_html=True)
                 if st.button("🚀 FINALIZAR", use_container_width=True, type="primary", key="btn_finalizar"): st.session_state.confirmar = True
                 if st.session_state.confirmar:
                     if st.button(f"✅ CONFIRMAR S/ {float(total):.2f}", use_container_width=True, key="btn_confirmar_venta"):
@@ -494,7 +779,7 @@ with tabs[0]:
             else:
                 st.warning("⚠️ No hay productos cargados. Pide al dueño que agregue productos.")
 # FIN PARTE 4/8
-# === TAB STOCK - SIN SCROLL LATERAL EN MÓVIL ===
+# === TAB STOCK ===
 with tabs[1]:
     st.subheader("📦 Inventario")
 
@@ -531,7 +816,6 @@ with tabs[1]:
             else:
                 df_pagina = df_mostrar
 
-            # SOLO 3 COLUMNAS PARA QUE ENTRE SIN SCROLL
             df_tabla = df_pagina[['Producto', 'Stock', 'Precio']].copy()
             df_tabla.columns = ['PROD', 'STOCK', 'VENTA']
             df_tabla['STOCK'] = df_tabla['STOCK'].astype(int)
@@ -548,7 +832,6 @@ with tabs[1]:
                 }
             )
 
-            # VER DETALLE COMPLETO AL TOCAR
             with st.expander("🔍 VER DETALLE COMPLETO - COSTO + VENTA"):
                 st.dataframe(
                     df_pagina[['Producto', 'Stock', 'Precio_Compra', 'Precio']],
@@ -596,7 +879,7 @@ with tabs[1]:
             col3.metric("Stock bajo <5", len(df_inv[df_inv['Stock'] < 5]))
             col4.metric("Valor inventario", f"S/ {(df_inv['Stock'] * df_inv['Precio_Compra']).sum():.2f}")
 
-# === TAB REPORTES - SIN SCROLL LATERAL ===
+# === TAB REPORTES ===
 with tabs[2]:
     st.subheader("📊 Reportes del Día")
 
@@ -658,7 +941,7 @@ with tabs[2]:
 
         with col1:
             st.markdown("### 💰 VENTA TOTAL")
-            st.markdown(f"<h1 style='margin:0;font-size:38px;color:#667eea;'>S/ {float(vt):.2f}</h1>", unsafe_allow_html=True)
+            st.markdown(f"<h1 style='margin:0;font-size:38px;color:#3b82f6;'>S/ {float(vt):.2f}</h1>", unsafe_allow_html=True)
             if dif >= 0:
                 st.success(f"↑ {abs(pct):.1f}% vs semana pasada")
             else:
@@ -666,13 +949,12 @@ with tabs[2]:
 
         with col2:
             st.markdown("### 📈 GANANCIA REAL")
-            st.markdown(f"<h1 style='margin:0;font-size:38px;color:#2ecc71;'>S/ {float(gn_total):.2f}</h1>", unsafe_allow_html=True)
+            st.markdown(f"<h1 style='margin:0;font-size:38px;color:#10b981;'>S/ {float(gn_total):.2f}</h1>", unsafe_allow_html=True)
             st.info(f"Tickets: {tk} | Ticket Prom: S/{float(tp):.2f} | Margen: {(gn_total/vt*100) if vt > 0 else 0:.1f}%")
 
         st.write("---")
 
         with st.expander("🧾 VER TICKETS DEL DÍA - MÁS RECIENTE ARRIBA", expanded=True):
-            # SOLO 4 COLUMNAS PA' QUE ENTRE
             df_tickets = df_v[['Hora', 'Producto', 'Cantidad', 'Total']].copy()
             df_tickets['Cantidad'] = df_tickets['Cantidad'].astype(int)
             df_tickets.columns = ['HORA', 'PROD', 'CANT', 'TOTAL']
@@ -718,7 +1000,6 @@ with tabs[3]:
 
     fecha_iso_h = f_h.strftime('%Y-%m-%d')
 
-    # EMPLEADO VE SOLO SUS MOVIMIENTOS, DUEÑO VE TODO
     if st.session_state.rol == "EMPLEADO":
         res_h = tabla_movs.query(
             IndexName='TenantID-FechaISO-index',
@@ -736,13 +1017,13 @@ with tabs[3]:
         df_h['Total'] = pd.to_numeric(df_h['Total'], errors='coerce').fillna(0)
         df_h['Precio_Compra'] = pd.to_numeric(df_h['Precio_Compra'], errors='coerce').fillna(0)
         df_h['Cantidad'] = pd.to_numeric(df_h['Cantidad'], errors='coerce').fillna(0)
+        df_h['Usuario'] = df_h['Usuario'].fillna('SISTEMA')
         df_h['Costo'] = df_h['Precio_Compra'] * df_h['Cantidad']
         df_h['Ganancia'] = df_h.apply(lambda r: r['Total'] - r['Costo'] if r['Tipo'] == 'VENTA' else 0, axis=1)
 
-        # TABLA CON 4 COLUMNAS MAX
-        df_tabla_h = df_h[['Hora', 'Producto', 'Tipo', 'Cantidad', 'Total']].copy()
+        df_tabla_h = df_h[['Hora', 'Producto', 'Tipo', 'Cantidad', 'Usuario']].copy()
         df_tabla_h['Cantidad'] = df_tabla_h['Cantidad'].astype(int)
-        df_tabla_h.columns = ['HORA', 'PROD', 'TIPO', 'CANT', 'TOTAL']
+        df_tabla_h.columns = ['HORA', 'PROD', 'TIPO', 'CANT', 'USUARIO']
 
         st.dataframe(
             df_tabla_h,
@@ -754,7 +1035,7 @@ with tabs[3]:
                 "PROD": st.column_config.TextColumn("PROD", width="small"),
                 "TIPO": st.column_config.TextColumn("TIPO", width="small"),
                 "CANT": st.column_config.NumberColumn("CANT", width="small"),
-                "TOTAL": st.column_config.NumberColumn("TOTAL", width="small", format="S/ %.2f")
+                "USUARIO": st.column_config.TextColumn("QUIÉN", width="small")
             }
         )
 
@@ -773,7 +1054,6 @@ with tabs[3]:
             with pd.ExcelWriter(buf, engine='openpyxl') as w: df_h.to_excel(w, index=False)
             st.download_button("📥 DESCARGAR EXCEL", buf.getvalue(), f"Kardex_{f_h.strftime('%Y%m%d')}.xlsx", use_container_width=True, key="btn_desc_kardex")
 
-            # WHATSAPP SOLO SI PLAN PRO/PREMIUM
             if tiene_whatsapp_habilitado():
                 res = f"*REPORTE {f_h.strftime('%d/%m/%Y')}*\nVenta: S/{float(vt_h):.2f}\nCosto: S/{float(costo_h):.2f}\n*Ganancia: S/{float(gn_h):.2f}*"
                 st.link_button("📲 COMPARTIR", f"https://wa.me/?text={urllib.parse.quote(res)}", use_container_width=True)
@@ -791,7 +1071,6 @@ with tabs[3]:
     fecha_cierre = st.date_input("Fecha a cerrar:", value=datetime.now(tz_peru).date(), key="date_cierre_fix")
     fecha_iso_cierre = fecha_cierre.strftime('%Y-%m-%d')
 
-    # EMPLEADO SOLO CIERRA SUS VENTAS, DUEÑO CIERRA TODO
     if st.session_state.rol == "EMPLEADO":
         res_cierre_check = tabla_cierres.query(
             KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant),
@@ -804,14 +1083,12 @@ with tabs[3]:
 
     if ya_cerro_caja:
         st.success(f"✅ Caja del {fecha_cierre.strftime('%d/%m/%Y')} ya fue cerrada")
-        # SOLO DUEÑO PUEDE REABRIR
         if st.session_state.rol == "DUEÑO":
             if st.button("🔓 REABRIR CAJA", use_container_width=True, key="btn_reabrir_caja_hist"):
                 for c in res_cierre_check.get('Items', []):
                     tabla_cierres.delete_item(Key={'TenantID': st.session_state.tenant, 'CierreID': c['CierreID']})
                 st.success("✅ Caja reabierta"); time.sleep(1); st.rerun()
     else:
-        # EMPLEADO SOLO VE SUS VENTAS PARA CERRAR
         if st.session_state.rol == "EMPLEADO":
             res_cierre_calc = tabla_movs.query(
                 IndexName='TenantID-FechaISO-index',
@@ -1006,7 +1283,7 @@ if st.session_state.rol == "DUEÑO" and len(tabs) > 5:
         col2.metric("Precio Mensual", f"S/ {PRECIO_ACTUAL}")
         col3.metric("Productos", f"{contarProductosEnBD()}/{MAX_PRODUCTOS_TOTALES}")
 
-        st.caption("💡 *Todos los planes incluyen instalación y configuración inicial sin costo adicional. Servicio por única vez al contratar.*")
+        st.caption("💡 *Todos los planes incluyen instalación y configuración inicial sin costo adicional.*")
 
         st.write("---")
         st.subheader("📲 Soporte Técnico")
@@ -1017,7 +1294,7 @@ if st.session_state.rol == "DUEÑO" and len(tabs) > 5:
 with st.sidebar:
     st.markdown(f"""
         <div style='text-align:center; padding: 20px 0;'>
-            <h2 style='margin:0; color:white;'>🚀 NEXUS</h2>
+            <h2 style='margin:0; color:white;'>💎 NEXUS</h2>
             <p style='margin:5px 0; color:white; opacity:0.8;'>{st.session_state.tenant}</p>
             <p style='margin:0; color:white; font-size:12px;'>{st.session_state.usuario}</p>
         </div>
@@ -1033,5 +1310,5 @@ with st.sidebar:
     st.caption(f"Plan: {PLAN_ACTUAL}")
     st.caption(f"Versión 3.0")
     st.caption(DESARROLLADOR)
-    st.caption("✨ Instalación inicial incluida en todos los planes")
+    st.caption("✨ Instalación inicial incluida")
 # FIN PARTE 8/8
