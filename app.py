@@ -140,7 +140,6 @@ st.markdown("""
 .stAlert {border-radius: 12px; border-left: 5px solid;}
     </style>
 """, unsafe_allow_html=True)
-# FIN PARTE 1/8
 def to_decimal(f): return Decimal(str(f)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
 
 def obtener_tiempo_peru():
@@ -234,7 +233,6 @@ for k in ['auth','rol','tenant','usuario','carrito','boleta','confirmar','modo_l
         elif k in ['bloqueo_hasta']: st.session_state[k] = None
         elif k == 'metodo_pago': st.session_state[k] = "💵 EFECTIVO"
         else: st.session_state[k] = None
-# FIN PARTE 2/8
 # === LOGIN CON SEGURIDAD ===
 if not st.session_state.auth:
     if st.session_state.bloqueo_hasta and datetime.now() < st.session_state.bloqueo_hasta:
@@ -317,7 +315,6 @@ tabs_list = ["🛒 VENTA", "📦 STOCK", "📊 REPORTES"]
 if st.session_state.rol == "DUEÑO" and not st.session_state.get('modo_lectura', False):
     tabs_list += ["📋 HISTORIAL", "📥 CARGAR", "🛠️ MANT."]
 tabs = st.tabs(tabs_list)
-# FIN PARTE 3/8
 # === TAB VENTA ===
 with tabs[0]:
     f_hoy, h_hoy, _ = obtener_tiempo_peru()
@@ -456,7 +453,6 @@ with tabs[0]:
                         registrar_kardex(item['Producto'], item['Cantidad'], "VENTA", item['Subtotal'], item['Precio_Compra'], metodo)
                     st.session_state.boleta = {'items': st.session_state.carrito, 't_neto': total, 'rebaja': to_decimal(rebaja), 'metodo': metodo, 'fecha': f, 'hora': h}
                     st.session_state.carrito = []; st.session_state.confirmar = False; st.rerun()
-# FIN PARTE 4/8
 # === TAB STOCK - TABLA MANUAL ANTI-BLANCO ===
 with tabs[1]:
     st.subheader("📦 Inventario")
@@ -762,50 +758,6 @@ if st.session_state.rol == "DUEÑO" and len(tabs) > 4:
         actual = contarProductosEnBD()
         st.info(f"Productos: {actual}/{MAX_PRODUCTOS_TOTALES} | Stock máx/producto: {MAX_STOCK_POR_PRODUCTO}")
 
-        with st.expander("📝 AGREGAR PRODUCTO INDIVIDUAL", expanded=True):
-            col1, col2 = st.columns(2)
-            prod = col1.text_input("Producto:", max_chars=30, key="prod_cargar").upper().strip()
-            pc = col1.number_input("Precio Compra:", min_value=0.0, value=0.0, key="pc_cargar")
-            p = col2.number_input("Precio Venta:", min_value=0.01, value=1.0, key="p_cargar")
-            s = col2.number_input("Stock:", min_value=0, value=0, key="s_cargar")
-
-            if st.button("➕ AGREGAR PRODUCTO", use_container_width=True, key="btn_agregar_prod"):
-                if prod and p > 0:
-                    if actual >= MAX_PRODUCTOS_TOTALES:
-                        st.error(f"❌ Límite de {MAX_PRODUCTOS_TOTALES} productos alcanzado")
-                    elif s > MAX_STOCK_POR_PRODUCTO:
-                        st.error(f"❌ Stock máximo por producto: {MAX_STOCK_POR_PRODUCTO}")
-                    else:
-                        try:
-                            tabla_stock.put_item(Item={
-                                'TenantID': st.session_state.tenant, 'Producto': prod,
-                                'Precio_Compra': to_decimal(pc), 'Precio': to_decimal(p), 'Stock': int(s)
-                            }, ConditionExpression='attribute_not_exists(Producto)')
-                            registrar_kardex(prod, s, "CARGA_INICIAL", s * p, pc, "INVENTARIO")
-                            st.success(f"✅ {prod} agregado"); time.sleep(1); st.rerun()
-                        except dynamodb.meta.client.exceptions.ConditionalCheckFailedException:
-                            st.error("❌ Producto ya existe")
-                else:
-                    st.error("❌ Completa todos los campos")
-
-        st.write("---")
-        st.subheader("📊 CARGA MASIVA EXCEL")
-        st.caption("Formato: Producto | Precio_Compra | Precio | Stock")
-
-        archivo = st.file_uploader("Sube tu Excel", type=['xlsx', 'xls'], key="upload_excel")
-        if archivo:
-            try:
-                df_upload = pd.read_excel(archivo)
-                df_upload.columns = [c.strip() for c in df_upload.columns]
-
-                columnas_req = ['Producto', 'Precio_Compra', 'Precio', 'Stock']
-# === TAB CARGAR - SOLO DUEÑO ===
-if st.session_state.rol == "DUEÑO" and len(tabs) > 4:
-    with tabs[4]:
-        st.subheader("📥 Cargar Productos")
-        actual = contarProductosEnBD()
-        st.info(f"Productos: {actual}/{MAX_PRODUCTOS_TOTALES} | Stock máx/producto: {MAX_STOCK_POR_PRODUCTO}")
-
         tab_nuevo, tab_ingreso = st.tabs(["➕ PRODUCTO NUEVO", "📦 INGRESO DE STOCK"])
 
         with tab_nuevo:
@@ -838,21 +790,21 @@ if st.session_state.rol == "DUEÑO" and len(tabs) > 4:
         with tab_ingreso:
             st.markdown("### 📦 INGRESO DE MERCADERÍA")
             st.caption("Suma stock a productos que ya existen sin tocar el precio")
-            
+
             if not df_inv.empty:
                 prod_ingreso = st.selectbox("Selecciona producto:", df_inv['Producto'].tolist(), key="sel_ingreso")
-                
+
                 if prod_ingreso:
                     df_prod = df_inv[df_inv['Producto'] == prod_ingreso].iloc[0]
                     st.info(f"Stock actual: {int(df_prod['Stock'])} | Precio Compra: S/{df_prod['Precio_Compra']:.2f} | Precio Venta: S/{df_prod['Precio']:.2f}")
-                    
+
                     col1, col2 = st.columns(2)
                     cant_ingreso = col1.number_input("Cantidad a ingresar:", min_value=1, value=1, key="cant_ingreso")
                     nuevo_pc = col2.number_input("Precio Compra nuevo lote:", min_value=0.0, value=float(df_prod['Precio_Compra']), key="pc_ingreso", help="Si cambió el precio de compra")
-                    
+
                     stock_final = int(df_prod['Stock']) + cant_ingreso
                     st.metric("Stock después del ingreso", stock_final)
-                    
+
                     if st.button("📥 REGISTRAR INGRESO", use_container_width=True, type="primary", key="btn_ingreso_stock"):
                         if stock_final > MAX_STOCK_POR_PRODUCTO:
                             st.error(f"❌ Stock máximo: {MAX_STOCK_POR_PRODUCTO}. Te pasas por {stock_final - MAX_STOCK_POR_PRODUCTO}")
@@ -860,13 +812,13 @@ if st.session_state.rol == "DUEÑO" and len(tabs) > 4:
                             # Actualizar stock y precio compra promedio
                             stock_viejo = int(df_prod['Stock'])
                             pc_viejo = float(df_prod['Precio_Compra'])
-                            
+
                             # Calcular precio compra promedio ponderado
                             if stock_viejo > 0:
                                 pc_promedio = ((stock_viejo * pc_viejo) + (cant_ingreso * nuevo_pc)) / stock_final
                             else:
                                 pc_promedio = nuevo_pc
-                            
+
                             tabla_stock.update_item(
                                 Key={'TenantID': st.session_state.tenant, 'Producto': prod_ingreso},
                                 UpdateExpression="SET Stock = :s, Precio_Compra = :pc",
