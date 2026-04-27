@@ -26,7 +26,7 @@ DESARROLLADOR = "Alberto Ballarta - Software Engineer"
 st.set_page_config(page_title="NEXUS BALLARTA", layout="wide", page_icon="🚀", initial_sidebar_state="collapsed")
 tz_peru = pytz.timezone('America/Lima')
 
-# === CSS + JS NUCLEAR ANTI-DARK MODE ===
+# === CSS + BOTONES GIGANTES ===
 st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
@@ -37,19 +37,18 @@ st.markdown("""
             color-scheme: light only!important;
             forced-color-adjust: none!important;
             -webkit-forced-color-adjust: none!important;
-            -ms-high-contrast-adjust: none!important;
         }
-  .main {background: linear-gradient(135deg, #667eea 0%, #764ba2 100%)!important;}
-  .block-container {
+ .main {background: linear-gradient(135deg, #667eea 0%, #764ba2 100%)!important;}
+ .block-container {
             background: white!important; 
             color: #262730!important;
             border-radius: 20px; 
             padding: 2rem; 
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
         }
-  .block-container p,.block-container h1,.block-container h2,.block-container h3, 
-  .block-container h4,.block-container label,.block-container span,
-  .stMarkdown,.stText,.stCaption {
+ .block-container p,.block-container h1,.block-container h2,.block-container h3, 
+ .block-container h4,.block-container label,.block-container span,
+ .stMarkdown,.stText,.stCaption {
             color: #262730!important;
         }
         div[data-testid="stMetric"] {
@@ -58,23 +57,50 @@ st.markdown("""
         }
         div[data-testid="stMetric"] label {color: white!important; font-weight: 600;}
         div[data-testid="stMetric"] [data-testid="stMetricValue"] {color: white!important; font-size: 36px;}
-  .stButton>button {
+        div[data-testid="stMetric"] [data-testid="stMetricDelta"] {color: white!important; font-size: 14px;}
+ .stButton>button {
             border-radius: 12px; font-weight: 600; border: none;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%)!important; 
             color: white!important; box-shadow: 0 4px 12px rgba(102,126,234,0.4);
         }
-  .stTabs [data-baseweb="tab-list"] {gap: 8px; background: #f8f9fa!important; padding: 10px; border-radius: 15px;}
-  .stTabs [data-baseweb="tab"] {border-radius: 10px; padding: 10px 20px; font-weight: 600; color: #262730!important;}
-  .stTabs [aria-selected="true"] {background: linear-gradient(135deg, #667eea 0%, #764ba2 100%)!important; color: white!important;}
+ .stTabs [data-baseweb="tab-list"] {gap: 8px; background: #f8f9fa!important; padding: 10px; border-radius: 15px;}
+ .stTabs [data-baseweb="tab"] {border-radius: 10px; padding: 10px 20px; font-weight: 600; color: #262730!important;}
+ .stTabs [aria-selected="true"] {background: linear-gradient(135deg, #667eea 0%, #764ba2 100%)!important; color: white!important;}
+   
+        /* BOTONES GIGANTES DE PAGO */
+    button[key="btn_yape"] {
+            background: #720e9e!important;
+            color: white!important;
+            font-size: 20px!important;
+            font-weight: 700!important;
+            height: 90px!important;
+            border: 3px solid #5a0b7a!important;
+        }
+    button[key="btn_plin"] {
+            background: #00b9e5!important;
+            color: white!important;
+            font-size: 20px!important;
+            font-weight: 700!important;
+            height: 90px!important;
+            border: 3px solid #0094b8!important;
+        }
+    button[key="btn_efectivo"] {
+            background: #2ecc71!important;
+            color: white!important;
+            font-size: 20px!important;
+            font-weight: 700!important;
+            height: 90px!important;
+            border: 3px solid #27ae60!important;
+        }
    
         /* FIX SELECTBOX + DROPDOWN */
-  .stSelectbox>div>div {
+ .stSelectbox>div>div {
             background: white!important; 
             border: 2px solid #e0e0e0!important; 
             border-radius: 10px!important;
         }
-  .stSelectbox>div>div>div {color: #262730!important;}
-  .stSelectbox svg {fill: #262730!important;}
+ .stSelectbox>div>div>div {color: #262730!important;}
+ .stSelectbox svg {fill: #262730!important;}
     [data-baseweb="select"] {background-color: white!important;}
     [data-baseweb="select"] > div {background-color: white!important; color: #262730!important;}
     [data-baseweb="popover"] {background-color: white!important;}
@@ -83,7 +109,7 @@ st.markdown("""
     [data-baseweb="menu"] li:hover {background-color: #e3f2fd!important;}
    
         /* FIX INPUTS + NUMBER INPUT */
-  .stTextInput>div>div>input,.stNumberInput>div>div>input,.stDateInput input {
+ .stTextInput>div>div>input,.stNumberInput>div>div>input,.stDateInput input {
             border-radius: 10px; border: 2px solid #e0e0e0!important; padding: 12px;
             background: white!important; color: #262730!important;
         }
@@ -96,14 +122,14 @@ st.markdown("""
             background-color: #f0f0f0!important;
             color: #262730!important;
         }
-  .stSelectbox label,.stTextInput label,.stNumberInput label,.stDateInput label,.stRadio label {color: #262730!important;}
+ .stSelectbox label,.stTextInput label,.stNumberInput label,.stDateInput label,.stRadio label {color: #262730!important;}
    
         /* SIDEBAR */
         [data-testid="stSidebar"] {background: linear-gradient(180deg, #667eea 0%, #764ba2 100%)!important;}
         [data-testid="stSidebar"] * {color: white!important;}
         [data-testid="stSidebar"].stButton>button {background: white!important; color: #667eea!important;}
    
-        /* FIX TABLAS - NUCLEAR */
+        /* FIX TABLAS */
     [data-testid="stDataFrame"] {background-color: white!important;}
     [data-testid="stDataFrame"] * {
             background-color: white!important;
@@ -111,21 +137,14 @@ st.markdown("""
             border-color: #e0e0e0!important;
         }
     [data-testid="stDataFrame"] thead {background-color: #f8f9fa!important;}
-    [data-testid="stDataFrame"] thead tr {background-color: #f8f9fa!important;}
     [data-testid="stDataFrame"] thead tr th {
             background-color: #f8f9fa!important;
             color: #262730!important;
-            position: sticky!important;
-            top: 0!important;
-            z-index: 10!important;
         }
-    [data-testid="stDataFrame"] tbody tr {background-color: white!important;}
     [data-testid="stDataFrame"] tbody tr:nth-child(even) {background-color: #f9f9f9!important;}
     [data-testid="stDataFrame"] tbody tr:nth-child(even) td {background-color: #f9f9f9!important;}
     [data-testid="stDataFrame"] tbody tr:nth-child(odd) {background-color: white!important;}
     [data-testid="stDataFrame"] tbody tr:nth-child(odd) td {background-color: white!important;}
-    [data-testid="stTable"] {background-color: white!important;}
-    [data-testid="stTable"] * {background-color: white!important; color: #262730!important;}
    
         /* EXPANDER */
     [data-testid="stExpander"] {
@@ -137,31 +156,20 @@ st.markdown("""
             color: #262730!important;
         }
     [data-testid="stExpander"] > div {background-color: white!important;}
-  .streamlit-expanderHeader {background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)!important; border-radius: 10px; font-weight: 600; color: #262730!important;}
-  .stAlert {border-radius: 12px; border-left: 5px solid;}
-  .element-container {overflow-x: auto!important;}
+ .streamlit-expanderHeader {background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)!important; border-radius: 10px; font-weight: 600; color: #262730!important;}
+ .stAlert {border-radius: 12px; border-left: 5px solid;}
     </style>
     
     <script>
-        // Detecta dark mode y avisa
         if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
             setTimeout(() => {
                 const div = document.createElement('div');
-                div.innerHTML = '<div style="background:#ff9800;color:white;padding:15px;border-radius:10px;margin:10px;text-align:center;font-weight:600;">⚠️ MODO OSCURO DETECTADO<br>Para mejor visualización, use modo claro o Firefox</div>';
+                div.innerHTML = '<div style="background:#ff9800;color:white;padding:15px;border-radius:10px;margin:10px;text-align:center;font-weight:600;">⚠️ MODO OSCURO DETECTADO<br>Para mejor visualización, use modo claro</div>';
                 if(document.body.firstChild) {
                     document.body.insertBefore(div, document.body.firstChild);
                 }
             }, 500);
         }
-        
-        // Fuerza color-scheme cada 200ms
-        setInterval(() => {
-            document.documentElement.style.setProperty('color-scheme', 'light only', 'important');
-            document.querySelectorAll('[data-testid="stDataFrame"] th').forEach(el => {
-                el.style.setProperty('background', '#f8f9fa', 'important');
-                el.style.setProperty('color', '#262730', 'important');
-            });
-        }, 200);
     </script>
 """, unsafe_allow_html=True)
 
@@ -250,12 +258,13 @@ def tiene_whatsapp_habilitado():
     except: return PLAN_ACTUAL in ["PRO", "PREMIUM"]
 
 # === ESTADO ===
-for k in ['auth','rol','tenant','usuario','carrito','boleta','confirmar','modo_lectura','intentos_login','bloqueo_hasta']:
+for k in ['auth','rol','tenant','usuario','carrito','boleta','confirmar','modo_lectura','intentos_login','bloqueo_hasta','metodo_pago']:
     if k not in st.session_state:
         if k in ['carrito']: st.session_state[k] = []
         elif k in ['auth','confirmar','modo_lectura']: st.session_state[k] = False
         elif k in ['intentos_login']: st.session_state[k] = 0
         elif k in ['bloqueo_hasta']: st.session_state[k] = None
+        elif k == 'metodo_pago': st.session_state[k] = "💵 EFECTIVO"
         else: st.session_state[k] = None
 # === LOGIN CON SEGURIDAD ===
 if not st.session_state.auth:
@@ -435,7 +444,29 @@ with tabs[0]:
         if st.session_state.carrito:
             st.dataframe(pd.DataFrame(st.session_state.carrito)[['Producto', 'Cantidad', 'Subtotal']], use_container_width=True, hide_index=True)
             if st.button("🗑️ VACIAR", key="btn_vaciar_carrito"): st.session_state.carrito = []; st.rerun()
-            metodo = st.radio("Pago:", ["💵 EFECTIVO", "🟣 YAPE", "🔵 PLIN"], horizontal=True, key="radio_metodo")
+            
+            # BOTONES GIGANTES DE PAGO
+            st.write("**Pago:**")
+            col_ef, col_yape, col_plin = st.columns(3)
+            
+            with col_ef:
+                if st.button("💵\nEFECTIVO", use_container_width=True, type="primary" if st.session_state.metodo_pago=="💵 EFECTIVO" else "secondary", key="btn_efectivo"):
+                    st.session_state.metodo_pago = "💵 EFECTIVO"
+                    st.rerun()
+            
+            with col_yape:
+                if st.button("🟣\nYAPE", use_container_width=True, type="primary" if st.session_state.metodo_pago=="🟣 YAPE" else "secondary", key="btn_yape"):
+                    st.session_state.metodo_pago = "🟣 YAPE"
+                    st.rerun()
+            
+            with col_plin:
+                if st.button("🔵\nPLIN", use_container_width=True, type="primary" if st.session_state.metodo_pago=="🔵 PLIN" else "secondary", key="btn_plin"):
+                    st.session_state.metodo_pago = "🔵 PLIN"
+                    st.rerun()
+            
+            metodo = st.session_state.metodo_pago
+            st.caption(f"Seleccionado: {metodo}")
+            
             rebaja = st.number_input("💸 Descuento:", min_value=0.0, value=0.0, key="num_rebaja")
             total = max(Decimal('0.00'), sum(i['Subtotal'] for i in st.session_state.carrito) - to_decimal(rebaja))
             st.markdown(f"<h1 style='text-align:center;color:#667eea;font-size:3rem;'>S/ {float(total):.2f}</h1>", unsafe_allow_html=True)
@@ -530,7 +561,7 @@ with tabs[1]:
             col3.metric("Stock bajo <5", len(df_inv[df_inv['Stock'] < 5]))
             col4.metric("Valor inventario", f"S/ {(df_inv['Stock'] * df_inv['Precio_Compra']).sum():.2f}")
 
-# === TAB REPORTES - BADGE PARCHADO ===
+# === TAB REPORTES - CON ST.METRIC SIN CORTE ===
 with tabs[2]:
     st.subheader("📊 Reportes del Día")
 
@@ -587,19 +618,20 @@ with tabs[2]:
         vt_sem = df_v_sem['Total'].sum() if not df_v_sem.empty else 0
         dif = vt - vt_sem
         pct = (dif / vt_sem * 100) if vt_sem > 0 else 0
-        color = "#2ecc71" if dif >= 0 else "#e74c3c"
         flecha = "↑" if dif >= 0 else "↓"
+        texto_delta = f"{flecha} {abs(pct):.1f}% vs semana pasada"
 
         col1, col2 = st.columns(2)
-        col1.markdown(f"### 💰 VENTA TOTAL\n<h1 style='margin:0;font-size:42px;color:#667eea;'>S/ {float(vt):.2f}</h1>", unsafe_allow_html=True)
-        col1.markdown(f"""
-        <div style='background:{color};color:white;padding:8px 16px;border-radius:20px;display:inline-block;font-size:14px;font-weight:600;margin:10px 0;width:fit-content;white-space:nowrap;'>
-            {flecha} {abs(pct):.1f}% vs semana pasada
-        </div>
-        """, unsafe_allow_html=True)
-
-        col2.markdown(f"### 📈 GANANCIA REAL\n<h1 style='margin:0;font-size:42px;color:#2ecc71;'>S/ {float(gn_total):.2f}</h1>", unsafe_allow_html=True)
-        col2.caption(f"Tickets: {tk} | Ticket Prom: S/{float(tp):.2f} | Margen: {(gn_total/vt*100) if vt > 0 else 0:.1f}%")
+        col1.metric(
+            label="💰 VENTA TOTAL", 
+            value=f"S/ {float(vt):.2f}", 
+            delta=texto_delta
+        )
+        col2.metric(
+            label="📈 GANANCIA REAL", 
+            value=f"S/ {float(gn_total):.2f}",
+            delta=f"Tickets: {tk} | Margen: {(gn_total/vt*100) if vt > 0 else 0:.1f}%"
+        )
 
         st.write("---")
 
@@ -626,20 +658,17 @@ with tabs[2]:
         if not df_ef.empty:
             venta_ef = df_ef['Total'].sum()
             gan_ef = df_ef['Ganancia_Item'].sum()
-            cols[0].markdown(f"### 💵 EFECTIVO\n<h2 style='margin:0;color:#667eea;'>S/ {float(venta_ef):.2f}</h2>", unsafe_allow_html=True)
-            cols[0].caption(f"Ganancia: S/ {float(gan_ef):.2f}")
+            cols[0].metric("💵 EFECTIVO", f"S/ {float(venta_ef):.2f}", f"Ganancia: S/ {float(gan_ef):.2f}")
 
         if not df_yape.empty:
             venta_yape = df_yape['Total'].sum()
             gan_yape = df_yape['Ganancia_Item'].sum()
-            cols[1].markdown(f"### 🟣 YAPE\n<h2 style='margin:0;color:#667eea;'>S/ {float(venta_yape):.2f}</h2>", unsafe_allow_html=True)
-            cols[1].caption(f"Ganancia: S/ {float(gan_yape):.2f}")
+            cols[1].metric("🟣 YAPE", f"S/ {float(venta_yape):.2f}", f"Ganancia: S/ {float(gan_yape):.2f}")
 
         if not df_plin.empty:
             venta_plin = df_plin['Total'].sum()
             gan_plin = df_plin['Ganancia_Item'].sum()
-            cols[2].markdown(f"### 🔵 PLIN\n<h2 style='margin:0;color:#667eea;'>S/ {float(venta_plin):.2f}</h2>", unsafe_allow_html=True)
-            cols[2].caption(f"Ganancia: S/ {float(gan_plin):.2f}")
+            cols[2].metric("🔵 PLIN", f"S/ {float(venta_plin):.2f}", f"Ganancia: S/ {float(gan_plin):.2f}")
 # === TAB HISTORIAL - SOLO DUEÑO ===
 if st.session_state.rol == "DUEÑO" and len(tabs) > 3:
     with tabs[3]:
