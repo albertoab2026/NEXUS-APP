@@ -31,7 +31,7 @@ st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
         * {font-family: 'Poppins', sans-serif;}
-        
+
     html, body, [class*="stApp"], [data-testid="stAppViewContainer"], [data-testid="stHeader"] {
             color-scheme: light only!important;
             forced-color-adjust: none!important;
@@ -39,13 +39,13 @@ st.markdown("""
         }
 .main {background: linear-gradient(135deg, #667eea 0%, #764ba2 100%)!important;}
 .block-container {
-            background: white!important; 
+            background: white!important;
             color: #262730!important;
-            border-radius: 20px; 
-            padding: 2rem; 
+            border-radius: 20px;
+            padding: 2rem;
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
         }
-.block-container p,.block-container h1,.block-container h2,.block-container h3, 
+.block-container p,.block-container h1,.block-container h2,.block-container h3,
 .block-container h4,.block-container label,.block-container span,
 .stMarkdown,.stText,.stCaption {
             color: #262730!important;
@@ -59,13 +59,13 @@ st.markdown("""
         div[data-testid="stMetric"] [data-testid="stMetricDelta"] {color: white!important; font-size: 14px;}
 .stButton>button {
             border-radius: 12px; font-weight: 600; border: none;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%)!important; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%)!important;
             color: white!important; box-shadow: 0 4px 12px rgba(102,126,234,0.4);
         }
 .stTabs [data-baseweb="tab-list"] {gap: 8px; background: #f8f9fa!important; padding: 10px; border-radius: 15px;}
 .stTabs [data-baseweb="tab"] {border-radius: 10px; padding: 10px 20px; font-weight: 600; color: #262730!important;}
 .stTabs [aria-selected="true"] {background: linear-gradient(135deg, #667eea 0%, #764ba2 100%)!important; color: white!important;}
-   
+
     button[key="btn_yape"] {
             background: linear-gradient(135deg, #720e9e 0%, #5a0b7a 100%)!important;
             color: white!important;
@@ -99,10 +99,10 @@ st.markdown("""
     button[key="btn_yape"]:active, button[key="btn_plin"]:active, button[key="btn_efectivo"]:active {
             transform: scale(0.95)!important;
         }
-   
+
 .stSelectbox>div {
-            background: white!important; 
-            border: 2px solid #e0e0e0!important; 
+            background: white!important;
+            border: 2px solid #e0e0e0!important;
             border-radius: 10px!important;
         }
 .stSelectbox>div>div>div {color: #262730!important;}
@@ -113,7 +113,7 @@ st.markdown("""
     [data-baseweb="menu"] {background-color: white!important;}
     [data-baseweb="menu"] li {background-color: white!important; color: #262730!important;}
     [data-baseweb="menu"] li:hover {background-color: #e3f2fd!important;}
-   
+
 .stTextInput>div>div>input,.stNumberInput>div>div>input,.stDateInput input {
             border-radius: 10px; border: 2px solid #e0e0e0!important; padding: 12px;
             background: white!important; color: #262730!important;
@@ -128,11 +128,11 @@ st.markdown("""
             color: #262730!important;
         }
 .stSelectbox label,.stTextInput label,.stNumberInput label,.stDateInput label,.stRadio label {color: #262730!important;}
-   
+
         [data-testid="stSidebar"] {background: linear-gradient(180deg, #667eea 0%, #764ba2 100%)!important;}
         [data-testid="stSidebar"] * {color: white!important;}
         [data-testid="stSidebar"].stButton>button {background: white!important; color: #667eea!important;}
-   
+
     [data-testid="stExpander"] {
             background-color: white!important;
             border: 1px solid #e0e0e0!important;
@@ -221,25 +221,7 @@ def obtener_limites_tenant():
     if max_p == 0: st.error("Configura MaxProductos"); st.stop()
     df_temp = obtener_datos()
     stock_max = int(df_temp['Stock'].max()) if not df_temp.empty else 0
-    if contarProductosEnBD() > max_p or stock_max > max_s:
-        st.session_state.modo_lectura = True
-        st.session_state.mensaje_lectura = f"⚠️ MODO LECTURA: Pasado de límites"
-    else: st.session_state.modo_lectura = False
-    return max_p, max_s, item.get('Plan', 'SIN_PLAN'), item.get('PrecioMensual', 0)
-
-def tiene_whatsapp_habilitado():
-    try: return tabla_tenants.get_item(Key={'TenantID': st.session_state.tenant}).get('Item', {}).get('WhatsApp', False) or PLAN_ACTUAL in ["PRO", "PREMIUM"]
-    except: return PLAN_ACTUAL in ["PRO", "PREMIUM"]
-
-# === ESTADO ===
-for k in ['auth','rol','tenant','usuario','carrito','boleta','confirmar','modo_lectura','intentos_login','bloqueo_hasta','metodo_pago']:
-    if k not in st.session_state:
-        if k in ['carrito']: st.session_state[k] = []
-        elif k in ['auth','confirmar','modo_lectura']: st.session_state[k] = False
-        elif k in ['intentos_login']: st.session_state[k] = 0
-        elif k in ['bloqueo_hasta']: st.session_state[k] = None
-        elif k == 'metodo_pago': st.session_state[k] = "💵 EFECTIVO"
-        else: st.session_state[k] = None
+    if contarProductos
 # === LOGIN CON SEGURIDAD ===
 if not st.session_state.auth:
     if st.session_state.bloqueo_hasta and datetime.now() < st.session_state.bloqueo_hasta:
@@ -416,33 +398,37 @@ with tabs[0]:
                     st.rerun()
                 else: st.error("❌ Sin stock")
         if st.session_state.carrito:
-            st.dataframe(pd.DataFrame(st.session_state.carrito)[['Producto', 'Cantidad', 'Subtotal']], use_container_width=True, hide_index=True)
+            for idx, item in enumerate(st.session_state.carrito):
+                c1, c2, c3 = st.columns([3,1,1])
+                c1.write(f"{item['Producto']}")
+                c2.write(f"x{item['Cantidad']}")
+                c3.write(f"S/{float(item['Subtotal']):.2f}")
             if st.button("🗑️ VACIAR", key="btn_vaciar_carrito"): st.session_state.carrito = []; st.rerun()
-            
+
             st.write("**Método de Pago:**")
             col_ef, col_yape, col_plin = st.columns(3)
-            
+
             with col_ef:
                 st.markdown("<div style='text-align:center;font-size:40px;'>💵</div>", unsafe_allow_html=True)
                 if st.button("EFECTIVO", use_container_width=True, type="primary" if st.session_state.metodo_pago=="💵 EFECTIVO" else "secondary", key="btn_efectivo"):
                     st.session_state.metodo_pago = "💵 EFECTIVO"
                     st.rerun()
-            
+
             with col_yape:
                 st.markdown("<div style='text-align:center;font-size:40px;'>🟣</div>", unsafe_allow_html=True)
                 if st.button("YAPE", use_container_width=True, type="primary" if st.session_state.metodo_pago=="🟣 YAPE" else "secondary", key="btn_yape"):
                     st.session_state.metodo_pago = "🟣 YAPE"
                     st.rerun()
-            
+
             with col_plin:
                 st.markdown("<div style='text-align:center;font-size:40px;'>🔵</div>", unsafe_allow_html=True)
                 if st.button("PLIN", use_container_width=True, type="primary" if st.session_state.metodo_pago=="🔵 PLIN" else "secondary", key="btn_plin"):
                     st.session_state.metodo_pago = "🔵 PLIN"
                     st.rerun()
-            
+
             metodo = st.session_state.metodo_pago
             st.markdown(f"<h3 style='text-align:center;color:#667eea;'>Seleccionado: {metodo}</h3>", unsafe_allow_html=True)
-            
+
             rebaja = st.number_input("💸 Descuento:", min_value=0.0, value=0.0, key="num_rebaja")
             total = max(Decimal('0.00'), sum(i['Subtotal'] for i in st.session_state.carrito) - to_decimal(rebaja))
             st.markdown(f"<h1 style='text-align:center;color:#667eea;font-size:3rem;'>S/ {float(total):.2f}</h1>", unsafe_allow_html=True)
@@ -599,7 +585,6 @@ with tabs[2]:
         dif = vt - vt_sem
         pct = (dif / vt_sem * 100) if vt_sem > 0 else 0
 
-        # MÉTRICAS SIN DELTA PA' QUE NO SE CORTE
         col1, col2 = st.columns(2)
 
         with col1:
@@ -618,8 +603,12 @@ with tabs[2]:
         st.write("---")
 
         with st.expander("🧾 VER TICKETS DEL DÍA - MÁS RECIENTE ARRIBA", expanded=True):
+            h1, h2, h3, h4, h5, h6 = st.columns([1,3,1,1])
+            h1.markdown("**HORA**"); h2.markdown("**PRODUCTO**"); h3.markdown("**CANT**")
+            h4.markdown("**TOTAL**"); h5.markdown("**METODO**"); h6.markdown("**USUARIO**")
+            st.divider()
             for idx, row in df_v.iterrows():
-                c1, c2, c3, c4, c5, c6 = st.columns([1,3,1,1,1,1])
+                c1, c2, c3, c4, c5, c6 = st.columns([1,3,1,1])
                 c1.write(row['Hora'])
                 c2.write(row['Producto'])
                 c3.write(f"{int(row['Cantidad'])}")
@@ -666,74 +655,8 @@ if st.session_state.rol == "DUEÑO" and len(tabs) > 3:
             df_h['Costo'] = df_h['Precio_Compra'] * df_h['Cantidad']
             df_h['Ganancia'] = df_h.apply(lambda r: r['Total'] - r['Costo'] if r['Tipo'] == 'VENTA' else 0, axis=1)
 
-            # TABLA MANUAL HISTORIAL - 8 COLUMNAS CORRECTAS
-            h1, h2, h3, h4, h5, h6, h7, h8 = st.columns([1,2,1,1])
-            h1.markdown("**HORA**"); h2.markdown("**PRODUCTO**"); h3.markdown("**TIPO**")
-            h4.markdown("**CANT**"); h5.markdown("**TOTAL**"); h6.markdown("**COSTO**")
-            h7.markdown("**GANANCIA**"); h8.markdown("**USUARIO**")
-            st.divider()
-
-            for idx, row in df_h.iterrows():
-                c1, c2, c3, c4, c5, c6, c7, c8 = st.columns([1,2,1,1,1,1])
-                c1.write(row['Hora'])
-                c2.write(row['Producto'])
-                c3.write(row['Tipo'])
-                c4.write(f"{int(row['Cantidad'])}")
-                c5.write(f"S/{row['Total']:.2f}")
-                c6.write(f"S/{row['Costo']:.2f}")
-                c7.write(f"S/{row['Ganancia']:.2f}")
-                c8.write(row['Usuario'])
-
-            df_v_h = df_h[df_h['Tipo'] == 'VENTA']
-            if not df_v_h.empty:
-                vt_h = df_v_h['Total'].sum()
-                costo_h = df_v_h['Costo'].sum()
-                gn_h = df_v_h['Ganancia'].sum()
-
-                col1, col2, col3 = st.columns(3)
-                col1.metric("💰 VENTA TOTAL", f"S/ {float(vt_h):.2f}")
-                col2.metric("📉 COSTO TOTAL", f"S/ {float(costo_h):.2f}")
-                col3.metric("📈 GANANCIA REAL", f"S/ {float(gn_h):.2f}")
-
-                buf = io.BytesIO()
-                with pd.ExcelWriter(buf, engine='openpyxl') as w: df_h.to_excel(w, index=False)
-                st.download_button("📥 DESCARGAR EXCEL", buf.getvalue(), f"Kardex_{f_h.strftime('%Y%m%d')}.xlsx", use_container_width=True, key="btn_desc_kardex")
-
-                if tiene_whatsapp_habilitado():
-                    res = f"*REPORTE {f_h.strftime('%d/%m/%Y')}*\nVenta: S/{float(vt_h):.2f}\nCosto: S/{float(costo_h):.2f}\n*Ganancia: S/{float(gn_h):.2f}*"
-                    st.link_button("📲 COMPARTIR", f"https://wa.me/?text={urllib.parse.quote(res)}", use_container_width=True)
-            else:
-                st.info("No hay ventas este día")
-        else:
-            st.info(f"📭 No hay movimientos el {f_h.strftime('%d/%m/%Y')}")
-
-        st.write("---")
-        st.subheader("🔒 Cierre de Caja")
-        fecha_cierre = st.date_input("Fecha a cerrar:", value=datetime.now(tz_peru).date(), key="date_cierre_fix")
-        fecha_iso_cierre = fecha_cierre.strftime('%Y-%m-%d')
-
-# === TAB HISTORIAL - SOLO DUEÑO ===
-if st.session_state.rol == "DUEÑO" and len(tabs) > 3:
-    with tabs[3]:
-        st.subheader("📋 Historial Kardex")
-        col_f1, col_f2 = st.columns([3,1])
-        f_h = col_f1.date_input("Día:", value=datetime.now(tz_peru).date(), key="date_historial_fix")
-        if col_f2.button("🔄 ACTUALIZAR", use_container_width=True, key="btn_actualizar_hist"): st.cache_data.clear(); st.rerun()
-
-        fecha_iso_h = f_h.strftime('%Y-%m-%d')
-        res_h = tabla_movs.query(IndexName='TenantID-FechaISO-index', KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant) & Key('FechaISO').eq(fecha_iso_h))
-        df_h = pd.DataFrame(res_h.get('Items', []))
-
-        if not df_h.empty:
-            df_h = df_h.sort_values('Hora', ascending=False)
-            df_h['Total'] = pd.to_numeric(df_h['Total'], errors='coerce').fillna(0)
-            df_h['Precio_Compra'] = pd.to_numeric(df_h['Precio_Compra'], errors='coerce').fillna(0)
-            df_h['Cantidad'] = pd.to_numeric(df_h['Cantidad'], errors='coerce').fillna(0)
-            df_h['Costo'] = df_h['Precio_Compra'] * df_h['Cantidad']
-            df_h['Ganancia'] = df_h.apply(lambda r: r['Total'] - r['Costo'] if r['Tipo'] == 'VENTA' else 0, axis=1)
-
             # TABLA MANUAL HISTORIAL - 8 COLUMNAS
-            h1, h2, h3, h4, h5, h6, h7, h8 = st.columns([1,2,1,1,1,1])
+            h1, h2, h3, h4, h5, h6, h7, h8 = st.columns([1,2,1,1])
             h1.markdown("**HORA**"); h2.markdown("**PRODUCTO**"); h3.markdown("**TIPO**")
             h4.markdown("**CANT**"); h5.markdown("**TOTAL**"); h6.markdown("**COSTO**")
             h7.markdown("**GANANCIA**"); h8.markdown("**USUARIO**")
