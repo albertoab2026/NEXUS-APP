@@ -673,13 +673,15 @@ if st.session_state.rol == "DUEÑO" and len(tabs) > 3:
 
             # TABLA MANUAL HISTORIAL - 8 COLUMNAS
             h1, h2, h3, h4, h5, h6, h7, h8 = st.columns([1,2,1,1])
+                        # TABLA MANUAL HISTORIAL - 8 COLUMNAS CORRECTAS
+            h1, h2, h3, h4, h5, h6, h7, h8 = st.columns([1,2,1,1,1,1])
             h1.markdown("**HORA**"); h2.markdown("**PRODUCTO**"); h3.markdown("**TIPO**")
             h4.markdown("**CANT**"); h5.markdown("**TOTAL**"); h6.markdown("**COSTO**")
             h7.markdown("**GANANCIA**"); h8.markdown("**USUARIO**")
             st.divider()
 
             for idx, row in df_h.iterrows():
-                c1, c2, c3, c4, c5, c6, c7, c8 = st.columns([1,2,1,1])
+                c1, c2, c3, c4, c5, c6, c7, c8 = st.columns([1,2,1,1,1,1])
                 c1.write(row['Hora'])
                 c2.write(row['Producto'])
                 c3.write(row['Tipo'])
