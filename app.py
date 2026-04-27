@@ -178,6 +178,205 @@ def obtener_datos():
         return df[['Producto', 'Precio_Compra', 'Precio', 'Stock']].sort_values('Producto')
     except: return pd.DataFrame(columns=['Producto', 'Precio_Compra', 'Precio', 'Stock'])
 
+import streamlit as st
+import pandas as pd
+import boto3
+from datetime import datetime, timedelta
+import pytz
+from boto3.dynamodb.conditions import Attr, Key
+from fpdf import FPDF
+import time
+import re
+import urllib.parse
+from decimal import Decimal, ROUND_HALF_UP
+import io
+import uuid
+
+# === CONFIG ===
+TABLA_STOCK = st.secrets["tablas"]["stock"]
+TABLA_VENTAS = st.secrets["tablas"]["ventas"]
+TABLA_MOVS = st.secrets["tablas"]["movs"]
+TABLA_TENANTS = st.secrets["tablas"]["tenants"]
+TABLA_CIERRES = st.secrets["tablas"]["cierres"]
+TABLA_PAGOS = st.secrets["tablas"]["pagos"]
+NUMERO_SOPORTE = "51914282688"
+YAPE_SOPORTE = "Alberto Ballarta"
+DESARROLLADOR = "Alberto Ballarta - Software Engineer"
+
+st.set_page_config(page_title="NEXUS BALLARTA", layout="wide", page_icon="🚀", initial_sidebar_state="collapsed")
+tz_peru = pytz.timezone('America/Lima')
+
+# === CSS NUCLEAR ANTI-DARK MODE ANDROID ===
+st.markdown("""
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
+        * {font-family: 'Poppins', sans-serif;}
+        
+        /* MATA EL DARK MODE FORZADO DE CHROME ANDROID */
+    html, body, [class*="stApp"], [data-testid="stAppViewContainer"], [data-testid="stHeader"] {
+            color-scheme: light only!important;
+            forced-color-adjust: none!important;
+            -webkit-forced-color-adjust: none!important;
+            -ms-high-contrast-adjust: none!important;
+        }
+   .main {background: linear-gradient(135deg, #667eea 0%, #764ba2 100%)!important;}
+   .block-container {
+            background: white!important; 
+            color: #262730!important;
+            border-radius: 20px; 
+            padding: 2rem; 
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+   .block-container p,.block-container h1,.block-container h2,.block-container h3, 
+   .block-container h4,.block-container label,.block-container span,
+   .stMarkdown,.stText,.stCaption {
+            color: #262730!important;
+        }
+        div[data-testid="stMetric"] {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%)!important;
+            padding: 20px; border-radius: 15px; box-shadow: 0 8px 16px rgba(102,126,234,0.3); border: none;
+        }
+        div[data-testid="stMetric"] label {color: white!important; font-weight: 600;}
+        div[data-testid="stMetric"] [data-testid="stMetricValue"] {color: white!important; font-size: 36px;}
+   .stButton>button {
+            border-radius: 12px; font-weight: 600; border: none;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%)!important; 
+            color: white!important; box-shadow: 0 4px 12px rgba(102,126,234,0.4);
+        }
+   .stTabs [data-baseweb="tab-list"] {gap: 8px; background: #f8f9fa!important; padding: 10px; border-radius: 15px;}
+   .stTabs [data-baseweb="tab"] {border-radius: 10px; padding: 10px 20px; font-weight: 600; color: #262730!important;}
+   .stTabs [aria-selected="true"] {background: linear-gradient(135deg, #667eea 0%, #764ba2 100%)!important; color: white!important;}
+   
+        /* FIX SELECTBOX + DROPDOWN */
+   .stSelectbox>div>div {
+            background: white!important; 
+            border: 2px solid #e0e0e0!important; 
+            border-radius: 10px!important;
+        }
+   .stSelectbox>div>div>div {color: #262730!important;}
+   .stSelectbox svg {fill: #262730!important;}
+    [data-baseweb="select"] {background-color: white!important;}
+    [data-baseweb="select"] > div {background-color: white!important; color: #262730!important;}
+    [data-baseweb="popover"] {background-color: white!important;}
+    [data-baseweb="menu"] {background-color: white!important;}
+    [data-baseweb="menu"] li {background-color: white!important; color: #262730!important;}
+    [data-baseweb="menu"] li:hover {background-color: #e3f2fd!important;}
+   
+        /* FIX INPUTS + NUMBER INPUT */
+   .stTextInput>div>div>input,.stNumberInput>div>div>input,.stDateInput input {
+            border-radius: 10px; border: 2px solid #e0e0e0!important; padding: 12px;
+            background: white!important; color: #262730!important;
+        }
+    [data-testid="stNumberInput"] {background: white!important;}
+    [data-testid="stNumberInput"] input {
+            background-color: white!important;
+            color: #262730!important;
+        }
+    [data-testid="stNumberInput"] button {
+            background-color: #f0f0f0!important;
+            color: #262730!important;
+        }
+   .stSelectbox label,.stTextInput label,.stNumberInput label,.stDateInput label,.stRadio label {color: #262730!important;}
+   
+        /* SIDEBAR */
+        [data-testid="stSidebar"] {background: linear-gradient(180deg, #667eea 0%, #764ba2 100%)!important;}
+        [data-testid="stSidebar"] * {color: white!important;}
+        [data-testid="stSidebar"].stButton>button {background: white!important; color: #667eea!important;}
+   
+        /* FIX TABLAS - NUCLEAR */
+    [data-testid="stDataFrame"] {background-color: white!important;}
+    [data-testid="stDataFrame"] * {
+            background-color: white!important;
+            color: #262730!important;
+            border-color: #e0e0e0!important;
+        }
+    [data-testid="stDataFrame"] thead {background-color: #f8f9fa!important;}
+    [data-testid="stDataFrame"] thead tr {background-color: #f8f9fa!important;}
+    [data-testid="stDataFrame"] thead tr th {
+            background-color: #f8f9fa!important;
+            color: #262730!important;
+            position: sticky!important;
+            top: 0!important;
+            z-index: 10!important;
+        }
+    [data-testid="stDataFrame"] tbody tr {background-color: white!important;}
+    [data-testid="stDataFrame"] tbody tr:nth-child(even) {background-color: #f9f9f9!important;}
+    [data-testid="stDataFrame"] tbody tr:nth-child(even) td {background-color: #f9f9f9!important;}
+    [data-testid="stDataFrame"] tbody tr:nth-child(odd) {background-color: white!important;}
+    [data-testid="stDataFrame"] tbody tr:nth-child(odd) td {background-color: white!important;}
+    [data-testid="stTable"] {background-color: white!important;}
+    [data-testid="stTable"] * {background-color: white!important; color: #262730!important;}
+   
+        /* EXPANDER */
+    [data-testid="stExpander"] {
+            background-color: white!important;
+            border: 1px solid #e0e0e0!important;
+        }
+    [data-testid="stExpander"] summary {
+            background-color: #f5f7fa!important;
+            color: #262730!important;
+        }
+    [data-testid="stExpander"] > div {background-color: white!important;}
+   .streamlit-expanderHeader {background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)!important; border-radius: 10px; font-weight: 600; color: #262730!important;}
+   .stAlert {border-radius: 12px; border-left: 5px solid;}
+   .element-container {overflow-x: auto!important;}
+    
+        /* FIX BADGE VERDE REPORTES */
+    div[style*="background:#2ecc71"], div[style*="background:#e74c3c"] {
+            white-space: nowrap!important;
+            overflow: visible!important;
+        }
+    </style>
+""", unsafe_allow_html=True)
+
+def to_decimal(f): return Decimal(str(f)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
+
+def obtener_tiempo_peru():
+    ahora = datetime.now(tz_peru)
+    return ahora.strftime("%d/%m/%Y"), ahora.strftime("%H:%M:%S"), ahora.strftime("%Y%m%d%H%M%S%f")
+
+# === AWS ===
+dynamodb = boto3.resource('dynamodb',
+    region_name=st.secrets["aws"]["aws_region"],
+    aws_access_key_id=st.secrets["aws"]["aws_access_key_id"],
+    aws_secret_access_key=st.secrets["aws"]["aws_secret_access_key"])
+tabla_stock = dynamodb.Table(TABLA_STOCK)
+tabla_ventas = dynamodb.Table(TABLA_VENTAS)
+tabla_movs = dynamodb.Table(TABLA_MOVS)
+tabla_tenants = dynamodb.Table(TABLA_TENANTS)
+tabla_cierres = dynamodb.Table(TABLA_CIERRES)
+tabla_pagos = dynamodb.Table(TABLA_PAGOS)
+
+# === FUNCIONES CORE ===
+def verificar_suscripcion(tid):
+    try:
+        t = tabla_tenants.get_item(Key={'TenantID': tid}).get('Item', {})
+        if t.get('EstadoPago') == 'SUSPENDIDO': return False, "SUSPENDIDO"
+        fc = datetime.strptime(t.get('ProximoCobro', '01/01/2000'), '%d/%m/%Y').date()
+        if fc < datetime.now(tz_peru).date() - timedelta(days=5): return False, f"VENCIDO {t.get('ProximoCobro')}"
+        return True, "ACTIVO"
+    except: return True, "ERROR"
+
+def contarProductosEnBD():
+    try: return tabla_stock.query(KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant), Select='COUNT').get('Count', 0)
+    except: return 9999
+
+@st.cache_data(ttl=10)
+def obtener_datos():
+    try:
+        res = tabla_stock.query(KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant), Limit=2000)
+        items = res.get('Items', [])
+        if not items: return pd.DataFrame(columns=['Producto', 'Precio_Compra', 'Precio', 'Stock'])
+        df = pd.DataFrame(items)
+        for col in ['Producto', 'Precio_Compra', 'Precio', 'Stock']:
+            if col not in df.columns: df[col] = 0 if col!='Producto' else ''
+        df['Stock'] = pd.to_numeric(df['Stock'], errors='coerce').fillna(0).astype(int)
+        df['Precio'] = pd.to_numeric(df['Precio'], errors='coerce').fillna(0.0)
+        df['Precio_Compra'] = pd.to_numeric(df['Precio_Compra'], errors='coerce').fillna(0.0)
+        df['Producto'] = df['Producto'].astype(str)
+        return df[['Producto', 'Precio_Compra', 'Precio', 'Stock']].sort_values('Producto')
+    except: return pd.DataFrame(columns=['Producto', 'Precio_Compra', 'Precio', 'Stock'])
+
 def registrar_kardex(prod, cant, tipo, total=0, pc=0, metodo=""):
     f, h, uid = obtener_tiempo_peru()
     tabla_movs.put_item(Item={
