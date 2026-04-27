@@ -140,6 +140,7 @@ st.markdown("""
 .stAlert {border-radius: 12px; border-left: 5px solid;}
     </style>
 """, unsafe_allow_html=True)
+# FIN PARTE 1/8
 def to_decimal(f): return Decimal(str(f)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
 
 def obtener_tiempo_peru():
@@ -233,6 +234,7 @@ for k in ['auth','rol','tenant','usuario','carrito','boleta','confirmar','modo_l
         elif k in ['bloqueo_hasta']: st.session_state[k] = None
         elif k == 'metodo_pago': st.session_state[k] = "💵 EFECTIVO"
         else: st.session_state[k] = None
+# FIN PARTE 2/8
 # === LOGIN CON SEGURIDAD ===
 if not st.session_state.auth:
     if st.session_state.bloqueo_hasta and datetime.now() < st.session_state.bloqueo_hasta:
@@ -315,6 +317,7 @@ tabs_list = ["🛒 VENTA", "📦 STOCK", "📊 REPORTES"]
 if st.session_state.rol == "DUEÑO" and not st.session_state.get('modo_lectura', False):
     tabs_list += ["📋 HISTORIAL", "📥 CARGAR", "🛠️ MANT."]
 tabs = st.tabs(tabs_list)
+# FIN PARTE 3/8
 # === TAB VENTA ===
 with tabs[0]:
     f_hoy, h_hoy, _ = obtener_tiempo_peru()
@@ -453,6 +456,7 @@ with tabs[0]:
                         registrar_kardex(item['Producto'], item['Cantidad'], "VENTA", item['Subtotal'], item['Precio_Compra'], metodo)
                     st.session_state.boleta = {'items': st.session_state.carrito, 't_neto': total, 'rebaja': to_decimal(rebaja), 'metodo': metodo, 'fecha': f, 'hora': h}
                     st.session_state.carrito = []; st.session_state.confirmar = False; st.rerun()
+# FIN PARTE 4/8
 # === TAB STOCK - TABLA MANUAL ANTI-BLANCO ===
 with tabs[1]:
     st.subheader("📦 Inventario")
@@ -490,20 +494,23 @@ with tabs[1]:
             else:
                 df_pagina = df_mostrar
 
-            # TABLA MANUAL QUE NUNCA FALLA EN MÓVIL
-            h1, h2, h3, h4 = st.columns([3,1,1])
-            h1.markdown("**PRODUCTO**")
-            h2.markdown("**STOCK**")
-            h3.markdown("**COSTO**")
-            h4.markdown("**VENTA**")
-            st.divider()
+            # TABLA CON COLORES - height=400 ARREGLA EL CUADRO BLANCO
+            df_tabla = df_pagina[['Producto', 'Stock', 'Precio_Compra', 'Precio']].copy()
+            df_tabla.columns = ['PRODUCTO', 'STOCK', 'COSTO', 'VENTA']
+            df_tabla['STOCK'] = df_tabla['STOCK'].astype(int)
 
-            for idx, row in df_pagina.iterrows():
-                c1, c2, c3, c4 = st.columns([3,1,1])
-                c1.write(row['Producto'])
-                c2.write(f"{int(row['Stock'])}")
-                c3.write(f"S/{row['Precio_Compra']:.2f}")
-                c4.write(f"S/{row['Precio']:.2f}")
+            st.dataframe(
+                df_tabla,
+                use_container_width=True,
+                hide_index=True,
+                height=400, # <-- CLAVE: YA NO SALE CUADRO BLANCO
+                column_config={
+                    "PRODUCTO": st.column_config.TextColumn("PRODUCTO", width="large"),
+                    "STOCK": st.column_config.NumberColumn("STOCK", width="small", format="%d"),
+                    "COSTO": st.column_config.NumberColumn("COSTO", width="small", format="S/ %.2f"),
+                    "VENTA": st.column_config.NumberColumn("VENTA", width="small", format="S/ %.2f")
+                }
+            )
 
             buf = io.BytesIO()
             with pd.ExcelWriter(buf, engine='openpyxl') as w:
@@ -614,18 +621,22 @@ with tabs[2]:
         st.write("---")
 
         with st.expander("🧾 VER TICKETS DEL DÍA - MÁS RECIENTE ARRIBA", expanded=True):
-            h1, h2, h3, h4, h5, h6 = st.columns([1,3,1,1])
-            h1.markdown("**HORA**"); h2.markdown("**PRODUCTO**"); h3.markdown("**CANT**")
-            h4.markdown("**TOTAL**"); h5.markdown("**METODO**"); h6.markdown("**USUARIO**")
-            st.divider()
-            for idx, row in df_v.iterrows():
-                c1, c2, c3, c4, c5, c6 = st.columns([1,3,1,1])
-                c1.write(row['Hora'])
-                c2.write(row['Producto'])
-                c3.write(f"{int(row['Cantidad'])}")
-                c4.write(f"S/{row['Total']:.2f}")
-                c5.write(row['Metodo'])
-                c6.write(row['Usuario'])
+            df_tickets = df_v[['Hora', 'Producto', 'Cantidad', 'Total', 'Metodo', 'Usuario']].copy()
+            df_tickets['Cantidad'] = df_tickets['Cantidad'].astype(int)
+            st.dataframe(
+                df_tickets,
+                use_container_width=True,
+                hide_index=True,
+                height=350,
+                column_config={
+                    "Hora": st.column_config.TextColumn("HORA", width="small"),
+                    "Producto": st.column_config.TextColumn("PRODUCTO", width="large"),
+                    "Cantidad": st.column_config.NumberColumn("CANT", width="small"),
+                    "Total": st.column_config.NumberColumn("TOTAL", width="small", format="S/ %.2f"),
+                    "Metodo": st.column_config.TextColumn("METODO", width="small"),
+                    "Usuario": st.column_config.TextColumn("USUARIO", width="small")
+                }
+            )
 
         df_ef = df_v[df_v['Metodo'].str.contains('EFECTIVO')]
         df_yape = df_v[df_v['Metodo'].str.contains('YAPE')]
@@ -647,7 +658,7 @@ with tabs[2]:
             gan_plin = df_plin['Ganancia_Item'].sum()
             cols[2].metric("🔵 PLIN", f"S/ {float(venta_plin):.2f}", f"Ganancia: S/ {float(gan_plin):.2f}")
 # FIN PARTE 5/8
-# === TAB HISTORIAL - SOLO DUEÑO ===
+# === TAB HISTORIAL - SOLO DUEÑO - VERSIÓN ESTABLE ===
 if st.session_state.rol == "DUEÑO" and len(tabs) > 3:
     with tabs[3]:
         st.subheader("📋 Historial Kardex")
@@ -667,23 +678,26 @@ if st.session_state.rol == "DUEÑO" and len(tabs) > 3:
             df_h['Costo'] = df_h['Precio_Compra'] * df_h['Cantidad']
             df_h['Ganancia'] = df_h.apply(lambda r: r['Total'] - r['Costo'] if r['Tipo'] == 'VENTA' else 0, axis=1)
 
-            # TABLA MANUAL HISTORIAL - 8 COLUMNAS CORRECTAS
-            h1, h2, h3, h4, h5, h6, h7, h8 = st.columns([1,2,1,1])
-            h1.markdown("**HORA**"); h2.markdown("**PRODUCTO**"); h3.markdown("**TIPO**")
-            h4.markdown("**CANT**"); h5.markdown("**TOTAL**"); h6.markdown("**COSTO**")
-            h7.markdown("**GANANCIA**"); h8.markdown("**USUARIO**")
-            st.divider()
+            # TABLA CON COLORES - height=400 ARREGLA EL CUADRO BLANCO
+            df_tabla_h = df_h[['Hora', 'Producto', 'Tipo', 'Cantidad', 'Total', 'Costo', 'Ganancia', 'Usuario']].copy()
+            df_tabla_h['Cantidad'] = df_tabla_h['Cantidad'].astype(int)
 
-            for idx, row in df_h.iterrows():
-                c1, c2, c3, c4, c5, c6, c7, c8 = st.columns([1,2,1,1,1,1])
-                c1.write(row['Hora'])
-                c2.write(row['Producto'])
-                c3.write(row['Tipo'])
-                c4.write(f"{int(row['Cantidad'])}")
-                c5.write(f"S/{row['Total']:.2f}")
-                c6.write(f"S/{row['Costo']:.2f}")
-                c7.write(f"S/{row['Ganancia']:.2f}")
-                c8.write(row['Usuario'])
+            st.dataframe(
+                df_tabla_h,
+                use_container_width=True,
+                hide_index=True,
+                height=400, # <-- CLAVE
+                column_config={
+                    "Hora": st.column_config.TextColumn("HORA", width="small"),
+                    "Producto": st.column_config.TextColumn("PRODUCTO", width="medium"),
+                    "Tipo": st.column_config.TextColumn("TIPO", width="small"),
+                    "Cantidad": st.column_config.NumberColumn("CANT", width="small"),
+                    "Total": st.column_config.NumberColumn("TOTAL", width="small", format="S/ %.2f"),
+                    "Costo": st.column_config.NumberColumn("COSTO", width="small", format="S/ %.2f"),
+                    "Ganancia": st.column_config.NumberColumn("GANANCIA", width="small", format="S/ %.2f"),
+                    "Usuario": st.column_config.TextColumn("USUARIO", width="small")
+                }
+            )
 
             df_v_h = df_h[df_h['Tipo'] == 'VENTA']
             if not df_v_h.empty:
@@ -801,8 +815,7 @@ if st.session_state.rol == "DUEÑO" and len(tabs) > 4:
                         st.error(f"❌ Excede límite. Máximo {MAX_PRODUCTOS_TOTALES - actual} productos más")
                     else:
                         st.write("**Vista previa:**")
-                        for idx, row in df_upload.iterrows():
-                            st.write(f"{row['Producto']} | S/{row['Precio_Compra']:.2f} | S/{row['Precio']:.2f} | {int(row['Stock'])}")
+                        st.dataframe(df_upload, use_container_width=True, hide_index=True, height=300)
 
                         if st.button("🚀 CARGAR TODO", use_container_width=True, key="btn_cargar_excel"):
                             progreso = st.progress(0)
