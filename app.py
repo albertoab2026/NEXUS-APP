@@ -124,7 +124,23 @@ st.markdown("""
             color: #262730!important;
         }
 .stSelectbox label,.stTextInput label,.stNumberInput label,.stDateInput label,.stRadio label {color: #262730!important;}
-        [data-testid="stSidebar"] {background: linear-gradient(180deg, #667eea 0%,
+        [data-testid="stSidebar"] {background: linear-gradient(180deg, #667eea 0%, #764ba2 100%)!important;}
+        [data-testid="stSidebar"] * {color: white!important;}
+        [data-testid="stSidebar"].stButton>button {background: white!important; color: #667eea!important;}
+    [data-testid="stExpander"] {
+            background-color: white!important;
+            border: 1px solid #e0e0e0!important;
+        }
+    [data-testid="stExpander"] summary {
+            background-color: #f5f7fa!important;
+            color: #262730!important;
+        }
+    [data-testid="stExpander"] > div {background-color: white!important;}
+.streamlit-expanderHeader {background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%)!important; border-radius: 10px; font-weight: 600; color: #262730!important;}
+.stAlert {border-radius: 12px; border-left: 5px solid;}
+    </style>
+""", unsafe_allow_html=True)
+# FIN PARTE 1/8
 def to_decimal(f): return Decimal(str(f)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
 
 def obtener_tiempo_peru():
@@ -302,6 +318,145 @@ if st.session_state.rol == "DUEÑO" and not st.session_state.get('modo_lectura',
     tabs_list += ["📋 HISTORIAL", "📥 CARGAR", "🛠️ MANT."]
 tabs = st.tabs(tabs_list)
 # FIN PARTE 3/8
+# === TAB VENTA ===
+with tabs[0]:
+    f_hoy, h_hoy, _ = obtener_tiempo_peru()
+    res_cierre = tabla_cierres.query(KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant), FilterExpression=Attr('Fecha').eq(f_hoy) & Attr('UsuarioTurno').eq(st.session_state.usuario))
+    ya_cerro = len(res_cierre.get('Items', [])) > 0
+    hora_cierre = max([c['Hora'] for c in res_cierre.get('Items', [])]) if ya_cerro else None
+
+    if ya_cerro:
+        st.warning(f"⚠️ YA CERRASTE CAJA HOY A LAS {hora_cierre}")
+        st.info("Las ventas que hagas ahora son POST-CIERRE. Se sumarán al reporte de mañana.")
+        if st.button("🔓 REABRIR CAJA - SOLO DUEÑO", use_container_width=True, key="btn_reabrir_caja") and st.session_state.rol == "DUEÑO":
+            for c in res_cierre.get('Items', []):
+                tabla_cierres.delete_item(Key={'TenantID': st.session_state.tenant, 'CierreID': c['CierreID']})
+            st.success("✅ Caja reabierta"); time.sleep(1); st.rerun()
+
+    if st.session_state.boleta:
+        b = st.session_state.boleta
+        st.success("✅ VENTA REALIZADA")
+        st.markdown(f"""<div style="background:white;color:black;padding:20px;border:2px solid #667eea;max-width:350px;margin:auto;font-family:monospace;border-radius:15px;box-shadow:0 8px 20px rgba(102,126,234,0.3);">
+            <h3 style="text-align:center;margin:0;color:#667eea;">{st.session_state.tenant}</h3>
+            <p style="text-align:center;margin:0;">{b['fecha']} {b['hora']}</p><hr style="border-color:#667eea;">
+            {''.join([f'<div style="display:flex;justify-content:space-between;"><span>{i["Cantidad"]}x {i["Producto"]}</span><span>S/{float(i["Subtotal"]):.2f}</span></div>' for i in b['items']])}
+            <hr style="border-color:#667eea;"><div style="display:flex;justify-content:space-between;"><span>MÉTODO:</span><span>{b['metodo']}</span></div>
+            <div style="display:flex;justify-content:space-between;color:#e74c3c;"><span>DESC:</span><span>- S/{float(b['rebaja']):.2f}</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:18px;color:#667eea;"><b>NETO:</b><b>S/{float(b['t_neto']):.2f}</b></div></div>""", unsafe_allow_html=True)
+
+        pdf = FPDF(orientation='P', unit='mm', format=(80, 200))
+        pdf.add_page()
+        pdf.set_font('Courier', 'B', 12)
+        pdf.cell(0, 5, st.session_state.tenant, 0, 1, 'C')
+        pdf.set_font('Courier', '', 8)
+        pdf.cell(0, 4, f"{b['fecha']} {b['hora']}", 0, 1, 'C')
+        pdf.cell(0, 2, '-'*40, 0, 1, 'C')
+        for i in b['items']:
+            nombre = str(i['Producto'])[:15]
+            pdf.cell(40, 4, f"{i['Cantidad']}x {nombre}", 0, 0)
+            pdf.cell(0, 4, f"S/{float(i['Subtotal']):.2f}", 0, 1, 'R')
+        pdf.cell(0, 2, '-'*40, 0, 1, 'C')
+        metodo_pdf = str(b['metodo']).replace('🟣 ', '').replace('🔵 ', '').replace('💵 ', '')
+        pdf.cell(40, 4, f"METODO:", 0, 0)
+        pdf.cell(0, 4, metodo_pdf, 0, 1, 'R')
+        pdf.cell(40, 4, f"DESC:", 0, 0)
+        pdf.cell(0, 4, f"- S/{float(b['rebaja']):.2f}", 0, 1, 'R')
+        pdf.set_font('Courier', 'B', 10)
+        pdf.cell(40, 5, f"NETO:", 0, 0)
+        pdf.cell(0, 5, f"S/{float(b['t_neto']):.2f}", 0, 1, 'R')
+        pdf_output = pdf.output(dest='S').encode('latin-1')
+
+        df_boleta = pd.DataFrame(b['items'])
+        df_boleta['Fecha'] = b['fecha']
+        df_boleta['Hora'] = b['hora']
+        df_boleta['Metodo'] = b['metodo']
+        df_boleta['Descuento'] = float(b['rebaja'])
+        df_boleta['Total_Neto'] = float(b['t_neto'])
+        buf_excel = io.BytesIO()
+        with pd.ExcelWriter(buf_excel, engine='openpyxl') as w:
+            df_boleta[['Fecha', 'Hora', 'Producto', 'Cantidad', 'Precio', 'Subtotal', 'Metodo', 'Descuento', 'Total_Neto']].to_excel(w, index=False, sheet_name='Ticket')
+
+        col1, col2 = st.columns(2)
+        col1.download_button("📄 PDF 80mm", pdf_output, f"Ticket_{b['fecha'].replace('/','')}.pdf", "application/pdf", use_container_width=True, key="btn_pdf_boleta")
+        col2.download_button("📊 EXCEL", buf_excel.getvalue(), f"Ticket_{b['fecha'].replace('/','')}.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True, key="btn_excel_boleta")
+
+        if tiene_whatsapp_habilitado():
+            texto = f"*TICKET - {st.session_state.tenant}*\n{b['fecha']} {b['hora']}\n---\n" + "\n".join([f"{i['Cantidad']}x {i['Producto']} - S/{float(i['Subtotal']):.2f}" for i in b['items']]) + f"\n---\n*TOTAL: S/{float(b['t_neto']):.2f}*\nMetodo: {b['metodo']}"
+            st.link_button("📲 WhatsApp", f"https://wa.me/?text={urllib.parse.quote(texto)}", use_container_width=True)
+        if st.button("⬅️ NUEVA VENTA", use_container_width=True, key="btn_nueva_venta"): st.session_state.boleta = None; st.rerun()
+    else:
+        st.subheader("🛍️ Nueva Venta")
+        busq = st.text_input("🔍 Buscar:", key="bv", placeholder="Escribe nombre del producto...").upper()
+        ops = []
+        for _, f in df_inv.iterrows():
+            if busq in str(f['Producto']):
+                est = f"STOCK: {f['Stock']}" if f['Stock'] > 0 else "🚫 AGOTADO"
+                ops.append(f"{f['Producto']} | S/ {f['Precio']:.2f} | {est}")
+        col1, col2 = st.columns([3, 1])
+        if ops:
+            sel = col1.selectbox("Producto:", ops, key="sel_v", placeholder="Busca y selecciona producto")
+            p_sel = sel.split(" | ")[0] if sel else None
+        else:
+            st.info("👆 Escribe arriba para buscar productos")
+            sel = None
+            p_sel = None
+        cant = col2.number_input("Cant:", min_value=1, value=1, key="cant_v")
+        if p_sel:
+            dp = df_inv[df_inv['Producto'] == p_sel].iloc[0]
+            en_carro = sum(i['Cantidad'] for i in st.session_state.carrito if i['Producto'] == p_sel)
+            disp = dp.Stock - en_carro
+            st.info(f"Disponible: {disp}")
+            if st.button("➕ Añadir", use_container_width=True, key="btn_add_carrito"):
+                if cant <= disp:
+                    st.session_state.carrito.append({'Producto': p_sel, 'Cantidad': int(cant), 'Precio': to_decimal(dp.Precio), 'Precio_Compra': to_decimal(dp.Precio_Compra), 'Subtotal': to_decimal(dp.Precio) * int(cant)})
+                    st.rerun()
+                else: st.error("❌ Sin stock")
+        if st.session_state.carrito:
+            for idx, item in enumerate(st.session_state.carrito):
+                c1, c2, c3 = st.columns([3,1,1])
+                c1.write(f"{item['Producto']}")
+                c2.write(f"x{item['Cantidad']}")
+                c3.write(f"S/{float(item['Subtotal']):.2f}")
+            if st.button("🗑️ VACIAR", key="btn_vaciar_carrito"): st.session_state.carrito = []; st.rerun()
+
+            st.write("**Método de Pago:**")
+            col_ef, col_yape, col_plin = st.columns(3)
+
+            with col_ef:
+                st.markdown("<div style='text-align:center;font-size:40px;'>💵</div>", unsafe_allow_html=True)
+                if st.button("EFECTIVO", use_container_width=True, type="primary" if st.session_state.metodo_pago=="💵 EFECTIVO" else "secondary", key="btn_efectivo"):
+                    st.session_state.metodo_pago = "💵 EFECTIVO"
+                    st.rerun()
+
+            with col_yape:
+                st.markdown("<div style='text-align:center;font-size:40px;'>🟣</div>", unsafe_allow_html=True)
+                if st.button("YAPE", use_container_width=True, type="primary" if st.session_state.metodo_pago=="🟣 YAPE" else "secondary", key="btn_yape"):
+                    st.session_state.metodo_pago = "🟣 YAPE"
+                    st.rerun()
+
+            with col_plin:
+                st.markdown("<div style='text-align:center;font-size:40px;'>🔵</div>", unsafe_allow_html=True)
+                if st.button("PLIN", use_container_width=True, type="primary" if st.session_state.metodo_pago=="🔵 PLIN" else "secondary", key="btn_plin"):
+                    st.session_state.metodo_pago = "🔵 PLIN"
+                    st.rerun()
+
+            metodo = st.session_state.metodo_pago
+            st.markdown(f"<h3 style='text-align:center;color:#667eea;'>Seleccionado: {metodo}</h3>", unsafe_allow_html=True)
+
+            rebaja = st.number_input("💸 Descuento:", min_value=0.0, value=0.0, key="num_rebaja")
+            total = max(Decimal('0.00'), sum(i['Subtotal'] for i in st.session_state.carrito) - to_decimal(rebaja))
+            st.markdown(f"<h1 style='text-align:center;color:#667eea;font-size:3rem;'>S/ {float(total):.2f}</h1>", unsafe_allow_html=True)
+            if st.button("🚀 FINALIZAR", use_container_width=True, type="primary", key="btn_finalizar"): st.session_state.confirmar = True
+            if st.session_state.confirmar:
+                if st.button(f"✅ CONFIRMAR S/ {float(total):.2f}", use_container_width=True, key="btn_confirmar_venta"):
+                    f, h, uid = obtener_tiempo_peru()
+                    for item in st.session_state.carrito:
+                        tabla_stock.update_item(Key={'TenantID': st.session_state.tenant, 'Producto': item['Producto']}, UpdateExpression="SET Stock = Stock - :s", ConditionExpression="Stock >= :s", ExpressionAttributeValues={':s': item['Cantidad']})
+                        tabla_ventas.put_item(Item={'TenantID': st.session_state.tenant, 'VentaID': f"V-{uid}", 'Fecha': f, 'Hora': h, 'Producto': item['Producto'], 'Cantidad': int(item['Cantidad']), 'Total': item['Subtotal'], 'Precio_Compra': item['Precio_Compra'], 'Metodo': metodo, 'Rebaja': to_decimal(rebaja), 'Usuario': st.session_state.usuario})
+                        registrar_kardex(item['Producto'], item['Cantidad'], "VENTA", item['Subtotal'], item['Precio_Compra'], metodo)
+                    st.session_state.boleta = {'items': st.session_state.carrito, 't_neto': total, 'rebaja': to_decimal(rebaja), 'metodo': metodo, 'fecha': f, 'hora': h}
+                    st.session_state.carrito = []; st.session_state.confirmar = False; st.rerun()
+# FIN PARTE 4/8
 # === TAB STOCK - TABLA MANUAL ANTI-BLANCO ===
 with tabs[1]:
     st.subheader("📦 Inventario")
@@ -463,12 +618,12 @@ with tabs[2]:
         st.write("---")
 
         with st.expander("🧾 VER TICKETS DEL DÍA - MÁS RECIENTE ARRIBA", expanded=True):
-            h1, h2, h3, h4, h5, h6 = st.columns([1,3,1,1])
+            h1, h2, h3, h4, h5, h6 = st.columns([1,3,1,1,1,1])
             h1.markdown("**HORA**"); h2.markdown("**PRODUCTO**"); h3.markdown("**CANT**")
             h4.markdown("**TOTAL**"); h5.markdown("**METODO**"); h6.markdown("**USUARIO**")
             st.divider()
             for idx, row in df_v.iterrows():
-                c1, c2, c3, c4, c5, c6 = st.columns([1,3,1,1,1,1])
+                c1, c2, c3, c4, c5, c6 = st.columns([1,3,1,1])
                 c1.write(row['Hora'])
                 c2.write(row['Producto'])
                 c3.write(f"{int(row['Cantidad'])}")
@@ -495,7 +650,7 @@ with tabs[2]:
             venta_plin = df_plin['Total'].sum()
             gan_plin = df_plin['Ganancia_Item'].sum()
             cols[2].metric("🔵 PLIN", f"S/ {float(venta_plin):.2f}", f"Ganancia: S/ {float(gan_plin):.2f}")
-# FIN PARTE 4/8
+# FIN PARTE 5/8
 # === TAB HISTORIAL - SOLO DUEÑO ===
 if st.session_state.rol == "DUEÑO" and len(tabs) > 3:
     with tabs[3]:
@@ -524,7 +679,7 @@ if st.session_state.rol == "DUEÑO" and len(tabs) > 3:
             st.divider()
 
             for idx, row in df_h.iterrows():
-                c1, c2, c3, c4, c5, c6, c7, c8 = st.columns([1,2,1,1,1,1])
+                c1, c2, c3, c4, c5, c6, c7, c8 = st.columns([1,2,1,1])
                 c1.write(row['Hora'])
                 c2.write(row['Producto'])
                 c3.write(row['Tipo'])
@@ -589,7 +744,7 @@ if st.session_state.rol == "DUEÑO" and len(tabs) > 3:
                     st.success(f"✅ Caja del {fecha_cierre.strftime('%d/%m/%Y')} cerrada"); time.sleep(1); st.rerun()
             else:
                 st.info("No hay ventas para cerrar este día")
-# FIN PARTE 5
+# FIN PARTE 6/8
 # === TAB CARGAR - SOLO DUEÑO ===
 if st.session_state.rol == "DUEÑO" and len(tabs) > 4:
     with tabs[4]:
@@ -668,7 +823,7 @@ if st.session_state.rol == "DUEÑO" and len(tabs) > 4:
                             st.success(f"✅ {len(df_upload)} productos cargados"); time.sleep(1); st.rerun()
             except Exception as e:
                 st.error(f"❌ Error al leer Excel: {e}")
-# FIN PARTE 6/8
+# FIN PARTE 7/8
 # === TAB MANTENIMIENTO - SOLO DUEÑO ===
 if st.session_state.rol == "DUEÑO" and len(tabs) > 5:
     with tabs[5]:
@@ -718,7 +873,7 @@ if st.session_state.rol == "DUEÑO" and len(tabs) > 5:
         st.subheader("📲 Soporte Técnico")
         texto_soporte = f"Hola Alberto, soy {st.session_state.usuario} de {st.session_state.tenant}. Necesito ayuda con mi plan {PLAN_ACTUAL}."
         st.link_button("💬 HABLAR CON SOPORTE POR WHATSAPP", f"https://wa.me/{NUMERO_SOPORTE}?text={urllib.parse.quote(texto_soporte)}", use_container_width=True, type="primary")
-# FIN PARTE 7/8
+
 # === SIDEBAR ===
 with st.sidebar:
     st.markdown(f"""
