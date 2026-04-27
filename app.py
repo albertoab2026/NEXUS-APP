@@ -752,7 +752,7 @@ with tabs[0]:
 
                 if prod_ingreso:
                     df_prod = df_inv[df_inv['Producto'] == prod_ingreso].iloc[0]
-                    st.info(f"Stock actual: {int(df_prod['Stock'])} unidades | Costo act
+                    st.info(f"Stock actual: {int(df_prod['Stock'])} unidades | Costo actual: S/{df_prod['Precio_Compra']:.2f} | Venta: S/{df_prod['Precio']:.2f}")
 # === TAB STOCK - SIN SCROLL + COSTO SOLO DUEÑO ===
 with tabs[1]:
     st.subheader("📦 Inventario")
