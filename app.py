@@ -46,9 +46,9 @@ st.markdown("""
             -webkit-forced-color-adjust: none!important;
         }
 
-  .main {background: linear-gradient(135deg, #667eea 0%, #764ba2 100%)!important;}
+ .main {background: linear-gradient(135deg, #667eea 0%, #764ba2 100%)!important;}
 
-  .block-container {
+ .block-container {
             background: #ffffff!important;
             color: #0f172a!important;
             border-radius: 24px;
@@ -59,9 +59,9 @@ st.markdown("""
             backdrop-filter: blur(10px);
         }
 
-  .block-container p,.block-container h1,.block-container h2,.block-container h3,
-  .block-container h4,.block-container label,.block-container span,
-  .stMarkdown,.stText,.stCaption {
+ .block-container p,.block-container h1,.block-container h2,.block-container h3,
+ .block-container h4,.block-container label,.block-container span,
+ .stMarkdown,.stText,.stCaption {
             color: #0f172a!important;
         }
 
@@ -70,7 +70,7 @@ st.markdown("""
     h3 {font-weight: 700!important; letter-spacing: -0.02em; font-size: 1.5rem!important;}
 
     /* HERO LOGIN */
-  .hero-login {
+ .hero-login {
             text-align: center;
             padding: 60px 20px 40px 20px;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -78,21 +78,21 @@ st.markdown("""
             margin: -3rem -3rem 2rem -3rem;
             color: white;
         }
-  .hero-login h1 {
+ .hero-login h1 {
             font-size: 4rem!important;
             font-weight: 900!important;
             margin: 0;
             color: white!important;
             text-shadow: 0 4px 6px rgba(0,0,0,0.1);
         }
-  .hero-login p {
+ .hero-login p {
             font-size: 1.25rem;
             opacity: 0.95;
             margin: 10px 0 0 0;
             color: white!important;
             font-weight: 500;
         }
-  .hero-badge {
+ .hero-badge {
             display: inline-block;
             background: rgba(255,255,255,0.2);
             backdrop-filter: blur(10px);
@@ -132,7 +132,7 @@ st.markdown("""
         }
 
     /* BOTONES */
-  .stButton>button {
+ .stButton>button {
             border-radius: 10px;
             font-weight: 700;
             border: none;
@@ -144,12 +144,12 @@ st.markdown("""
             letter-spacing: -0.01em;
             transition: all 0.15s ease;
         }
-  .stButton>button:hover {
+ .stButton>button:hover {
             background: #2563eb!important;
             box-shadow: 0 10px 15px -3px rgba(59,130,246,0.4);
             transform: translateY(-2px);
         }
-  .stButton>button:active {
+ .stButton>button:active {
             transform: translateY(0px);
         }
 
@@ -163,14 +163,14 @@ st.markdown("""
         }
 
     /* TABS */
-  .stTabs [data-baseweb="tab-list"] {
+ .stTabs [data-baseweb="tab-list"] {
             gap: 6px;
             background: #f1f5f9!important;
             padding: 8px;
             border-radius: 12px;
             border: 1px solid #e2e8f0;
         }
-  .stTabs [data-baseweb="tab"] {
+ .stTabs [data-baseweb="tab"] {
             border-radius: 8px;
             padding: 12px 24px;
             font-weight: 600;
@@ -178,11 +178,11 @@ st.markdown("""
             font-size: 15px;
             transition: all 0.15s;
         }
-  .stTabs [data-baseweb="tab"]:hover {
+ .stTabs [data-baseweb="tab"]:hover {
             color: #334155!important;
             background: rgba(255,255,255,0.5);
         }
-  .stTabs [aria-selected="true"] {
+ .stTabs [aria-selected="true"] {
             background: white!important;
             color: #0f172a!important;
             box-shadow: 0 1px 3px rgba(0,0,0,0.1);
@@ -225,22 +225,22 @@ st.markdown("""
         }
 
     /* INPUTS */
-  .stSelectbox>div {
+ .stSelectbox>div {
             background: white!important;
             border: 1px solid #cbd5e1!important;
             border-radius: 10px!important;
             font-weight: 500;
             transition: all 0.15s;
         }
-  .stSelectbox>div:hover {
+ .stSelectbox>div:hover {
             border-color: #94a3b8!important;
         }
-  .stSelectbox>div:focus-within {
+ .stSelectbox>div:focus-within {
             border-color: #3b82f6!important;
             box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
         }
-  .stSelectbox>div>div>div {color: #0f172a!important; font-weight: 500;}
-  .stSelectbox svg {fill: #64748b!important;}
+ .stSelectbox>div>div>div {color: #0f172a!important; font-weight: 500;}
+ .stSelectbox svg {fill: #64748b!important;}
 
     [data-baseweb="select"] {background-color: white!important;}
     [data-baseweb="select"] > div {background-color: white!important; color: #0f172a!important;}
@@ -260,7 +260,7 @@ st.markdown("""
         }
     [data-baseweb="menu"] li:hover {background-color: #f1f5f9!important;}
 
-  .stTextInput>div>input,.stNumberInput>div>div>input,.stDateInput input {
+ .stTextInput>div>input,.stNumberInput>div>div>input,.stDateInput input {
             border-radius: 10px;
             border: 1px solid #cbd5e1!important;
             padding: 14px 18px;
@@ -270,10 +270,10 @@ st.markdown("""
             font-size: 15px;
             transition: all 0.15s;
         }
-  .stTextInput>div>input:hover,.stNumberInput>div>div>input:hover,.stDateInput input:hover {
+ .stTextInput>div>input:hover,.stNumberInput>div>div>input:hover,.stDateInput input:hover {
             border-color: #94a3b8!important;
         }
-  .stTextInput>div>input:focus,.stNumberInput>div>div>input:focus,.stDateInput input:focus {
+ .stTextInput>div>input:focus,.stNumberInput>div>div>input:focus,.stDateInput input:focus {
             border-color: #3b82f6!important;
             box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
             outline: none;
@@ -296,7 +296,7 @@ st.markdown("""
             border-color: #cbd5e1;
         }
 
-  .stSelectbox label,.stTextInput label,.stNumberInput label,.stDateInput label,.stRadio label {
+ .stSelectbox label,.stTextInput label,.stNumberInput label,.stDateInput label,.stRadio label {
             color: #334155!important;
             font-weight: 600;
             font-size: 14px;
@@ -346,7 +346,7 @@ st.markdown("""
             padding: 8px 20px 20px 20px;
         }
 
-  .streamlit-expanderHeader {
+ .streamlit-expanderHeader {
             background: #f8fafc!important;
             border-radius: 14px;
             font-weight: 600;
@@ -355,7 +355,7 @@ st.markdown("""
         }
 
     /* ALERTAS */
-  .stAlert {
+ .stAlert {
             border-radius: 12px;
             border-left: 4px solid;
             font-weight: 500;
@@ -368,25 +368,25 @@ st.markdown("""
         }
 
     /* DATAFRAME */
-  .stDataFrame {
+ .stDataFrame {
             border: 1px solid #e2e8f0!important;
             border-radius: 14px;
             overflow: hidden;
             box-shadow: 0 1px 3px rgba(0,0,0,0.05);
         }
-  .stDataFrame [data-testid="stTable"] {
+ .stDataFrame [data-testid="stTable"] {
             font-size: 14px;
             font-weight: 500;
         }
 
     /* CHECKBOX */
-  .stCheckbox {
+ .stCheckbox {
             font-weight: 500;
             color: #334155;
         }
 
     /* SUCCESS/ERROR/WARNING */
-  .stSuccess {
+ .stSuccess {
             background-color: #f0fdf4;
             border-left: 4px solid #10b981;
             color: #065f46;
@@ -394,7 +394,7 @@ st.markdown("""
             padding: 16px 20px;
             font-weight: 500;
         }
-  .stError {
+ .stError {
             background-color: #fef2f2;
             border-left: 4px solid #ef4444;
             color: #991b1b;
@@ -402,7 +402,7 @@ st.markdown("""
             padding: 16px 20px;
             font-weight: 500;
         }
-  .stWarning {
+ .stWarning {
             background-color: #fffbeb;
             border-left: 4px solid #f59e0b;
             color: #92400e;
@@ -410,7 +410,7 @@ st.markdown("""
             padding: 16px 20px;
             font-weight: 500;
         }
-  .stInfo {
+ .stInfo {
             background-color: #eff6ff;
             border-left: 4px solid #3b82f6;
             color: #1e40af;
@@ -746,38 +746,53 @@ with tabs[0]:
 
         with tab_ingreso_emp:
             st.subheader("📦 Registrar Ingreso de Mercadería")
-            st.caption("Solo productos existentes. El dueño debe crear productos nuevos.")
-            st.info(f"Usuario: {st.session_state.usuario} - Queda registrado en Kardex")
+            st.caption("Registra lo que llegó de tu proveedor")
 
             if not df_inv.empty:
-                prod_ingreso = st.selectbox("Selecciona producto:", df_inv['Producto'].tolist(), key="sel_ingreso_emp")
+                prod_ingreso = st.selectbox("Producto que llegó:", df_inv['Producto'].tolist(), key="sel_ingreso_emp")
 
                 if prod_ingreso:
                     df_prod = df_inv[df_inv['Producto'] == prod_ingreso].iloc[0]
-                    st.info(f"Stock actual: {int(df_prod['Stock'])} | Precio Venta: S/{df_prod['Precio']:.2f}")
+                    st.info(f"Stock actual: {int(df_prod['Stock'])} unidades | Costo actual: S/{df_prod['Precio_Compra']:.2f}")
 
-                    cant_ingreso = st.number_input("Cantidad que llegó:", min_value=1, value=1, key="cant_ingreso_emp")
-                    st.caption(f"⚠️ El precio de compra NO se modifica. Solo suma stock.")
+                    st.markdown("**📦 DATOS DE LA COMPRA:**")
+                    col1, col2, col3 = st.columns(3)
+                    unidad_medida = col1.selectbox("Unidad:", ["Unidades", "Docenas", "Cajas", "Paquetes", "Millares"], key="unidad_medida_emp")
+                    cantidad = col2.number_input(f"Cantidad:", min_value=1, value=1, key="cant_lote_emp")
+                    precio_total_lote = col3.number_input(f"Costo total S/:", min_value=0.0, value=0.0, key="precio_lote_emp", help="Lo que pagaste por todo")
 
+                    multiplicador = {"Unidades": 1, "Docenas": 12, "Cajas": 1, "Paquetes": 1, "Millares": 1000}[unidad_medida]
+
+                    if unidad_medida in ["Cajas", "Paquetes"]:
+                        unid_x_bulto = st.number_input(f"¿Cuántas unidades trae cada {unidad_medida[:-1]}?", min_value=1, value=50, key="unid_bulto_emp")
+                        multiplicador = unid_x_bulto
+
+                    cant_ingreso = cantidad * multiplicador
+                    nuevo_pc = precio_total_lote / cant_ingreso if cant_ingreso > 0 else 0
+
+                    st.success(f"✅ Total: {cant_ingreso} unidades | Costo unitario: S/{nuevo_pc:.2f}")
                     stock_final = int(df_prod['Stock']) + cant_ingreso
-                    st.metric("Stock después del ingreso", stock_final)
+                    st.metric("Stock nuevo", f"{stock_final} unidades")
 
-                    if st.button("📥 REGISTRAR INGRESO", use_container_width=True, type="primary", key="btn_ingreso_stock_emp"):
+                    if st.button("📥 REGISTRAR", use_container_width=True, type="primary", key="btn_ingreso_stock_emp"):
                         if stock_final > MAX_STOCK_POR_PRODUCTO:
-                            st.error(f"❌ Stock máximo: {MAX_STOCK_POR_PRODUCTO}. Te pasas por {stock_final - MAX_STOCK_POR_PRODUCTO}")
+                            st.error(f"❌ Stock máximo: {MAX_STOCK_POR_PRODUCTO}")
                         else:
+                            stock_viejo = int(df_prod['Stock'])
+                            pc_viejo = float(df_prod['Precio_Compra'])
+                            pc_promedio = ((stock_viejo * pc_viejo) + (cant_ingreso * nuevo_pc)) / stock_final if stock_viejo > 0 else nuevo_pc
+
                             tabla_stock.update_item(
                                 Key={'TenantID': st.session_state.tenant, 'Producto': prod_ingreso},
-                                UpdateExpression="SET Stock = :s",
-                                ExpressionAttributeValues={':s': stock_final}
+                                UpdateExpression="SET Stock = :s, Precio_Compra = :pc",
+                                ExpressionAttributeValues={':s': stock_final, ':pc': to_decimal(pc_promedio)}
                             )
-                            registrar_kardex(prod_ingreso, cant_ingreso, "INGRESO_STOCK", cant_ingreso * df_prod['Precio_Compra'], df_prod['Precio_Compra'], f"INGRESO_{st.session_state.usuario}")
-                            st.success(f"✅ Registrado: +{cant_ingreso} {prod_ingreso} por {st.session_state.usuario}")
-                            st.info(f"Stock nuevo: {stock_final}")
+                            registrar_kardex(prod_ingreso, cant_ingreso, "INGRESO_STOCK", precio_total_lote, nuevo_pc, f"INGRESO_{st.session_state.usuario}")
+                            st.success(f"✅ {st.session_state.usuario} ingresó {cant_ingreso} {prod_ingreso} | Nuevo costo: S/{pc_promedio:.2f}")
                             time.sleep(1)
                             st.rerun()
             else:
-                st.warning("⚠️ No hay productos cargados. Pide al dueño que agregue productos.")
+                st.warning("⚠️ No hay productos")
 # FIN PARTE 4/8
 # === TAB STOCK - SIN SCROLL + COSTO SOLO DUEÑO ===
 with tabs[1]:
@@ -816,7 +831,7 @@ with tabs[1]:
             else:
                 df_pagina = df_mostrar
 
-            # DUEÑO VE 4 COLUMNAS, EMPLEADO VE 3
+            # DUEÑO VE 4 COLUMNAS, EMPLEADO VE 3 - SIN SCROLL
             if st.session_state.rol == "DUEÑO":
                 df_tabla = df_pagina[['Producto', 'Stock', 'Precio_Compra', 'Precio']].copy()
                 df_tabla.columns = ['PROD', 'STOCK', 'COSTO', 'VENTA']
@@ -827,6 +842,7 @@ with tabs[1]:
                     "COSTO": st.column_config.NumberColumn("COSTO", width="small", format="S/ %.2f"),
                     "VENTA": st.column_config.NumberColumn("VENTA", width="small", format="S/ %.2f")
                 }
+                col_order = ["PROD", "STOCK", "COSTO", "VENTA"]
             else:
                 df_tabla = df_pagina[['Producto', 'Stock', 'Precio']].copy()
                 df_tabla.columns = ['PROD', 'STOCK', 'VENTA']
@@ -834,15 +850,17 @@ with tabs[1]:
                 column_config = {
                     "PROD": st.column_config.TextColumn("PROD", width="large"),
                     "STOCK": st.column_config.NumberColumn("STOCK", width="small", format="%d"),
-                    "VENTA": st.column_config.NumberColumn("VENTA", width="small", format="S/ %.2f")
+                    "VENTA": st.column_config.NumberColumn("VENTA", width="medium", format="S/ %.2f")
                 }
+                col_order = ["PROD", "STOCK", "VENTA"]
 
             st.dataframe(
                 df_tabla,
                 use_container_width=True,
                 hide_index=True,
                 height=400,
-                column_config=column_config
+                column_config=column_config,
+                column_order=col_order
             )
 
             buf = io.BytesIO()
@@ -969,7 +987,7 @@ with tabs[2]:
                 height=350,
                 column_config={
                     "HORA": st.column_config.TextColumn("HORA", width="small"),
-                    "PROD": st.column_config.TextColumn("PROD", width="small"),
+                    "PROD": st.column_config.TextColumn("PROD", width="medium"),
                     "CANT": st.column_config.NumberColumn("CANT", width="small"),
                     "TOTAL": st.column_config.NumberColumn("TOTAL", width="small", format="S/ %.2f")
                 }
@@ -1045,7 +1063,7 @@ with tabs[3]:
             height=400,
             column_config={
                 "HORA": st.column_config.TextColumn("HORA", width="small"),
-                "PROD": st.column_config.TextColumn("PROD", width="small"),
+                "PROD": st.column_config.TextColumn("PROD", width="medium"),
                 "TIPO": st.column_config.TextColumn("TIPO", width="small"),
                 "CANT": st.column_config.NumberColumn("CANT", width="small"),
                 "USUARIO": st.column_config.TextColumn("QUIÉN", width="small")
@@ -1176,21 +1194,35 @@ if st.session_state.rol == "DUEÑO" and len(tabs) > 4:
 
         with tab_ingreso:
             st.markdown("### 📦 INGRESO DE MERCADERÍA")
-            st.caption("Suma stock a productos que ya existen sin tocar el precio")
+            st.caption("Ingresa como compras: por cajas, docenas, millares, etc")
 
             if not df_inv.empty:
                 prod_ingreso = st.selectbox("Selecciona producto:", df_inv['Producto'].tolist(), key="sel_ingreso")
 
                 if prod_ingreso:
                     df_prod = df_inv[df_inv['Producto'] == prod_ingreso].iloc[0]
-                    st.info(f"Stock actual: {int(df_prod['Stock'])} | Precio Compra: S/{df_prod['Precio_Compra']:.2f} | Precio Venta: S/{df_prod['Precio']:.2f}")
+                    st.info(f"Stock actual: {int(df_prod['Stock'])} unidades | Costo actual: S/{df_prod['Precio_Compra']:.2f} | Venta: S/{df_prod['Precio']:.2f}")
 
-                    col1, col2 = st.columns(2)
-                    cant_ingreso = col1.number_input("Cantidad a ingresar:", min_value=1, value=1, key="cant_ingreso")
-                    nuevo_pc = col2.number_input("Precio Compra nuevo lote:", min_value=0.0, value=float(df_prod['Precio_Compra']), key="pc_ingreso", help="Si cambió el precio de compra")
+                    st.markdown("**📦 DATOS DE LA COMPRA:**")
+                    col1, col2, col3 = st.columns(3)
+
+                    unidad_medida = col1.selectbox("Unidad:", ["Unidades", "Docenas", "Cajas", "Millares", "Paquetes"], key="unidad_medida")
+                    cantidad = col2.number_input(f"Cantidad de {unidad_medida}:", min_value=1, value=1, key="cant_lote")
+                    precio_total_lote = col3.number_input(f"Costo total del lote S/:", min_value=0.0, value=0.0, key="precio_lote", help="Lo que pagaste por todo el lote")
+
+                    multiplicador = {"Unidades": 1, "Docenas": 12, "Cajas": 1, "Millares": 1000, "Paquetes": 1}[unidad_medida]
+
+                    if unidad_medida in ["Cajas", "Paquetes"]:
+                        unid_x_bulto = st.number_input(f"¿Cuántas unidades trae cada {unidad_medida[:-1]}?", min_value=1, value=50, key="unid_bulto")
+                        multiplicador = unid_x_bulto
+
+                    cant_ingreso = cantidad * multiplicador
+                    nuevo_pc = precio_total_lote / cant_ingreso if cant_ingreso > 0 else 0
+
+                    st.success(f"✅ Ingresan: {cant_ingreso} unidades | Costo x unidad: S/{nuevo_pc:.2f}")
 
                     stock_final = int(df_prod['Stock']) + cant_ingreso
-                    st.metric("Stock después del ingreso", stock_final)
+                    st.metric("Stock después del ingreso", f"{stock_final} unidades")
 
                     if st.button("📥 REGISTRAR INGRESO", use_container_width=True, type="primary", key="btn_ingreso_stock"):
                         if stock_final > MAX_STOCK_POR_PRODUCTO:
@@ -1209,8 +1241,8 @@ if st.session_state.rol == "DUEÑO" and len(tabs) > 4:
                                 UpdateExpression="SET Stock = :s, Precio_Compra = :pc",
                                 ExpressionAttributeValues={':s': stock_final, ':pc': to_decimal(pc_promedio)}
                             )
-                            registrar_kardex(prod_ingreso, cant_ingreso, "INGRESO_STOCK", cant_ingreso * nuevo_pc, nuevo_pc, "COMPRA")
-                            st.success(f"✅ Ingreso registrado: +{cant_ingreso} {prod_ingreso}. Stock nuevo: {stock_final}")
+                            registrar_kardex(prod_ingreso, cant_ingreso, "INGRESO_STOCK", precio_total_lote, nuevo_pc, "COMPRA")
+                            st.success(f"✅ Ingreso: {cant_ingreso} {prod_ingreso} | Nuevo costo promedio: S/{pc_promedio:.2f}")
                             time.sleep(1)
                             st.rerun()
             else:
