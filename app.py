@@ -486,19 +486,45 @@ def registrar_cierre(total, u_turno, tipo, u_cierre, fecha=None):
 
 def obtener_limites_tenant():
     item = tabla_tenants.get_item(Key={'TenantID': st.session_state.tenant}).get('Item', {})
-    if not item: st.error("Tenant no existe"); st.stop()
-    if item.get('EstadoPago') == 'SUSPENDIDO': st.error(f"⛔ SUSPENDIDO. WhatsApp +{NUMERO_SOPORTE}"); st.stop()
+    if not item: 
+        st.error("❌ Tenant no existe"); st.stop()
+    if item.get('EstadoPago') == 'SUSPENDIDO': 
+        st.error("❌ Cuenta suspendida por falta de pago"); st.stop()
+    
     fc = datetime.strptime(item.get('ProximoCobro', '01/01/2000'), '%d/%m/%Y').date()
-    if fc < datetime.now(tz_peru).date() - timedelta(days=5): st.error(f"⛔ VENCIÓ {item.get('ProximoCobro')}"); st.stop()
-    max_p, max_s = int(item.get('MaxProductos', 0)), int(item.get('MaxStock', 0))
-    if max_p == 0: st.error("Configura MaxProductos"); st.stop()
+    
+    # SI PASÓ 5 DÍAS DE GRACIA → PANTALLA BONITA
+    if fc < datetime.now(tz_peru).date() - timedelta(days=5):
+        st.markdown(f"""
+        <div style='text-align: center; padding: 30px; background: #1a1a1a; border-radius: 15px;'>
+            <h1 style='color: #ff4b4b;'>🚫 SUSCRIPCIÓN VENCIDA</h1>
+            <h3>Tu plan {item.get('Plan', 'BASICO')} venció el {item.get('ProximoCobro')}</h3>
+            <br>
+            <div style='background: #262730; padding: 20px; border-radius: 10px; text-align: left;'>
+                <h2 style='color: #00c8ff;'>💳 Para reactivar tu cuenta:</h2>
+                <p style='font-size: 18px; line-height: 1.8;'>
+                    1. <b>Yape/Plin a:</b> +{NUMERO_SOPORTE}<br>
+                    2. <b>Monto:</b> S/ {item.get('Precio', 50)}<br>
+                    3. <b>Envía captura</b> por WhatsApp al mismo número
+                </p>
+            </div>
+            <br>
+            <p style='color: #888;'>Tu información está 100% segura. Se reactiva en 5 minutos después del pago.</p>
+            <hr style='border: 1px solid #333;'>
+            <p>📞 <b>Soporte 24/7:</b> +{NUMERO_SOPORTE}</p>
+        </div>
+        """, unsafe_allow_html=True)
+        st.stop()
+    
+    max_p, max_s = int(item.get('MaxProductosTotales', 500)), int(item.get('MaxStockPorProducto', 200))
+    if max_p == 0: st.error("Configura MaxProductosTotales en DynamoDB"); st.stop()
     df_temp = obtener_datos()
-    stock_max = int(df_temp['Stock'].max()) if not df_temp.empty else 0
+    stock_max = int(df_temp['Stock'].max()) if not df_temp.empty and 'Stock' in df_temp.columns else 0
     if contarProductosEnBD() > max_p or stock_max > max_s:
         st.session_state.modo_lectura = True
-        st.session_state.mensaje_lectura = f"⚠️ MODO LECTURA: Pasado de límites"
+        st.session_state.mensaje_lectura = f"⚠️ Plan {item.get('Plan')} excedido. Límite: {max_p} productos/{max_s} stock."
     else: st.session_state.modo_lectura = False
-    return max_p, max_s, item.get('Plan', 'SIN_PLAN'), item.get('PrecioMensual', 0)
+    return max_p, max_s, item.get('Plan', 'BASICO'), float(item.get('Precio', 50))
 
 def tiene_whatsapp_habilitado():
     try: return tabla_tenants.get_item(Key={'TenantID': st.session_state.tenant}).get('Item', {}).get('WhatsApp', False) or PLAN_ACTUAL in ["PRO", "PREMIUM"]
@@ -589,7 +615,31 @@ if not st.session_state.auth:
             st.write("")
             st.caption("🔒 Conexión segura SSL | 💎 NEXUS v3.0 Enterprise")
             st.caption("Soporte 24/7: +51 914 282 688")
-    st.stop()
+
+# === SISTEMA DE AVISOS DE VENCIMIENTO - 5 DÍAS GRACIA ===
+def sistema_vencimiento_inteligente():
+    try:
+        t = tabla_tenants.get_item(Key={'TenantID': st.session_state.tenant}).get('Item', {})
+        fc = datetime.strptime(t.get('ProximoCobro', '01/01/2000'), '%d/%m/%Y').date()
+        hoy = datetime.now(tz_peru).date()
+        dias = (fc - hoy).days
+        
+        # AVISO 3, 2, 1 DÍAS ANTES
+        if 1 <= dias <= 3:
+            st.warning(f"⚠️ Tu plan {t.get('Plan', 'ACTUAL')} vence en {dias} días el {t['ProximoCobro']}. Renueva al +{NUMERO_SOPORTE} para no perder acceso.")
+        
+        # DÍA DEL VENCIMIENTO  
+        elif dias == 0:
+            st.error(f"🚨 Tu plan vence HOY {t['ProximoCobro']}. Tienes 5 días de gracia hasta {(fc + timedelta(days=5)).strftime('%d/%m/%Y')}")
+        
+        # DÍAS DE GRACIA - 5 DÍAS
+        elif -5 < dias < 0:
+            dias_gracia = 5 + dias
+            st.error(f"🚨 PERÍODO DE GRACIA: Te quedan {dias_gracia} días. Paga ya o se bloqueará el {(fc + timedelta(days=5)).strftime('%d/%m/%Y')}")
+    except:
+        pass
+
+sistema_vencimiento_inteligente() # ← EJECUTA LOS AVISOS
 
 # === POST LOGIN ===
 MAX_PRODUCTOS_TOTALES, MAX_STOCK_POR_PRODUCTO, PLAN_ACTUAL, PRECIO_ACTUAL = obtener_limites_tenant()
