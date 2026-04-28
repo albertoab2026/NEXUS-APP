@@ -11,7 +11,31 @@ import urllib.parse
 from decimal import Decimal, ROUND_HALF_UP
 import io
 import uuid
+# === CONFIG STREAMLIT ===
+st.set_page_config(
+    page_title="Sistema Ventas", 
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
 
+# === FONDO PRO ESTILO STRIPE ===
+st.markdown("""
+<style>
+.main {
+    background-color: #f6f8fb !important;
+}
+[data-testid="stAppViewContainer"] > .main {
+    background-color: #f6f8fb !important;
+}
+.block-container {
+    background-color: white !important; 
+    padding: 2rem !important; 
+    border-radius: 12px !important;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08) !important;
+    margin-top: 1rem !important;
+}
+</style>
+""", unsafe_allow_html=True)
 # === CONFIG ===
 TABLA_STOCK = st.secrets["tablas"]["stock"]
 TABLA_VENTAS = st.secrets["tablas"]["ventas"]
@@ -662,25 +686,6 @@ if not st.session_state.auth:
 
 # === POST LOGIN ===
 sistema_vencimiento_inteligente()
-# === FONDO PRO ESTILO STRIPE/NOTION ===
-st.markdown("""
-<style>
-[data-testid="stAppViewContainer"] {
-    background-color: #f6f8fb !important;
-}
-[data-testid="stHeader"] {
-    background-color: rgba(0,0,0,0) !important;
-}
-.block-container {
-    background-color: white !important; 
-    padding: 2rem 3rem !important; 
-    border-radius: 12px !important;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.05) !important;
-    max-width: 1200px !important;
-    margin-top: 1rem !important;
-}
-</style>
-""", unsafe_allow_html=True)
 MAX_PRODUCTOS_TOTALES, MAX_STOCK_POR_PRODUCTO, PLAN_ACTUAL, PRECIO_ACTUAL = obtener_limites_tenant()
 df_inv = obtener_datos()
 if st.session_state.get('modo_lectura', False): st.warning(st.session_state.mensaje_lectura)
