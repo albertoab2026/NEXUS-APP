@@ -11,31 +11,22 @@ import urllib.parse
 from decimal import Decimal, ROUND_HALF_UP
 import io
 import uuid
-# === FONDO PRO - MODO NUCLEAR ===
-st.markdown("""
+# === FONDO PRO - st.html OVERRIDE ===
+st.html("""
 <style>
-html, body, [data-testid="stApp"],.stApp {
-    background-color: #f6f8fb!important;
+html, body, #root, [data-testid="stApp"] {
+    background: #f6f8fb!important;
 }
-
-[data-testid="stAppViewContainer"] {
-    background-color: #f6f8fb!important;
-}
-
-[data-testid="stHeader"] {
-    background-color: transparent!important;
-}
-
 .block-container {
-    background-color: #ffffff!important;
+    background: white!important;
     padding: 2rem 3rem!important;
     border-radius: 16px!important;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.08)!important;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08)!important;
     margin: 1rem auto!important;
     max-width: 1200px!important;
 }
 </style>
-""", unsafe_allow_html=True)
+""")
 # === CONFIG ===
 TABLA_STOCK = st.secrets["tablas"]["stock"]
 TABLA_VENTAS = st.secrets["tablas"]["ventas"]
