@@ -662,6 +662,22 @@ if not st.session_state.auth:
 
 # === POST LOGIN ===
 sistema_vencimiento_inteligente()
+# === FONDO PRO ESTILO STRIPE/NOTION ===
+st.markdown("""
+<style>
+.stApp {
+    background: #f6f8fb;
+}
+.block-container {
+    background: white; 
+    padding: 2rem 3rem; 
+    border-radius: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    max-width: 1200px;
+    margin-top: 1rem;
+}
+</style>
+""", unsafe_allow_html=True)
 MAX_PRODUCTOS_TOTALES, MAX_STOCK_POR_PRODUCTO, PLAN_ACTUAL, PRECIO_ACTUAL = obtener_limites_tenant()
 df_inv = obtener_datos()
 if st.session_state.get('modo_lectura', False): st.warning(st.session_state.mensaje_lectura)
