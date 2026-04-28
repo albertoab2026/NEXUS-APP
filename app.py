@@ -870,7 +870,7 @@ with tabs[0]:
                                 registrar_kardex(prod_ingreso, cant_ingreso, "INGRESO_STOCK", cant_ingreso * nuevo_pc, nuevo_pc, f"INGRESO_{st.session_state.usuario}")
                                 st.success(f"✅ {st.session_state.usuario} ingresó {cant_ingreso} {prod_ingreso} | Nuevo costo: S/{pc_promedio:.2f}")
                                 time.sleep(1)
-                                st.rerun()
+                                st.ii8rerun()
                     else:
                         st.info("👆 Haz click en una fila de la tabla para seleccionar")
                 else:
@@ -1263,5 +1263,9 @@ if st.session_state.rol == "DUEÑO" and len(tabs) > 4:
                             st.error(f"❌ Stock máximo por producto: {MAX_STOCK_POR_PRODUCTO}")
                         else:
                             try:
-                                tabla_stock.put_item(Item={
-                                    'TenantID': st.sessio                
+tabla_stock.put_item(Item={
+    'TenantID': st.session_state.tenant,
+    'Producto': row['Producto'],
+    'Precio_Compra': to_decimal(row['Precio_Compra']),
+    'Precio': to_decimal(row['Precio']),
+    'Stock': int(row['Stock'])                
