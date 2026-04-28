@@ -653,49 +653,48 @@ if st.session_state.get('logged_in'):
         tabs_list += ["📥 CARGAR", "🛠️ MANT."]
     tabs = st.tabs(tabs_list)
 
-# === TAB VENTA ===
-with tabs[0]:
-    f_hoy, h_hoy, _ = obtener_tiempo_peru()
-    res_cierre = tabla_cierres.query(KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant), FilterExpression=Attr('Fecha').eq(f_hoy) & Attr('UsuarioTurno').eq(st.session_state.usuario))
-    ya_cerro = len(res_cierre.get('Items', [])) > 0
-    hora_cierre = max([c['Hora'] for c in res_cierre.get('Items', [])]) if ya_cerro else None
+    # === TAB VENTA === ← FÍJATE: 4 ESPACIOS ADENTRO DEL IF
+    with tabs[0]:
+        f_hoy, h_hoy, _ = obtener_tiempo_peru()
+        res_cierre = tabla_cierres.query(KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant), FilterExpression=Attr('Fecha').eq(f_hoy) & Attr('UsuarioTurno').eq(st.session_state.usuario))
+        ya_cerro = len(res_cierre.get('Items', [])) > 0
+        hora_cierre = max([c['Hora'] for c in res_cierre.get('Items', [])]) if ya_cerro else None
 
-    if ya_cerro:
-        st.warning(f"⚠️ YA CERRASTE CAJA a las {hora_cierre}")
-        st.info("Las ventas que hagas ahora irán al siguiente turno")
-        if st.button("🔓 REABRIR CAJA - Solo Dueño"):
-            for c in res_cierre.get('Items', []):
-                tabla_cierres.delete_item(Key={'TenantID': c['TenantID'], 'CierreID': c['CierreID']})
-            st.success("✅ Caja reabierta")
-            st.rerun()
+        if ya_cerro:
+            st.warning(f"⚠️ YA CERRASTE CAJA a las {hora_cierre}")
+            st.info("Las ventas que hagas ahora irán al siguiente turno")
+            if st.button("🔓 REABRIR CAJA - Solo Dueño"):
+                for c in res_cierre.get('Items', []):
+                    tabla_cierres.delete_item(Key={'TenantID': c['TenantID'], 'CierreID': c['CierreID']})
+                st.success("✅ Caja reabierta")
+                st.rerun()
+        # AQUÍ SIGUE TU CÓDIGO DE VENTA...
 
-    # AQUÍ SIGUE TODO TU CÓDIGO DE VENTA...
+    # === TAB STOCK === ← TAMBIÉN 4 ESPACIOS ADENTRO
+    with tabs[1]:
+        st.subheader("📦 Control de Stock")
+        st.dataframe(df_inv, use_container_width=True)
+        # AQUÍ VA TODO TU CÓDIGO DE STOCK
 
-# === TAB STOCK === ← SACADO AFUERA, MISMO NIVEL QUE tabs[0]
-with tabs[1]:
-    st.subheader("📦 Control de Stock")
-    st.dataframe(df_inv, use_container_width=True)
-    # AQUÍ VA TODO TU CÓDIGO DE STOCK
+    # === TAB HISTORIAL ===
+    with tabs[2]:
+        st.subheader("📈 Historial de Ventas")
+        # AQUÍ VA TU CÓDIGO DE HISTORIAL
 
-# === TAB HISTORIAL ===
-with tabs[2]:
-    st.subheader("📈 Historial de Ventas")
-    # AQUÍ VA TU CÓDIGO DE HISTORIAL
+    # === TAB REPORTE ===
+    with tabs[3]:
+        st.subheader("📊 Reporte de Ventas")
+        # AQUÍ VA TU CÓDIGO DE REPORTE
 
-# === TAB REPORTE ===
-with tabs[3]:
-    st.subheader("📊 Reporte de Ventas")
-    # AQUÍ VA TU CÓDIGO DE REPORTE
+    # === TABS SOLO PARA DUEÑO ===
+    if st.session_state.rol == "DUEÑO" and not st.session_state.get('modo_lectura', False):
+        with tabs[4]:
+            st.subheader("📥 Cargar Inventario")
+            # AQUÍ VA TU CÓDIGO DE CARGAR
 
-# === TABS SOLO PARA DUEÑO ===
-if st.session_state.rol == "DUEÑO" and not st.session_state.get('modo_lectura', False):
-    with tabs[4]:
-        st.subheader("📥 Cargar Inventario")
-        # AQUÍ VA TU CÓDIGO DE CARGAR
-
-    with tabs[5]:
-        st.subheader("🛠️ Mantenimiento")
-        # AQUÍ VA TU CÓDIGO DE MANT.
+        with tabs[5]:
+            st.subheader("🛠️ Mantenimiento")
+            # AQUÍ VA TU CÓDIGO DE MANT.
     if ya_cerro:
         st.warning(f"⚠️ YA CERRASTE CAJA HOY A LAS {hora_cierre}")
         st.info("Las ventas que hagas ahora son POST-CIERRE. Se sumarán al reporte de mañana.")
