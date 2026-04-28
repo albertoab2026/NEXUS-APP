@@ -672,9 +672,54 @@ if st.session_state.get('logged_in'):
 
     # === TAB STOCK === ← TAMBIÉN 4 ESPACIOS ADENTRO
     with tabs[1]:
-        st.subheader("📦 Control de Stock")
-        st.dataframe(df_inv, use_container_width=True)
-        # AQUÍ VA TODO TU CÓDIGO DE STOCK
+                    "PROD": st.column_config.TextColumn("PROD", width="large"),
+                    "STOCK": st.column_config.NumberColumn("STOCK", width="small", format="%d"),
+                    "VENTA": st.column_config.NumberColumn("VENTA", width="medium", format="S/ %.2f")
+                }
+                col_order = ["PROD", "STOCK", "VENTA"]
+
+            st.dataframe(
+                df_tabla,
+                use_container_width=True,
+                hide_index=True,
+                height=400,
+                column_config=column_config,
+                column_order=col_order
+            )
+
+            buf = io.BytesIO()
+            with pd.ExcelWriter(buf, engine='openpyxl') as w:
+                df_mostrar.to_excel(w, index=False, sheet_name='Inventario')
+            st.download_button(
+                "📥 DESCARGAR EXCEL FILTRADO",
+                buf.getvalue(),
+                f"Inventario_{st.session_state.tenant}_{datetime.now(tz_peru).strftime('%Y%m%d')}.xlsx",
+                use_container_width=True,
+                key="btn_desc_inv"
+            )
+
+            bajo = df_mostrar[df_mostrar['Stock'] < 5]
+            if not bajo.empty:
+                st.warning(f"⚠️ Stock crítico: {len(bajo)} productos con menos de 5 unidades")
+                with st.expander("Ver productos con stock bajo"):
+                    for idx, row in bajo.iterrows():
+                        st.write(f"**{row['Producto']}** - Stock: {int(row['Stock'])}")
+        else:
+            if busq:
+                st.info(f"❌ No se encontró '{busq}'. Prueba con parte del nombre.")
+            else:
+                st.info("📭 No hay productos con ese filtro")
+    else:
+        st.info("👆 Escribe arriba para buscar o activa 'Ver lista completa'")
+        st.caption(f"Total en BD: {contarProductosEnBD()} productos")
+
+        if not df_inv.empty:
+            col1, col2, col3, col4 = st.columns(4)
+            col1.metric("Total productos", len(df_inv))
+            col2.metric("Agotados", len(df_inv[df_inv['Stock'] == 0]))
+            col3.metric("Stock bajo <5", len(df_inv[df_inv['Stock'] < 5]))
+            col4.metric("Valor inventario", f"S/ {(df_inv['Stock'] * df_inv['Precio_Compra']).sum():.2f}")
+
 
     # === TAB HISTORIAL ===
     with tabs[2]:
@@ -969,53 +1014,6 @@ with tabs[1]:
                 df_tabla.columns = ['PROD', 'STOCK', 'VENTA']
                 df_tabla['STOCK'] = df_tabla['STOCK'].astype(int)
                 column_config = {
-                    "PROD": st.column_config.TextColumn("PROD", width="large"),
-                    "STOCK": st.column_config.NumberColumn("STOCK", width="small", format="%d"),
-                    "VENTA": st.column_config.NumberColumn("VENTA", width="medium", format="S/ %.2f")
-                }
-                col_order = ["PROD", "STOCK", "VENTA"]
-
-            st.dataframe(
-                df_tabla,
-                use_container_width=True,
-                hide_index=True,
-                height=400,
-                column_config=column_config,
-                column_order=col_order
-            )
-
-            buf = io.BytesIO()
-            with pd.ExcelWriter(buf, engine='openpyxl') as w:
-                df_mostrar.to_excel(w, index=False, sheet_name='Inventario')
-            st.download_button(
-                "📥 DESCARGAR EXCEL FILTRADO",
-                buf.getvalue(),
-                f"Inventario_{st.session_state.tenant}_{datetime.now(tz_peru).strftime('%Y%m%d')}.xlsx",
-                use_container_width=True,
-                key="btn_desc_inv"
-            )
-
-            bajo = df_mostrar[df_mostrar['Stock'] < 5]
-            if not bajo.empty:
-                st.warning(f"⚠️ Stock crítico: {len(bajo)} productos con menos de 5 unidades")
-                with st.expander("Ver productos con stock bajo"):
-                    for idx, row in bajo.iterrows():
-                        st.write(f"**{row['Producto']}** - Stock: {int(row['Stock'])}")
-        else:
-            if busq:
-                st.info(f"❌ No se encontró '{busq}'. Prueba con parte del nombre.")
-            else:
-                st.info("📭 No hay productos con ese filtro")
-    else:
-        st.info("👆 Escribe arriba para buscar o activa 'Ver lista completa'")
-        st.caption(f"Total en BD: {contarProductosEnBD()} productos")
-
-        if not df_inv.empty:
-            col1, col2, col3, col4 = st.columns(4)
-            col1.metric("Total productos", len(df_inv))
-            col2.metric("Agotados", len(df_inv[df_inv['Stock'] == 0]))
-            col3.metric("Stock bajo <5", len(df_inv[df_inv['Stock'] < 5]))
-            col4.metric("Valor inventario", f"S/ {(df_inv['Stock'] * df_inv['Precio_Compra']).sum():.2f}")
 
 # === TAB REPORTES - GANANCIA SOLO DUEÑO ===
 with tabs[2]:
