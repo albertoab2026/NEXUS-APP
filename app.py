@@ -1263,9 +1263,18 @@ if st.session_state.rol == "DUEÑO" and len(tabs) > 4:
                             st.error(f"❌ Stock máximo por producto: {MAX_STOCK_POR_PRODUCTO}")
                         else:
                             try:
-tabla_stock.put_item(Item={
-    'TenantID': st.session_state.tenant,
-    'Producto': row['Producto'],
-    'Precio_Compra': to_decimal(row['Precio_Compra']),
-    'Precio': to_decimal(row['Precio']),
-    'Stock': int(row['Stock'])                
+                                tabla_stock.put_item(Item={
+                                    'TenantID': st.session_state.tenant,
+                                    'Producto': prod,
+                                    'Precio_Compra': to_decimal(pc),
+                                    'Precio': to_decimal(p),
+                                    'Stock': int(s)
+                                }, ConditionExpression='attribute_not_exists(Producto)')
+                                registrar_kardex(prod, s, "CARGA_INICIAL", s * p, pc, "INVENTARIO")
+                                st.success(f"✅ {prod} agregado"); time.sleep(1); st.rerun()
+                            except dynamodb.meta.client.exceptions.ConditionalCheckFailedException:
+                                st.error("❌ Producto ya existe. Usa la pestaña 'INGRESO DE STOCK'")
+                            except Exception as e:
+                                st.error(f"❌ Error: {e}")
+                    else:
+                        st.error("❌ Completa todos los campos")
