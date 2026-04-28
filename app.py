@@ -11,33 +11,28 @@ import urllib.parse
 from decimal import Decimal, ROUND_HALF_UP
 import io
 import uuid
-# === FONDO PRO ESTILO STRIPE v2 ===
+# === FONDO PRO - MODO NUCLEAR ===
 st.markdown("""
 <style>
-/* Fondo de toda la app */
-[data-testid="stApp"] {
-    background-color: #f6f8fb !important;
-}
-.stApp {
-    background-color: #f6f8fb !important;
+html, body, [data-testid="stApp"],.stApp {
+    background-color: #f6f8fb!important;
 }
 
-/* Quita header blanco */
-[data-testid="stHeader"] {
-    background-color: rgba(0,0,0,0) !important;
-}
-
-/* Tarjeta blanca principal */
 [data-testid="stAppViewContainer"] {
-    background-color: #f6f8fb !important;
+    background-color: #f6f8fb!important;
 }
+
+[data-testid="stHeader"] {
+    background-color: transparent!important;
+}
+
 .block-container {
-    background-color: white !important; 
-    padding: 2rem 3rem !important; 
-    border-radius: 12px !important;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.06) !important;
-    max-width: 1200px !important;
-    margin-top: 1rem !important;
+    background-color: #ffffff!important;
+    padding: 2rem 3rem!important;
+    border-radius: 16px!important;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08)!important;
+    margin: 1rem auto!important;
+    max-width: 1200px!important;
 }
 </style>
 """, unsafe_allow_html=True)
