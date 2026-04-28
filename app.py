@@ -507,8 +507,6 @@ def tiene_whatsapp_habilitado():
 # === PARCHE: SISTEMA VENCIMIENTO INTELIGENTE ===
 def sistema_vencimiento_inteligente():
     """Avisos de vencimiento + 5 días de gracia + bloqueo total"""
-    if st.session_state.rol!= "DUEÑO":
-        return
 
     try:
         t = tabla_tenants.get_item(Key={'TenantID': st.session_state.tenant}).get('Item', {})
