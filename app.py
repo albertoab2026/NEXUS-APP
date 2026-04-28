@@ -11,27 +11,32 @@ import urllib.parse
 from decimal import Decimal, ROUND_HALF_UP
 import io
 import uuid
-# === CONFIG STREAMLIT ===
-st.set_page_config(
-    page_title="Sistema Ventas", 
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
-
-# === FONDO PRO ESTILO STRIPE ===
+# === FONDO PRO ESTILO STRIPE v2 ===
 st.markdown("""
 <style>
-.main {
+/* Fondo de toda la app */
+[data-testid="stApp"] {
     background-color: #f6f8fb !important;
 }
-[data-testid="stAppViewContainer"] > .main {
+.stApp {
+    background-color: #f6f8fb !important;
+}
+
+/* Quita header blanco */
+[data-testid="stHeader"] {
+    background-color: rgba(0,0,0,0) !important;
+}
+
+/* Tarjeta blanca principal */
+[data-testid="stAppViewContainer"] {
     background-color: #f6f8fb !important;
 }
 .block-container {
     background-color: white !important; 
-    padding: 2rem !important; 
+    padding: 2rem 3rem !important; 
     border-radius: 12px !important;
-    box-shadow: 0 1px 3px rgba(0,0,0,0.08) !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.06) !important;
+    max-width: 1200px !important;
     margin-top: 1rem !important;
 }
 </style>
