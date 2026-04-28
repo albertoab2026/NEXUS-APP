@@ -11,46 +11,13 @@ import urllib.parse
 from decimal import Decimal, ROUND_HALF_UP
 import io
 import uuid
-import uuid
 
 # === CONFIG STREAMLIT === ESTO VA PRIMERO SIEMPRE
 st.set_page_config(
     page_title="Sistema Ventas", 
     layout="wide",
     initial_sidebar_state="expanded"
-)
-
-# === FONDO PRO - COMPONENTS OVERRIDE ===
-import streamlit.components.v1 as components
-
-# Fondo gris
-components.html("""
-<style>
-html, body, #root, .stApp { 
-    background: #f6f8fb!important; 
-}
-</style>
-""", height=0)
-
-# Tarjeta blanca
-st.markdown("""
-<style>
-.block-container {
-    background: white!important;
-    padding: 2rem 3rem!important;
-    border-radius: 16px!important;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.08)!important;
-    margin: 1rem auto!important;
-    max-width: 1200px!important;
-}
-[data-testid="stApp"] { 
-    background: #f6f8fb!important; 
-}
-</style>
-""", unsafe_allow_html=True)
-
-# === CONFIG ===           
-TABLA_STOCK = st.secrets["tablas"]["stock"]
+)     
 # === CONFIG ===
 TABLA_STOCK = st.secrets["tablas"]["stock"]
 TABLA_VENTAS = st.secrets["tablas"]["ventas"]
