@@ -1398,19 +1398,37 @@ with tabs[4]:
                     else:
                         st.success(f"✅ Listo para cargar {total_nuevos} productos nuevos")
                         if st.button(f"🚀 CARGAR {total_nuevos} PRODUCTOS", use_container_width=True, type="primary", key="btn_carga_masiva"):
-                            with st.spinner("Cargando..."):
+                                                if st.button(f"🚀 CARGAR {total_nuevos} PRODUCTOS", use_container_width=True, type="primary", key="btn_carga_masiva"):
+                            with st.spinner(f"Cargando {total_nuevos} productos en bloques de 25..."):
+                                # === BATCH WRITE DE 25 EN 25 ===
+                                BATCH_SIZE = 25
+                                total_cargados = 0
+                                
+                                for i in range(0, len(df_nuevos), BATCH_SIZE):
+                                    batch = df_nuevos.iloc[i:i+BATCH_SIZE]
+                                    
+                                    with tabla_stock.batch_writer() as writer:
+                                        for _, row in batch.iterrows():
+                                            writer.put_item(Item={
+                                                'TenantID': st.session_state.tenant,
+                                                'Producto': str(row['Producto']),
+                                                'Precio_Compra': to_decimal(row['Precio_Compra']),
+                                                'Precio': to_decimal(row['Precio']),
+                                                'Stock': int(row['Stock'])
+                                            })
+                                            total_cargados += 1
+                                    
+                                    # Pausa de 0.2 seg entre batches para no saturar DynamoDB
+                                    time.sleep(0.2)
+                                    st.toast(f"Cargados {min(i+BATCH_SIZE, total_nuevos)}/{total_nuevos}", icon="📦")
+                                
+                                # Registrar kardex después de cargar todo
                                 for _, row in df_nuevos.iterrows():
-                                    tabla_stock.put_item(Item={
-                                        'TenantID': st.session_state.tenant,
-                                        'Producto': str(row['Producto']),
-                                        'Precio_Compra': to_decimal(row['Precio_Compra']),
-                                        'Precio': to_decimal(row['Precio']),
-                                        'Stock': int(row['Stock'])
-                                    })
                                     if int(row['Stock']) > 0:
                                         registrar_kardex(str(row['Producto']), int(row['Stock']), "INGRESO_MASIVO", 
                                                        int(row['Stock']) * float(row['Precio_Compra']), float(row['Precio_Compra']), "CARGA_MASIVA")
-                            st.success(f"✅ {total_nuevos} productos creados")
+                            
+                            st.success(f"✅ {total_cargados} productos creados en {len(df_nuevos)//BATCH_SIZE + 1} bloques")
                             st.balloons()
                             time.sleep(2)
                             st.rerun()
