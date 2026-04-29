@@ -23,6 +23,21 @@ NUMERO_SOPORTE = "51914282688"
 YAPE_SOPORTE = "Alberto Ballarta"
 DESARROLLADOR = "Alberto Ballarta - Software Engineer"
 
+# === CONSTANTES ===
+MAX_PRODUCTOS = 100
+MAX_STOCK_POR_PRODUCTO = 1000
+
+# === FUNCIONES ===
+def contarProductosEnBD():
+    try:
+        from boto3.dynamodb.conditions import Attr
+        response = tabla_stock.scan(
+            FilterExpression=Attr('TenantID').eq(st.session_state.tenant)
+        )
+        return len(response['Items'])
+    except:
+        return 0
+        
 st.set_page_config(
     page_title="NEXUS BALLARTA - Sistema POS",
     layout="wide",
