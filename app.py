@@ -1368,25 +1368,25 @@ with tabs[3]:
             st.divider()
             st.markdown("**✍️ INGRESO MANUAL**")
             if not df_inv.empty:
-                    prod_ing = st.selectbox("Producto:", df_inv['Producto'].tolist(), key="prod_ingreso")
-                    df_prod = df_inv[df_inv['Producto'] == prod_ing].iloc[0]
-                    cant_ing = st.number_input("Cantidad a ingresar:", min_value=1, value=1, key="cant_ingreso")
-                    pc_ing = st.number_input("Nuevo Precio Compra:", min_value=0.0, value=float(df_prod['Precio_Compra']), format="%.2f", key="pc_ingreso")
-                    stock_final = int(df_prod['Stock']) + cant_ing
-                    st.metric("Stock nuevo", f"{stock_final} unidades")
-                    if st.button("📥 REGISTRAR INGRESO", type="primary", use_container_width=True, key="btn_ingreso"):
-                        if stock_final > MAX_STOCK_POR_PRODUCTO:
-                            st.error(f"❌ Stock máximo: {MAX_STOCK_POR_PRODUCTO}")
-                        else:
-                            stock_viejo = int(df_prod['Stock'])
-                            pc_viejo = float(df_prod['Precio_Compra'])
-                            pc_promedio = ((stock_viejo * pc_viejo) + (cant_ing * pc_ing)) / stock_final if stock_viejo > 0 else pc_ing
-                            tabla_stock.update_item(Key={'TenantID': st.session_state.tenant, 'Producto': prod_ing}, UpdateExpression="SET Stock = :s, Precio_Compra = :pc", ExpressionAttributeValues={':s': stock_final, ':pc': to_decimal(pc_promedio)})
-                            registrar_kardex(prod_ing, cant_ing, "INGRESO_STOCK", cant_ing * pc_ing, pc_ing, "INGRESO_DUENO")
-                            st.success(f"✅ {cant_ing} {prod_ing} ingresados | Costo promedio: S/{pc_promedio:.2f}")
-                            time.sleep(1); st.rerun()
-                else:
-                    st.warning("⚠️ Primero crea productos en PRODUCTO NUEVO")
+                prod_ing = st.selectbox("Producto:", df_inv['Producto'].tolist(), key="prod_ingreso")
+                df_prod = df_inv[df_inv['Producto'] == prod_ing].iloc[0]
+                cant_ing = st.number_input("Cantidad a ingresar:", min_value=1, value=1, key="cant_ingreso")
+                pc_ing = st.number_input("Nuevo Precio Compra:", min_value=0.0, value=float(df_prod['Precio_Compra']), format="%.2f", key="pc_ingreso")
+                stock_final = int(df_prod['Stock']) + cant_ing
+                st.metric("Stock nuevo", f"{stock_final} unidades")
+                if st.button("📥 REGISTRAR INGRESO", type="primary", use_container_width=True, key="btn_ingreso"):
+                    if stock_final > MAX_STOCK_POR_PRODUCTO:
+                        st.error(f"❌ Stock máximo: {MAX_STOCK_POR_PRODUCTO}")
+                    else:
+                        stock_viejo = int(df_prod['Stock'])
+                        pc_viejo = float(df_prod['Precio_Compra'])
+                        pc_promedio = ((stock_viejo * pc_viejo) + (cant_ing * pc_ing)) / stock_final if stock_viejo > 0 else pc_ing
+                        tabla_stock.update_item(Key={'TenantID': st.session_state.tenant, 'Producto': prod_ing}, UpdateExpression="SET Stock = :s, Precio_Compra = :pc", ExpressionAttributeValues={':s': stock_final, ':pc': to_decimal(pc_promedio)})
+                        registrar_kardex(prod_ing, cant_ing, "INGRESO_STOCK", cant_ing * pc_ing, pc_ing, "INGRESO_DUENO")
+                        st.success(f"✅ {cant_ing} {prod_ing} ingresados | Costo promedio: S/{pc_promedio:.2f}")
+                        time.sleep(1); st.rerun()
+            else:
+                st.warning("⚠️ Primero crea productos en PRODUCTO NUEVO")
 
     # === TAB MANTENIMIENTO - SOLO DUEÑO ===
     if st.session_state.rol == "DUEÑO":
