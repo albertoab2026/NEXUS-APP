@@ -1398,7 +1398,6 @@ with tabs[4]:
                     else:
                         st.success(f"✅ Listo para cargar {total_nuevos} productos nuevos")
                         if st.button(f"🚀 CARGAR {total_nuevos} PRODUCTOS", use_container_width=True, type="primary", key="btn_carga_masiva"):
-                                                if st.button(f"🚀 CARGAR {total_nuevos} PRODUCTOS", use_container_width=True, type="primary", key="btn_carga_masiva"):
                             with st.spinner(f"Cargando {total_nuevos} productos en bloques de 25..."):
                                 # === BATCH WRITE DE 25 EN 25 ===
                                 BATCH_SIZE = 25
