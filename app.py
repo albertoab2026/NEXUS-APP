@@ -492,6 +492,12 @@ def obtener_limites_tenant():
     if fc < datetime.now(tz_peru).date() - timedelta(days=5): st.error(f"⛔ VENCIÓ {item.get('ProximoCobro')}"); st.stop()
     max_p, max_s = int(item.get('MaxProductos', 0)), int(item.get('MaxStock', 0))
     if max_p == 0: st.error("Configura MaxProductos"); st.stop()
+    
+            # === BLOQUEO 700 PRODUCTOS SOLO BALLARTA ===
+    if st.session_state.tenant == "BALLARTA" and contarProductosEnBD() >= 700:
+        st.error("⛔ Límite de 700 productos alcanzado. Elimina productos o upgradea tu plan al +51914282688")
+        st.stop()
+        
     df_temp = obtener_datos()
     stock_max = int(df_temp['Stock'].max()) if not df_temp.empty else 0
     if contarProductosEnBD() > max_p or stock_max > max_s:
