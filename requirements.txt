@@ -6,3 +6,5 @@ openpyxl
 pytz
 fpdf
 python-dateutil
+pytesseract
+pillow
