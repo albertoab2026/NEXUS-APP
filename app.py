@@ -884,7 +884,6 @@ with tabs[0]:
                         st.success(f"✅ Total: {cant_ingreso} unidades | Costo unitario: S/{nuevo_pc:.2f}")
                         stock_final = int(df_prod['Stock']) + cant_ingreso
                         st.metric("Stock nuevo", f"{stock_final} unidades")
-
 if st.button("📥 REGISTRAR", use_container_width=True, type="primary", key="btn_ingreso_stock_emp"):
     if stock_final > MAX_STOCK_POR_PRODUCTO:
         st.error(f"❌ Stock máximo por producto en Plan {PLAN_ACTUAL}: {MAX_STOCK_POR_PRODUCTO} unidades")
