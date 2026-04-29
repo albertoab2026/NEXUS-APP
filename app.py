@@ -1330,3 +1330,28 @@ with tabs[3]:
                             time.sleep(1); st.rerun()
                 else:
                     st.warning("⚠️ Primero crea productos en PRODUCTO NUEVO")
+        # === TAB MANTENIMIENTO - SOLO DUEÑO ===
+    if st.session_state.rol == "DUEÑO":
+        with tabs[5]: # MANT. es el 6to tab = índice 5
+            st.subheader("🛠️ Mantenimiento")
+            st.warning("⚠️ Zona peligrosa - Solo para dueños")
+
+            col1, col2 = st.columns(2)
+            with col1:
+                st.markdown("**📊 BASE DE DATOS**")
+                if st.button("📥 EXPORTAR INVENTARIO CSV", use_container_width=True, key="export"):
+                    if not df_inv.empty:
+                        csv = df_inv.to_csv(index=False).encode('utf-8')
+                        st.download_button("⬇️ DESCARGAR CSV", csv, "inventario.csv", "text/csv", key="dl")
+                    else:
+                        st.error("No hay productos")
+
+            with col2:
+                st.markdown("**🗑️ ELIMINAR**")
+                if not df_inv.empty:
+                    prod_del = st.selectbox("Producto a eliminar:", df_inv['Producto'].tolist(), key="prod_del")
+                    if st.button("❌ CONFIRMAR ELIMINACIÓN", type="primary", key="btn_del"):
+                        tabla_stock.delete_item(Key={'TenantID': st.session_state.tenant, 'Producto': prod_del})
+                        st.success(f"✅ {prod_del} eliminado"); time.sleep(1); st.rerun()
+                else:
+                    st.info("No hay productos para eliminar")
