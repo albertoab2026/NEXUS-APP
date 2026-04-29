@@ -1334,14 +1334,12 @@ with tabs[3]:
                                 cant = int(row['CANTIDAD'])
                                 costo = float(row['COSTO'])
 
-                                # Solo si el producto existe
                                 if prod in df_inv['Producto'].values:
                                     df_prod = df_inv[df_inv['Producto'] == prod].iloc[0]
                                     stock_viejo = int(df_prod['Stock'])
                                     costo_viejo = float(df_prod['Precio_Compra'])
                                     stock_nuevo = stock_viejo + cant
 
-                                    # Costo promedio ponderado
                                     if stock_viejo > 0:
                                         costo_promedio = ((stock_viejo * costo_viejo) + (cant * costo)) / stock_nuevo
                                     else:
@@ -1359,13 +1357,13 @@ with tabs[3]:
                                     st.warning(f"⚠️ {prod} no existe en inventario")
                             except Exception as e:
                                 errores += 1
-                                st.error(f"Error en fila {prod}: {e}")
+                                st.error(f"Error en fila: {e}")
 
                         st.success(f"✅ Carga terminada: {ok} actualizados, {errores} errores")
                         time.sleep(2); st.rerun()
 
-        except Exception as e:
-            st.error(f"❌ Error leyendo archivo: {e}")
+                except Exception as e:
+                    st.error(f"❌ Error leyendo archivo: {e}")
 
             st.divider()
             st.markdown("**✍️ INGRESO MANUAL**")
