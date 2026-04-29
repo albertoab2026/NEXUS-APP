@@ -1262,42 +1262,240 @@ with tabs[3]:
             st.info("No hay ventas para cerrar este día")
 
 # === TAB CARGAR - SOLO DUEÑO ===
-if st.session_state.rol == "DUEÑO" and len(tabs) > 4:
-    with tabs[4]:
-        st.subheader("📥 Cargar Productos")
-        actual = contarProductosEnBD()
-        st.info(f"Productos: {actual}/{MAX_PRODUCTOS_TOTALES} | Stock máx/producto: {MAX_STOCK_POR_PRODUCTO}")
-
-        tab_nuevo, tab_ingreso = st.tabs(["➕ PRODUCTO NUEVO", "📦 INGRESO DE STOCK"])
-
-        with tab_nuevo:
-            with st.expander("📝 AGREGAR PRODUCTO INDIVIDUAL", expanded=True):
+with tabs[4]:
+    if st.session_state.rol!= "DUEÑO":
+        st.error("⛔ Solo DUEÑO puede cargar productos")
+        st.stop()
+        
+    st.subheader("📥 Cargar Productos")
+    st.info(f"Productos: {contarProductosEnBD()}/{MAX_PRODUCTOS_TOTALES} | Stock máx/producto: {MAX_STOCK_POR_PRODUCTO}")
+    
+    tab_nuevo, tab_stock, tab_masiva = st.tabs(["➕ PRODUCTO NUEVO", "📦 INGRESO DE STOCK", "📤 CARGA MASIVA"])
+    
+    # === PRODUCTO NUEVO ===
+    with tab_nuevo:
+        st.markdown("#### Crear producto desde cero")
+        col1, col2 = st.columns(2)
+        prod_nuevo = col1.text_input("Nombre producto:", key="prod_nuevo_carga").upper().strip()
+        precio_compra_nuevo = col2.number_input("Costo S/:", min_value=0.0, value=0.0, key="pc_nuevo")
+        col3, col4 = st.columns(2)
+        precio_venta_nuevo = col3.number_input("Precio venta S/:", min_value=0.01, value=1.0, key="pv_nuevo")
+        stock_inicial = col4.number_input("Stock inicial:", min_value=0, value=0, key="stock_nuevo")
+        
+        if st.button("💾 CREAR PRODUCTO", use_container_width=True, type="primary", key="btn_crear_nuevo"):
+            if not prod_nuevo:
+                st.error("❌ Pon nombre al producto")
+            elif df_inv['Producto'].str.upper().eq(prod_nuevo).any():
+                st.error(f"❌ {prod_nuevo} ya existe. Usa INGRESO DE STOCK para aumentar")
+            elif contarProductosEnBD() >= MAX_PRODUCTOS_TOTALES:
+                st.error(f"⛔ Límite {MAX_PRODUCTOS_TOTALES} productos alcanzado")
+            elif stock_inicial > MAX_STOCK_POR_PRODUCTO:
+                st.error(f"❌ Stock máximo por producto: {MAX_STOCK_POR_PRODUCTO}")
+            else:
+                tabla_stock.put_item(Item={
+                    'TenantID': st.session_state.tenant,
+                    'Producto': prod_nuevo,
+                    'Precio_Compra': to_decimal(precio_compra_nuevo),
+                    'Precio': to_decimal(precio_venta_nuevo),
+                    'Stock': int(stock_inicial)
+                })
+                if stock_inicial > 0:
+                    registrar_kardex(prod_nuevo, stock_inicial, "INGRESO_INICIAL", stock_inicial * precio_compra_nuevo, precio_compra_nuevo, "CREACION")
+                st.success(f"✅ {prod_nuevo} creado")
+                time.sleep(1)
+                st.rerun()
+    
+    # === INGRESO DE STOCK ===
+    with tab_stock:
+        st.markdown("#### Aumentar stock de producto existente")
+        busq_ing = st.text_input("🔍 Buscar:", key="busq_ing_carga").upper()
+        df_busq = df_inv[df_inv['Producto'].str.contains(busq_ing, na=False)] if busq_ing else df_inv.head(20)
+        
+        if not df_busq.empty:
+            evento = st.dataframe(df_busq[['Producto', 'Stock', 'Precio_Compra']], use_container_width=True, 
+                                  hide_index=True, on_select="rerun", selection_mode="single-row", height=250)
+            
+            if evento.selection.rows:
+                prod_sel = df_busq.iloc[evento.selection.rows[0]]['Producto']
+                df_prod = df_inv[df_inv['Producto'] == prod_sel].iloc[0]
+                st.success(f"Seleccionado: **{prod_sel}** | Stock: {int(df_prod['Stock'])}")
+                
                 col1, col2 = st.columns(2)
-                prod = col1.text_input("Producto:", max_chars=30, key="prod_cargar").upper().strip()
-                pc = col1.number_input("Precio Compra:", min_value=0.0, value=0.0, key="pc_cargar")
-                p = col2.number_input("Precio Venta:", min_value=0.01, value=1.0, key="p_cargar")
-                s = col2.number_input("Stock Inicial:", min_value=0, value=0, key="s_cargar")
-
-                if st.button("➕ AGREGAR PRODUCTO", use_container_width=True, key="btn_agregar_prod"):
-                    if prod and p > 0:
-                        if actual >= MAX_PRODUCTOS_TOTALES:
-                            st.error(f"❌ Límite de {MAX_PRODUCTOS_TOTALES} productos alcanzado")
-                        elif s > MAX_STOCK_POR_PRODUCTO:
-                            st.error(f"❌ Stock máximo por producto: {MAX_STOCK_POR_PRODUCTO}")
-                        else:
-                            try:
-                                tabla_stock.put_item(Item={
-                                    'TenantID': st.session_state.tenant,
-                                    'Producto': prod,
-                                    'Precio_Compra': to_decimal(pc),
-                                    'Precio': to_decimal(p),
-                                    'Stock': int(s)
-                                }, ConditionExpression='attribute_not_exists(Producto)')
-                                registrar_kardex(prod, s, "CARGA_INICIAL", s * p, pc, "INVENTARIO")
-                                st.success(f"✅ {prod} agregado"); time.sleep(1); st.rerun()
-                            except dynamodb.meta.client.exceptions.ConditionalCheckFailedException:
-                                st.error("❌ Producto ya existe. Usa la pestaña 'INGRESO DE STOCK'")
-                            except Exception as e:
-                                st.error(f"❌ Error: {e}")
+                cant_add = col1.number_input("Cantidad a ingresar:", min_value=1, value=1, key="cant_add_carga")
+                costo_lote = col2.number_input("Costo x unidad S/:", min_value=0.0, value=float(df_prod['Precio_Compra']), key="costo_add_carga")
+                
+                stock_final = int(df_prod['Stock']) + cant_add
+                st.metric("Stock nuevo", f"{stock_final} unidades")
+                
+                if st.button("📥 INGRESAR STOCK", use_container_width=True, type="primary", key="btn_ing_stock"):
+                    if stock_final > MAX_STOCK_POR_PRODUCTO:
+                        st.error(f"❌ Stock máximo: {MAX_STOCK_POR_PRODUCTO}")
                     else:
-                        st.error("❌ Completa todos los campos")
+                        stock_viejo = int(df_prod['Stock'])
+                        pc_viejo = float(df_prod['Precio_Compra'])
+                        pc_promedio = ((stock_viejo * pc_viejo) + (cant_add * costo_lote)) / stock_final if stock_viejo > 0 else costo_lote
+                        
+                        tabla_stock.update_item(
+                            Key={'TenantID': st.session_state.tenant, 'Producto': prod_sel},
+                            UpdateExpression="SET Stock = :s, Precio_Compra = :pc",
+                            ExpressionAttributeValues={':s': stock_final, ':pc': to_decimal(pc_promedio)}
+                        )
+                        registrar_kardex(prod_sel, cant_add, "INGRESO_STOCK", cant_add * costo_lote, costo_lote, "CARGA")
+                        st.success(f"✅ {cant_add} unidades ingresadas | Nuevo costo prom: S/{pc_promedio:.2f}")
+                        time.sleep(1)
+                        st.rerun()
+        else:
+            st.warning("No se encontró producto")
+    
+    # === CARGA MASIVA SOLO NUEVOS ===
+    with tab_masiva:
+        st.markdown("#### 📤 Cargar Excel con productos NUEVOS")
+        st.warning("⚠️ SOLO crea productos que NO existan. Los existentes se ignoran.")
+        
+        st.markdown("""
+        **Formato Excel requerido:**
+        | Producto | Precio_Compra | Precio | Stock |
+        |---|---|---|---|
+        | CUADERNO A4 | 2.50 | 4.00 | 100 |
+        """)
+        
+        archivo = st.file_uploader("Subir Excel", type=['xlsx'], key="upload_masiva")
+        
+        if archivo:
+            df_excel = pd.read_excel(archivo)
+            df_excel.columns = df_excel.columns.str.strip()
+            cols_req = ['Producto', 'Precio_Compra', 'Precio', 'Stock']
+            
+            if not all(c in df_excel.columns for c in cols_req):
+                st.error(f"❌ Excel debe tener columnas: {cols_req}")
+            else:
+                productos_existentes = df_inv['Producto'].str.upper().tolist()
+                df_excel['Producto'] = df_excel['Producto'].str.upper().str.strip()
+                
+                # SOLO NUEVOS
+                df_nuevos = df_excel[~df_excel['Producto'].isin(productos_existentes)].copy()
+                df_duplicados = df_excel[df_excel['Producto'].isin(productos_existentes)]
+                
+                total_actual = contarProductosEnBD()
+                total_nuevos = len(df_nuevos)
+                
+                st.info(f"📊 Excel: {len(df_excel)} filas | Nuevos: {total_nuevos} | Duplicados: {len(df_duplicados)} | Actual BD: {total_actual}/{MAX_PRODUCTOS_TOTALES}")
+                
+                if len(df_duplicados) > 0:
+                    with st.expander(f"⚠️ {len(df_duplicados)} productos ya existen - SE IGNORARÁN"):
+                        st.dataframe(df_duplicados[['Producto']], hide_index=True)
+                
+                if total_actual + total_nuevos > MAX_PRODUCTOS_TOTALES:
+                    st.error(f"⛔ Con estos {total_nuevos} nuevos pasarías el límite de {MAX_PRODUCTOS_TOTALES}")
+                elif total_nuevos == 0:
+                    st.warning("No hay productos nuevos para cargar")
+                else:
+                    # Validar stock máximo
+                    df_stock_alto = df_nuevos[df_nuevos['Stock'] > MAX_STOCK_POR_PRODUCTO]
+                    if not df_stock_alto.empty:
+                        st.error(f"❌ {len(df_stock_alto)} productos superan stock máximo {MAX_STOCK_POR_PRODUCTO}")
+                        st.dataframe(df_stock_alto[['Producto', 'Stock']], hide_index=True)
+                    else:
+                        st.success(f"✅ Listo para cargar {total_nuevos} productos nuevos")
+                        if st.button(f"🚀 CARGAR {total_nuevos} PRODUCTOS", use_container_width=True, type="primary", key="btn_carga_masiva"):
+                            with st.spinner("Cargando..."):
+                                for _, row in df_nuevos.iterrows():
+                                    tabla_stock.put_item(Item={
+                                        'TenantID': st.session_state.tenant,
+                                        'Producto': str(row['Producto']),
+                                        'Precio_Compra': to_decimal(row['Precio_Compra']),
+                                        'Precio': to_decimal(row['Precio']),
+                                        'Stock': int(row['Stock'])
+                                    })
+                                    if int(row['Stock']) > 0:
+                                        registrar_kardex(str(row['Producto']), int(row['Stock']), "INGRESO_MASIVO", 
+                                                       int(row['Stock']) * float(row['Precio_Compra']), float(row['Precio_Compra']), "CARGA_MASIVA")
+                            st.success(f"✅ {total_nuevos} productos creados")
+                            st.balloons()
+                            time.sleep(2)
+                            st.rerun()
+
+# === TAB MANTENIMIENTO - BORRAR Y CORREGIR ===
+with tabs[5]:
+    if st.session_state.rol!= "DUEÑO":
+        st.error("⛔ Solo DUEÑO puede usar mantenimiento")
+        st.stop()
+        
+    st.subheader("🛠️ Mantenimiento de Inventario")
+    
+    tab_editar, tab_borrar = st.tabs(["✏️ EDITAR", "🗑️ ELIMINAR"])
+    
+    # === EDITAR ===
+    with tab_editar:
+        st.markdown("#### Corregir producto existente")
+        busq_edit = st.text_input("🔍 Buscar:", key="busq_edit").upper()
+        df_edit = df_inv[df_inv['Producto'].str.contains(busq_edit, na=False)] if busq_edit else df_inv.head(20)
+        
+        if not df_edit.empty:
+            evento_edit = st.dataframe(df_edit, use_container_width=True, hide_index=True, 
+                                       on_select="rerun", selection_mode="single-row", height=250)
+            
+            if evento_edit.selection.rows:
+                prod_edit = df_edit.iloc[evento_edit.selection.rows[0]]
+                st.info(f"Editando: **{prod_edit['Producto']}**")
+                
+                col1, col2 = st.columns(2)
+                nuevo_nombre = col1.text_input("Nombre:", value=prod_edit['Producto'], key="edit_nombre").upper()
+                nuevo_pc = col2.number_input("Costo S/:", value=float(prod_edit['Precio_Compra']), key="edit_pc")
+                col3, col4 = st.columns(2)
+                nuevo_pv = col3.number_input("Precio venta S/:", value=float(prod_edit['Precio']), key="edit_pv")
+                nuevo_stock = col4.number_input("Stock:", value=int(prod_edit['Stock']), min_value=0, key="edit_stock")
+                
+                if st.button("💾 GUARDAR CAMBIOS", use_container_width=True, type="primary", key="btn_guardar_edit"):
+                    # Si cambió nombre, borrar viejo y crear nuevo
+                    if nuevo_nombre!= prod_edit['Producto']:
+                        if df_inv['Producto'].str.upper().eq(nuevo_nombre).any():
+                            st.error(f"❌ Ya existe un producto llamado {nuevo_nombre}")
+                        else:
+                            tabla_stock.delete_item(Key={'TenantID': st.session_state.tenant, 'Producto': prod_edit['Producto']})
+                            tabla_stock.put_item(Item={
+                                'TenantID': st.session_state.tenant,
+                                'Producto': nuevo_nombre,
+                                'Precio_Compra': to_decimal(nuevo_pc),
+                                'Precio': to_decimal(nuevo_pv),
+                                'Stock': int(nuevo_stock)
+                            })
+                            registrar_kardex(nuevo_nombre, nuevo_stock, "EDICION_NOMBRE", 0, nuevo_pc, f"ANTES:{prod_edit['Producto']}")
+                            st.success(f"✅ Renombrado a {nuevo_nombre}")
+                    else:
+                        tabla_stock.update_item(
+                            Key={'TenantID': st.session_state.tenant, 'Producto': prod_edit['Producto']},
+                            UpdateExpression="SET Precio_Compra = :pc, Precio = :pv, Stock = :s",
+                            ExpressionAttributeValues={':pc': to_decimal(nuevo_pc), ':pv': to_decimal(nuevo_pv), ':s': int(nuevo_stock)}
+                        )
+                        registrar_kardex(prod_edit['Producto'], nuevo_stock, "EDICION", 0, nuevo_pc, "MANTENIMIENTO")
+                        st.success(f"✅ {prod_edit['Producto']} actualizado")
+                    time.sleep(1)
+                    st.rerun()
+    
+    # === ELIMINAR ===
+    with tab_borrar:
+        st.markdown("#### ⚠️ Eliminar producto permanentemente")
+        st.error("CUIDADO: Esto borra el producto y su historial de stock. No se puede deshacer.")
+        
+        busq_del = st.text_input("🔍 Buscar para eliminar:", key="busq_del").upper()
+        df_del = df_inv[df_inv['Producto'].str.contains(busq_del, na=False)] if busq_del else pd.DataFrame()
+        
+        if not df_del.empty:
+            evento_del = st.dataframe(df_del[['Producto', 'Stock']], use_container_width=True, hide_index=True,
+                                      on_select="rerun", selection_mode="single-row", height=200)
+            
+            if evento_del.selection.rows:
+                prod_del = df_del.iloc[evento_del.selection.rows[0]]['Producto']
+                st.warning(f"Vas a eliminar: **{prod_del}**")
+                confirmar = st.text_input(f"Escribe ELIMINAR para confirmar:", key="confirm_del")
+                
+                if st.button("🗑️ ELIMINAR DEFINITIVAMENTE", use_container_width=True, key="btn_eliminar"):
+                    if confirmar == "ELIMINAR":
+                        tabla_stock.delete_item(Key={'TenantID': st.session_state.tenant, 'Producto': prod_del})
+                        registrar_kardex(prod_del, 0, "ELIMINADO", 0, 0, "MANTENIMIENTO")
+                        st.success(f"✅ {prod_del} eliminado")
+                        time.sleep(1)
+                        st.rerun()
+                    else:
+                        st.error("❌ Escribe ELIMINAR exacto para confirmar")
