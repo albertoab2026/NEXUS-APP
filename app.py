@@ -884,25 +884,25 @@ with tabs[0]:
                         st.success(f"✅ Total: {cant_ingreso} unidades | Costo unitario: S/{nuevo_pc:.2f}")
                         stock_final = int(df_prod['Stock']) + cant_ingreso
                         st.metric("Stock nuevo", f"{stock_final} unidades")
-if st.button("📥 REGISTRAR", use_container_width=True, type="primary", key="btn_ingreso_stock_emp"):
-    if stock_final > MAX_STOCK_POR_PRODUCTO:
-        st.error(f"❌ Stock máximo por producto en Plan {PLAN_ACTUAL}: {MAX_STOCK_POR_PRODUCTO} unidades")
-        st.warning(f"💰 Upgrade para aumentar límites. WhatsApp: +{NUMERO_SOPORTE}")
-        st.stop()
-    else:
-        stock_viejo = int(df_prod['Stock'])
-        pc_viejo = float(df_prod['Precio_Compra'])
-        pc_promedio = ((stock_viejo * pc_viejo) + (cant_ingreso * nuevo_pc)) / stock_final if stock_viejo > 0 else nuevo_pc
+            if st.button("📥 REGISTRAR", use_container_width=True, type="primary", key="btn_ingreso_stock_emp"):
+                if stock_final > MAX_STOCK_POR_PRODUCTO:
+                    st.error(f"❌ Stock máximo por producto en Plan {PLAN_ACTUAL}: {MAX_STOCK_POR_PRODUCTO} unidades")
+                    st.warning(f"💰 Upgrade para aumentar límites. WhatsApp: +{NUMERO_SOPORTE}")
+                    st.stop()
+                else:
+                    stock_viejo = int(df_prod['Stock'])
+                    pc_viejo = float(df_prod['Precio_Compra'])
+                    pc_promedio = ((stock_viejo * pc_viejo) + (cant_ingreso * nuevo_pc)) / stock_final if stock_viejo > 0 else nuevo_pc
 
-        tabla_stock.update_item(
-            Key={'TenantID': st.session_state.tenant, 'Producto': prod_ingreso},
-            UpdateExpression="SET Stock = :s, Precio_Compra = :pc",
-            ExpressionAttributeValues={':s': stock_final, ':pc': to_decimal(pc_promedio)}
-        )
-        registrar_kardex(prod_ingreso, cant_ingreso, "INGRESO_STOCK", cant_ingreso * nuevo_pc, nuevo_pc, f"INGRESO_{st.session_state.usuario}")
-        st.success(f"✅ {st.session_state.usuario} ingresó {cant_ingreso} {prod_ingreso} | Nuevo costo: S/{pc_promedio:.2f}")
-        time.sleep(1)
-        st.rerun()
+                    tabla_stock.update_item(
+                        Key={'TenantID': st.session_state.tenant, 'Producto': prod_ingreso},
+                        UpdateExpression="SET Stock = :s, Precio_Compra = :pc",
+                        ExpressionAttributeValues={':s': stock_final, ':pc': to_decimal(pc_promedio)}
+                    )
+                    registrar_kardex(prod_ingreso, cant_ingreso, "INGRESO_STOCK", cant_ingreso * nuevo_pc, nuevo_pc, f"INGRESO_{st.session_state.usuario}")
+                    st.success(f"✅ {st.session_state.usuario} ingresó {cant_ingreso} {prod_ingreso} | Nuevo costo: S/{pc_promedio:.2f}")
+                    time.sleep(1)
+                    st.rerun()
                     else:
                         st.info("👆 Haz click en una fila de la tabla para seleccionar")
                 else:
