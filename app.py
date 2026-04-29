@@ -22,11 +22,7 @@ TABLA_PAGOS = st.secrets["tablas"]["pagos"]
 NUMERO_SOPORTE = "51914282688"
 YAPE_SOPORTE = "Alberto Ballarta"
 DESARROLLADOR = "Alberto Ballarta - Software Engineer"
-
-# === CONSTANTES ===
-MAX_PRODUCTOS = 100
-MAX_STOCK_POR_PRODUCTO = 1000
-
+# === LÍMITES SE CARGAN DESDE DYNAMO ===
 # === FUNCIONES ===
 def contarProductosEnBD():
     try:
@@ -464,8 +460,11 @@ def verificar_suscripcion(tid):
     except: return True, "ERROR"
 
 def contarProductosEnBD():
-    try: return tabla_stock.query(KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant), Select='COUNT').get('Count', 0)
-    except: return 9999
+    try:
+        res = tabla_stock.scan(FilterExpression=Attr('TenantID').eq(st.session_state.tenant))
+        return len(res['Items'])
+    except:
+        return 0  # Antes devolvías 9999 y rompías todo
 
 @st.cache_data(ttl=10)
 def obtener_datos():
@@ -887,9 +886,12 @@ with tabs[0]:
                         st.metric("Stock nuevo", f"{stock_final} unidades")
 
                         if st.button("📥 REGISTRAR", use_container_width=True, type="primary", key="btn_ingreso_stock_emp"):
-                            if stock_final > MAX_STOCK_POR_PRODUCTO:
-                                st.error(f"❌ Stock máximo: {MAX_STOCK_POR_PRODUCTO}")
-                            else:
+if stock_final > MAX_STOCK_POR_PRODUCTO:
+    st.error(f"❌ Stock máximo por producto en Plan {PLAN_ACTUAL}: {MAX_STOCK_POR_PRODUCTO} unidades")
+    st.warning(f"💰 Upgrade para aumentar límites. WhatsApp: +{NUMERO_SOPORTE}")
+    st.stop()
+else:
+    # ... tu código sigue igual
                                 stock_viejo = int(df_prod['Stock'])
                                 pc_viejo = float(df_prod['Precio_Compra'])
                                 pc_promedio = ((stock_viejo * pc_viejo) + (cant_ingreso * nuevo_pc)) / stock_final if stock_viejo > 0 else nuevo_pc
