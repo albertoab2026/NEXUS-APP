@@ -12,13 +12,17 @@ from decimal import Decimal, ROUND_HALF_UP
 import io
 import uuid
 import pytesseract
-# === CONFIG ===
-# === CONFIGURACIÓN DE ENTORNO ===
-ENTORNO = "DEV" # Cambia a "PROD" para datos reales
-SUFIJO = "_PRUEBA" if ENTORNO == "DEV" else ""
 
+st.set_page_config(
+    page_title="NEXUS",
+    page_icon="🔥",
+    layout="wide"
+)
+# === CONFIGURACIÓN DE ENTORNO ===
+ENTORNO = "DEV"
+SUFIJO = "_PRUEBA" if ENTORNO == "DEV" else ""
 if ENTORNO == "DEV":
-    st.error("🔥 MODO PRUEBA - Datos ficticios - No afecta datos reales") 
+    st.error("🔥 MODO PRUEBA - Datos ficticios")
 # === FIN ===
 
 # === NOMBRES DE TABLAS BASE ===
