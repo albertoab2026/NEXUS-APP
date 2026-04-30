@@ -19,7 +19,7 @@ st.set_page_config(
     layout="wide"
 )
 # === CONFIGURACIÓN DE ENTORNO ===
-ENTORNO = "DEV"
+ENTORNO = st.secrets["ENTORNO"]
 SUFIJO = "_PRUEBA" if ENTORNO == "DEV" else ""
 if ENTORNO == "DEV":
     st.error("🔥 MODO PRUEBA - Datos ficticios")
@@ -30,9 +30,8 @@ TABLA_STOCK = 'SaaS_Stock' + SUFIJO
 TABLA_VENTAS = 'SaaS_Ventas' + SUFIJO
 TABLA_MOVS = 'SaaS_Movimientos' + SUFIJO
 TABLA_CIERRES = 'TABLA_CIERRE' + SUFIJO
-TABLA_TENANTS = st.secrets["tablas"]["tenants"] # Debe ser "NEXUS_TENANTS"
-TABLA_PAGOS = st.secrets["tablas"]["pagos"] # Debe ser "NEXUS_PAGOS"
-
+TABLA_TENANTS = "SaaS_Tenants"
+TABLA_PAGOS = "SaaS_Pagos" + SUFIJO
 NUMERO_SOPORTE = "51914282688"
 YAPE_SOPORTE = "Alberto Ballarta"
 DESARROLLADOR = "Alberto Ballarta - Software Engineer"
