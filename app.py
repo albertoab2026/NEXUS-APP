@@ -14,20 +14,20 @@ import uuid
 import pytesseract
 # === CONFIG ===
 # === CONFIGURACIÓN DE ENTORNO ===
-ENTORNO = "DEV"
+ENTORNO = "DEV" # Cambia a "PROD" para datos reales
+SUFIJO = "_PRUEBA" if ENTORNO == "DEV" else ""
 
 if ENTORNO == "DEV":
-    SUFIJO_TABLA = "_PRUEBA"
-        st.sidebar.error("🔥 MODO PRUEBA - DATOS FALSOS 🔥")
-        else:
-            SUFIJO_TABLA = "_Test"
+    st.sidebar.error("🔥 MODO PRUEBA - Datos ficticios")
 
-            TABLA_STOCK = 'SaaS_Stock' + SUFIJO_TABLA
-            TABLA_VENTAS = 'SaaS_Ventas' + SUFIJO_TABLA
-            TABLA_MOVS = 'SaaS_Movimientos' + SUFIJO_TABLA
-            TABLA_CIERRES = 'TABLA_CIERRE' + SUFIJO_TABLA
-            TABLA_TENANTS = st.secrets["tablas"]["tenants"]
-TABLA_PAGOS = st.secrets["tablas"]["pagos"]
+# === NOMBRES DE TABLAS BASE ===
+TABLA_STOCK = 'SaaS_Stock'
+TABLA_VENTAS = 'SaaS_Ventas'
+TABLA_MOVS = 'SaaS_Movimientos'
+TABLA_CIERRES = 'TABLA_CIERRE'
+TABLA_TENANTS = st.secrets["tablas"]["tenants"] # Debe ser "NEXUS_TENANTS"
+TABLA_PAGOS = st.secrets["tablas"]["pagos"] # Debe ser "NEXUS_PAGOS"
+
 NUMERO_SOPORTE = "51914282688"
 YAPE_SOPORTE = "Alberto Ballarta"
 DESARROLLADOR = "Alberto Ballarta - Software Engineer"
@@ -441,12 +441,12 @@ dynamodb = boto3.resource('dynamodb',
     region_name=st.secrets["aws"]["aws_region"],
     aws_access_key_id=st.secrets["aws"]["aws_access_key_id"],
     aws_secret_access_key=st.secrets["aws"]["aws_secret_access_key"])
-tabla_stock = dynamodb.Table(TABLA_STOCK)
-tabla_ventas = dynamodb.Table(TABLA_VENTAS)
-tabla_movs = dynamodb.Table(TABLA_MOVS)
-tabla_tenants = dynamodb.Table(TABLA_TENANTS)
-tabla_cierres = dynamodb.Table(TABLA_CIERRES)
-tabla_pagos = dynamodb.Table(TABLA_PAGOS)
+tabla_stock = dynamodb.Table(f"{TABLA_STOCK}{SUFIJO}")
+tabla_ventas = dynamodb.Table(f"{TABLA_VENTAS}{SUFIJO}")
+tabla_movs = dynamodb.Table(f"{TABLA_MOVS}{SUFIJO}")
+tabla_cierres = dynamodb.Table(f"{TABLA_CIERRES}{SUFIJO}")
+tabla_tenants = dynamodb.Table(f"{TABLA_TENANTS}{SUFIJO}")
+tabla_pagos = dynamodb.Table(f"{TABLA_PAGOS}{SUFIJO}")
 # === FUNCIONES CORE ===
 def verificar_suscripcion(tid):
     try:
