@@ -26,10 +26,10 @@ if ENTORNO == "DEV":
 # === FIN ===
 
 # === NOMBRES DE TABLAS BASE ===
-TABLA_STOCK = 'SaaS_Stock'
-TABLA_VENTAS = 'SaaS_Ventas'
-TABLA_MOVS = 'SaaS_Movimientos'
-TABLA_CIERRES = 'TABLA_CIERRE'
+TABLA_STOCK = 'SaaS_Stock' + SUFIJO
+TABLA_VENTAS = 'SaaS_Ventas' + SUFIJO
+TABLA_MOVS = 'SaaS_Movimientos' + SUFIJO
+TABLA_CIERRES = 'TABLA_CIERRE' + SUFIJO
 TABLA_TENANTS = st.secrets["tablas"]["tenants"] # Debe ser "NEXUS_TENANTS"
 TABLA_PAGOS = st.secrets["tablas"]["pagos"] # Debe ser "NEXUS_PAGOS"
 
@@ -37,15 +37,6 @@ NUMERO_SOPORTE = "51914282688"
 YAPE_SOPORTE = "Alberto Ballarta"
 DESARROLLADOR = "Alberto Ballarta - Software Engineer"
 
-st.set_page_config(
-    page_title="NEXUS BALLARTA - Sistema POS",
-    layout="wide",
-    page_icon="💎",
-    initial_sidebar_state="collapsed",
-    menu_items={
-        'About': "NEXUS BALLARTA v3.0 - Sistema de Punto de Venta Empresarial"
-    }
-)
 tz_peru = pytz.timezone('America/Lima')
 
 # === CSS - PALETA ENTERPRISE ===
