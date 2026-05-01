@@ -704,9 +704,9 @@ res_p = tabla_ventas.query(
     KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant),
     FilterExpression=Attr('Usuario').eq(st.session_state.usuario) & Attr('Fecha').ne(f_hoy)
 )
-
 fechas_p = sorted(list(set([v['Fecha'] for v in res_p.get('Items', [])])))
 
+# 1. BLOQUEO DE SEGURIDAD PARA PENDIENTES
 if fechas_p and 'fecha_pendiente_cierre' not in st.session_state:
     fp = fechas_p[0]
     rc = tabla_cierres.query(
@@ -721,19 +721,16 @@ if fechas_p and 'fecha_pendiente_cierre' not in st.session_state:
         st.stop()
 
 st.success("✅ Todo al día. ¡Buenas ventas!")
-# --- FIN DEL BLOQUEO ---
 
-# 1. Determinamos qué fecha consultar para el bloqueo de hoy
-en_modo_pendiente = 'fecha_pendiente_cierre' in st.session_state
-f_bloqueo = "NINGUNA" if en_modo_pendiente else f_hoy
-
-# 2. Consultamos si ya cerró la caja
-res_cierre = tabla_cierres.query(
-    KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant),
-    FilterExpression=Attr('Fecha').eq(f_bloqueo) & Attr('Usuario').eq(st.session_state.usuario)
-)
-
-ya_cerro = len(res_cierre.get('Items', [])) > 0
+# 2. VERIFICAR CIERRE DE HOY (O SALTAR SI ESTAMOS EN MODO PENDIENTE)
+if 'fecha_pendiente_cierre' in st.session_state:
+    ya_cerro = False
+else:
+    res_cierre = tabla_cierres.query(
+        KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant),
+        FilterExpression=Attr('Fecha').eq(f_hoy) & Attr('Usuario').eq(st.session_state.usuario)
+    )
+    ya_cerro = len(res_cierre.get('Items', [])) > 0
 res_items = res_cierre.get('Items', [])
 hora_cierre = max([c['Hora'] for c in res_items]) if ya_cerro else None
 if ya_cerro:
