@@ -721,38 +721,38 @@ if fechas_p:
         st.stop()
 
 st.success("✅ Todo al día. ¡Buenas ventas!")
-        # --- FIN DEL BLOQUEO ---
-        
-        res_cierre = tabla_cierres.query(
-            KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant),
-            FilterExpression=Attr('Fecha').eq(f_hoy) & Attr('Usuario').eq(st.session_state.usuario)
-        )
-        
-        ya_cerro = len(res_cierre.get('Items', [])) > 0
-        hora_cierre = max([c['Hora'] for c in res_cierre.get('Items', [])]) if ya_cerro else None
+# --- FIN DEL BLOQUEO ---
 
-        if ya_cerro:
-            st.warning(f"⚠️ YA CERRASTE CAJA HOY A LAS {hora_cierre}")
-            st.info("Las ventas que hagas ahora son POST-CIERRE. Se sumarán al reporte de mañana.")
-            if st.button("🔓 REABRIR CAJA - SOLO DUEÑO", use_container_width=True, key="btn_reabrir_caja") and st.session_state.rol == "DUEÑO":
-                for c in res_cierre.get('Items', []):
-                    tabla_cierres.delete_item(Key={'TenantID': st.session_state.tenant, 'CierreID': c['CierreID']})
-                st.success("✅ Caja reabierta"); time.sleep(1); st.rerun()
+res_cierre = tabla_cierres.query(
+    KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant),
+    FilterExpression=Attr('Fecha').eq(f_hoy) & Attr('Usuario').eq(st.session_state.usuario)
+)
 
-        if st.session_state.boleta:
-            b = st.session_state.boleta
-            st.success("✅ VENTA REALIZADA")
-            st.markdown(f"""<div style="background:white;color:black;padding:20px;border:2px solid #3b82f6;max-width:350px;margin:auto;font-family:monospace;border-radius:16px;box-shadow:0 10px 15px -3px rgba(59,130,246,0.3);">
-                <h3 style="text-align:center;margin:0;color:#3b82f6;">{st.session_state.tenant}</h3>
-                <p style="text-align:center;margin:0;">{b['fecha']} {b['hora']}</p><hr style="border-color:#3b82f6;">
-                {''.join([f'<div style="display:flex;justify-content:space-between;"><span>{i["Cantidad"]}x {i["Producto"]}</span><span>S/{float(i["Subtotal"]):.2f}</span></div>' for i in b['items']])}
-                <hr style="border-color:#3b82f6;"><div style="display:flex;justify-content:space-between;"><span>MÉTODO:</span><span>{b['metodo']}</span></div>
-                <div style="display:flex;justify-content:space-between;color:#ef4444;"><span>DESC:</span><span>- S/{float(b['rebaja']):.2f}</span></div>
-                <div style="display:flex;justify-content:space-between;font-size:18px;color:#3b82f6;"><b>NETO:</b><b>S/{float(b['t_neto']):.2f}</b></div>""", unsafe_allow_html=True)
+ya_cerro = len(res_cierre.get('Items', [])) > 0
+hora_cierre = max([c['Hora'] for c in res_cierre.get('Items', [])]) if ya_cerro else None
 
-            if st.button("⬅️ NUEVA VENTA", use_container_width=True):
-                st.session_state.boleta = None
-                st.rerun()
+if ya_cerro:
+    st.warning(f"⚠️ YA CERRASTE CAJA HOY A LAS {hora_cierre}")
+    st.info("Las ventas que hagas ahora son POST-CIERRE. Se sumarán al reporte de mañana.")
+    if st.button("🔓 REABRIR CAJA - SOLO DUEÑO", use_container_width=True, key="btn_reabrir_caja") and st.session_state.rol == "DUEÑO":
+        for c in res_cierre.get('Items', []):
+            tabla_cierres.delete_item(Key={'TenantID': st.session_state.tenant, 'CierreID': c['CierreID']})
+        st.success("✅ Caja reabierta"); time.sleep(1); st.rerun()
+
+if st.session_state.boleta:
+    b = st.session_state.boleta
+    st.success("✅ VENTA REALIZADA")
+    st.markdown(f"""<div style="background:white;color:black;padding:20px;border:2px solid #3b82f6;max-width:350px;margin:auto;font-family:monospace;border-radius:16px;box-shadow:0 10px 15px -3px rgba(59,130,246,0.3);">
+        <h3 style="text-align:center;margin:0;color:#3b82f6;">{st.session_state.tenant}</h3>
+        <p style="text-align:center;margin:0;">{b['fecha']} {b['hora']}</p><hr style="border-color:#3b82f6;">
+        {''.join([f'<div style="display:flex;justify-content:space-between;"><span>{i["Cantidad"]}x {i["Producto"]}</span><span>S/{float(i["Subtotal"]):.2f}</span></div>' for i in b['items']])}
+        <hr style="border-color:#3b82f6;"><div style="display:flex;justify-content:space-between;"><span>MÉTODO:</span><span>{b['metodo']}</span></div>
+        <div style="display:flex;justify-content:space-between;color:#ef4444;"><span>DESC:</span><span>- S/{float(b['rebaja']):.2f}</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:18px;color:#3b82f6;"><b>NETO:</b><b>S/{float(b['t_neto']):.2f}</b></div>""", unsafe_allow_html=True)
+
+    if st.button("⬅️ NUEVA VENTA", use_container_width=True):
+        st.session_state.boleta = None
+        st.rerun()
 
             if tiene_whatsapp_habilitado():
                 texto = f"*TICKET - {st.session_state.tenant}*\n{b['fecha']} {b['hora']}\n---\n" + "\n".join([f"{i['Cantidad']}x {i['Producto']} - S/{float(i['Subtotal']):.2f}" for i in b['items']]) + f"\n---\n*TOTAL: S/{float(b['t_neto']):.2f}*\nMetodo: {b['metodo']}"
