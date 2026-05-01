@@ -1262,22 +1262,20 @@ with tabs[3]:
             st.info("No hay ventas para cerrar este día")
 
 # === TAB CARGAR - SOLO DUEÑO ===
-with tabs[4]:
-    if st.session_state.rol!= "DUEÑO":
-        st.error("⛔ Solo DUEÑO puede cargar productos")
-        st.stop()
-        
-    st.subheader("📥 Cargar Productos")
-    st.info(f"Productos: {contarProductosEnBD()}/{MAX_PRODUCTOS_TOTALES} | Stock máx/producto: {MAX_STOCK_POR_PRODUCTO}")
-    
-    tab_nuevo, tab_stock, tab_masiva = st.tabs(["➕ PRODUCTO NUEVO", "📦 INGRESO DE STOCK", "📤 CARGA MASIVA"])
-    
-    # === PRODUCTO NUEVO ===
-    with tab_nuevo:
-        st.markdown("#### Crear producto desde cero")
-        col1, col2 = st.columns(2)
-        prod_nuevo = col1.text_input("Nombre producto:", key="prod_nuevo_carga").upper().strip()
-        precio_compra_nuevo = col2.number_input("Costo S/:", min_value=0.0, value=0.0, key="pc_nuevo")
+if st.session_state.rol == "DUEÑO":
+    with tabs[4]:
+        st.subheader("📥 Cargar Productos")
+        st.info(f"Productos: {contarProductosEnBD()}/{MAX_PRODUCTOS_TOTALES} | Stock máx/producto: {MAX_STOCK_POR_PRODUCTO}")
+
+        tab_nuevo, tab_stock, tab_masiva = st.tabs(["➕ PRODUCTO NUEVO", "📦 INGRESO DE STOCK", "📤 CARGAR MASIVA"])
+
+        # === PRODUCTO NUEVO ===
+        with tab_nuevo:
+            st.markdown("#### Crear producto desde cero")
+            coll, col2 = st.columns(2)
+            prod_nuevo = coll.text_input("Nombre producto:", key="prod_nuevo_carga").upper().strip()
+            precio_compra_nuevo = col2.number_input("Costo S/:", min_value=0.0, value=0.0, key="pc_nuevo")
+            
         col3, col4 = st.columns(2)
         precio_venta_nuevo = col3.number_input("Precio venta S/:", min_value=0.01, value=1.0, key="pv_nuevo")
         stock_inicial = col4.number_input("Stock inicial:", min_value=0, value=0, key="stock_nuevo")
@@ -1433,18 +1431,16 @@ with tabs[4]:
                             st.rerun()
 
 # === TAB MANTENIMIENTO - BORRAR Y CORREGIR ===
-with tabs[5]:
-    if st.session_state.rol!= "DUEÑO":
-        st.error("⛔ Solo DUEÑO puede usar mantenimiento")
-        st.stop()
+if st.session_state.rol == "DUEÑO":
+    
+    with tabs[5]:
         
-    st.subheader("🛠️ Mantenimiento de Inventario")
+        st.subheader("🛠️ Mantenimiento de Inventario")
+        tab_editar, tab_borrar = st.tabs(["✏️ EDITAR", "🗑️ ELIMINAR"])
     
-    tab_editar, tab_borrar = st.tabs(["✏️ EDITAR", "🗑️ ELIMINAR"])
-    
-    # === EDITAR ===
-    with tab_editar:
-        st.markdown("#### Corregir producto existente")
+        with tab_editar:
+            
+            st.markdown("#### Corregir producto existente")
         busq_edit = st.text_input("🔍 Buscar:", key="busq_edit").upper()
         df_edit = df_inv[df_inv['Producto'].str.contains(busq_edit, na=False)] if busq_edit else df_inv.head(20)
         
