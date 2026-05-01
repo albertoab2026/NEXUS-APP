@@ -723,21 +723,21 @@ if fechas_p:
 st.success("✅ Todo al día. ¡Buenas ventas!")
 # --- FIN DEL BLOQUEO ---
 
-        res_cierre = tabla_cierres.query(
-            KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant),
-            FilterExpression=Attr('Fecha').eq(f_hoy) & Attr('Usuario').eq(st.session_state.usuario)
-        )
+res_cierre = tabla_cierres.query(
+    KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant),
+    FilterExpression=Attr('Fecha').eq(f_hoy) & Attr('Usuario').eq(st.session_state.usuario)
+)
 
-        ya_cerro = len(res_cierre.get('Items', [])) > 0
-        hora_cierre = max([c['Hora'] for c in res_cierre.get('Items', [])]) if ya_cerro else None
+ya_cerro = len(res_cierre.get('Items', [])) > 0
+hora_cierre = max([c['Hora'] for c in res_cierre.get('Items', [])]) if ya_cerro else None
 
-        if ya_cerro:
-            st.warning(f"⚠️ YA CERRASTE CAJA HOY A LAS {hora_cierre}")
-            st.info("Las ventas que hagas ahora son POST-CIERRE. Se sumarán al reporte de mañana.")
-            if st.button("🔓 REABRIR CAJA - SOLO DUEÑO", use_container_width=True, key="btn_reabrir_caja") and st.session_state.rol == "DUEÑO":
-                for c in res_cierre.get('Items', []):
-                    tabla_cierres.delete_item(Key={'TenantID': st.session_state.tenant, 'CierreID': c['CierreID']})
-                st.success("✅ Caja reabierta"); time.sleep(1); st.rerun()
+if ya_cerro:
+    st.warning(f"⚠️ YA CERRASTE CAJA HOY A LAS {hora_cierre}")
+    st.info("Las ventas que hagas ahora son POST-CIERRE. Se sumarán al reporte de mañana.")
+    if st.button("🔓 REABRIR CAJA - SOLO DUEÑO", use_container_width=True, key="btn_reabrir_caja") and st.session_state.rol == "DUEÑO":
+        for c in res_cierre.get('Items', []):
+            tabla_cierres.delete_item(Key={'TenantID': st.session_state.tenant, 'CierreID': c['CierreID']})
+        st.success("✅ Caja reabierta"); time.sleep(1); st.rerun()
 
         if st.session_state.boleta:
             b = st.session_state.boleta
