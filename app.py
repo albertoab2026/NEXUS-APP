@@ -722,12 +722,12 @@ if fechas_p:
 
 st.success("✅ Todo al día. ¡Buenas ventas!")
         # --- FIN DEL BLOQUEO ---
-        
+
         res_cierre = tabla_cierres.query(
             KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant),
             FilterExpression=Attr('Fecha').eq(f_hoy) & Attr('Usuario').eq(st.session_state.usuario)
         )
-        
+
         ya_cerro = len(res_cierre.get('Items', [])) > 0
         hora_cierre = max([c['Hora'] for c in res_cierre.get('Items', [])]) if ya_cerro else None
 
@@ -783,8 +783,8 @@ st.success("✅ Todo al día. ¡Buenas ventas!")
                 df_boleta[['Fecha', 'Hora', 'Producto', 'Cantidad', 'Precio', 'Subtotal', 'Metodo', 'Descuento', 'Total_Neto']].to_excel(w, index=False, sheet_name='Ticket')
 
             col1, col2 = st.columns(2)
-            col1.download_button("📄 PDF 80mm", pdf_output, f"Ticket_{b['fecha'].replace('/','')}.pdf", "application/pdf", use_container_width=True, key="btn_pdf_boleta")
-            col2.download_button("📊 EXCEL", buf_excel.getvalue(), f"Ticket_{b['fecha'].replace('/','')}.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True, key="btn_excel_boleta")
+            col1.download_button("📄 PDF", pdf_output, f"Ticket_{b['fecha']}.pdf", "application/pdf", use_container_width=True)
+            col2.download_button("📊 EXCEL", buf_excel.getvalue(), f"Ticket_{b['fecha']}.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
             
             if st.button("⬅️ NUEVA VENTA", use_container_width=True):
                 st.session_state.boleta = None
