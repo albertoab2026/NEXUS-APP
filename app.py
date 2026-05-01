@@ -723,16 +723,19 @@ if fechas_p and 'fecha_pendiente_cierre' not in st.session_state:
 st.success("✅ Todo al día. ¡Buenas ventas!")
 # --- FIN DEL BLOQUEO ---
 
-f_bloqueo = f_hoy if 'fecha_pendiente_cierre' not in st.session_state else "NINGUNA"
+# 1. Determinamos qué fecha consultar para el bloqueo de hoy
+en_modo_pendiente = 'fecha_pendiente_cierre' in st.session_state
+f_bloqueo = "NINGUNA" if en_modo_pendiente else f_hoy
 
+# 2. Consultamos si ya cerró la caja
 res_cierre = tabla_cierres.query(
     KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant),
     FilterExpression=Attr('Fecha').eq(f_bloqueo) & Attr('Usuario').eq(st.session_state.usuario)
 )
 
 ya_cerro = len(res_cierre.get('Items', [])) > 0
-hora_cierre = max([c['Hora'] for c in res_cierre.get('Items', [])]) if ya_cerro else None
-
+res_items = res_cierre.get('Items', [])
+hora_cierre = max([c['Hora'] for c in res_items]) if ya_cerro else None
 if ya_cerro:
     st.warning(f"⚠️ YA CERRASTE CAJA HOY A LAS {hora_cierre}")
     st.info("Las ventas que hagas ahora son POST-CIERRE. Se sumarán al reporte de mañana.")
