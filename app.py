@@ -721,9 +721,9 @@ if fechas_p:
         st.stop()
 
 st.success("✅ Todo al día. ¡Buenas ventas!")
-    # --- FIN DEL BLOQUEO ---
-
-res_cierre = tabla_cierres.query(
+        # --- FIN DEL BLOQUEO ---
+        
+        res_cierre = tabla_cierres.query(
             KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant),
             FilterExpression=Attr('Fecha').eq(f_hoy) & Attr('Usuario').eq(st.session_state.usuario)
         )
@@ -809,6 +809,7 @@ res_cierre = tabla_cierres.query(
                     st.info("👆 Escribe arriba para buscar productos")
                     sel = None
                     p_sel = None
+                
                 cant = col2.number_input("Cant:", min_value=1, value=1, key="cant_v")
                 if p_sel:
                     dp = df_inv[df_inv['Producto'] == p_sel].iloc[0]
