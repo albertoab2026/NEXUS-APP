@@ -700,10 +700,10 @@ with tabs[0]:
     # === TAB VENTA ===
     # --- BLOQUEO DE SEGURIDAD PARA CLIENTES SaaS --- (MOVIDO AQUÍ DENTRO)
     # Buscamos ventas de días anteriores para este usuario
-    res_p = tabla_ventas.query(
-        KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant),
-        FilterExpression=Attr('Usuario').eq(st.session_state.usuario) & Attr('Fecha').ne(f_hoy)
-    )
+res_p = tabla_ventas.query(
+    KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant),
+    FilterExpression=Attr('Usuario').eq(st.session_state.usuario) & Attr('Fecha').ne(f_hoy)
+)
 
 fechas_p = sorted(list(set([v['Fecha'] for v in res_p.get('Items', [])])))
 
@@ -723,7 +723,6 @@ if fechas_p and 'fecha_pendiente_cierre' not in st.session_state:
 st.success("✅ Todo al día. ¡Buenas ventas!")
 # --- FIN DEL BLOQUEO ---
 
-# Si hay un cierre pendiente, NO bloqueamos la pantalla de hoy
 f_bloqueo = f_hoy if 'fecha_pendiente_cierre' not in st.session_state else "NINGUNA"
 
 res_cierre = tabla_cierres.query(
