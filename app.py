@@ -721,7 +721,7 @@ if fechas_p:
         st.stop()
 
 st.success("✅ Todo al día. ¡Buenas ventas!")
-        # --- FIN DEL BLOQUEO ---
+# --- FIN DEL BLOQUEO ---
 
         res_cierre = tabla_cierres.query(
             KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant),
