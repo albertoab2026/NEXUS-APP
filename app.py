@@ -707,28 +707,20 @@ with tabs[0]:
 
 fechas_p = sorted(list(set([v['Fecha'] for v in res_p.get('Items', [])])))
 
-        if fechas_p:
-            fp = fechas_p[0]
-            
-            # Verificamos si esta fecha específica tiene cierre registrado
-            rc = tabla_cierres.query(
-                KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant),
-                FilterExpression=Attr('Fecha').eq(fp) & Attr('Usuario').eq(st.session_state.usuario)
-            )
-            
-            if not rc.get('Items'):
-                st.error(f"🛑 **CAJA PENDIENTE:** No cerraste la caja del día {fp}")
-                st.info("Debes regularizar tus cierres en orden cronológico para poder vender hoy.")
-                
-                if st.button(f"🔒 Iniciar Cierre Pendiente: {fp}", type="primary", key="btn_cierre_bloqueo"):
-                    st.session_state['fecha_pendiente_cierre'] = fp
-                    st.rerun()
+if fechas_p:
+    fp = fechas_p[0]
+    rc = tabla_cierres.query(
+        KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant),
+        FilterExpression=Attr('Fecha').eq(fp) & Attr('Usuario').eq(st.session_state.usuario)
+    )
+    if not rc.get('Items'):
+        st.error(f"🛑 **CAJA PENDIENTE:** No cerraste la caja del día {fp}")
+        if st.button(f"🔒 Iniciar Cierre Pendiente: {fp}", type="primary", key="btn_cierre_bloqueo"):
+            st.session_state['fecha_pendiente_cierre'] = fp
+            st.rerun()
+        st.stop()
 
-                # BLOQUEO TOTAL: No deja pasar a las pestañas de venta
-                st.stop()
-
-        # Si llegamos aquí es porque no hay deudas o ya se cerraron
-        st.success("✅ Todo al día. ¡Buenas ventas!")
+st.success("✅ Todo al día. ¡Buenas ventas!")
     # --- FIN DEL BLOQUEO ---
 
         res_cierre = tabla_cierres.query(
