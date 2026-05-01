@@ -718,12 +718,13 @@ with tabs[0]:
             st.error(f"🛑 **CAJA PENDIENTE:** No cerraste la caja del día {fp}")
             st.info("Debes regularizar tus cierres anteriores para poder vender hoy.")
             
-            if st.button(f"🔒 Cerrar Jornada Pendiente: {fp}", type="primary", use_container_width=True):
+            if st.button(f"🔒 Iniciar Cierre Pendiente: {fp}", type="primary", key=f"btn_{fp}"):
                 st.session_state['fecha_pendiente_cierre'] = fp
-                st.success(f"Procesando cierre para el día {fp}...")
                 st.rerun()
-            
-            st.stop() 
+
+            # Bloqueo inteligente: Solo detiene la app si NO hemos pulsado el botón
+            if st.session_state.get('fecha_pendiente_cierre') != fp:
+                st.stop()
     # --- FIN DEL BLOQUEO ---
 
         res_cierre = tabla_cierres.query(
