@@ -697,9 +697,42 @@ tabs = st.tabs(tabs_list)
 # === TAB VENTA ===
 with tabs[0]:
     f_hoy, h_hoy, _ = obtener_tiempo_peru()
-    res_cierre = tabla_cierres.query(KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant), FilterExpression=Attr('Fecha').eq(f_hoy) & Attr('UsuarioTurno').eq(st.session_state.usuario))
-    ya_cerro = len(res_cierre.get('Items', [])) > 0
-    hora_cierre = max([c['Hora'] for c in res_cierre.get('Items', [])]) if ya_cerro else None
+    # === TAB VENTA ===
+    # --- BLOQUEO DE SEGURIDAD PARA CLIENTES SaaS --- (MOVIDO AQUÍ DENTRO)
+    # Buscamos ventas de días anteriores para este usuario
+    res_p = tabla_ventas.query(
+        KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant),
+        FilterExpression=Attr('Usuario').eq(st.session_state.usuario) & Attr('Fecha').lt(f_hoy)
+    )
+
+    fechas_p = sorted(list(set([v['Fecha'] for v in res_p.get('Items', [])])))
+
+    for fp in fechas_p:
+        # Verificamos si la fecha ya tiene un cierre registrado
+        rc = tabla_cierres.query(
+            KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant),
+            FilterExpression=Attr('Fecha').eq(fp) & Attr('Usuario').eq(st.session_state.usuario)
+        )
+        
+        if not rc.get('Items'):
+            st.error(f"🛑 **CAJA PENDIENTE:** No cerraste la caja del día {fp}")
+            st.info("Debes regularizar tus cierres anteriores para poder vender hoy.")
+            
+            if st.button(f"🔒 Cerrar Jornada Pendiente: {fp}", type="primary", use_container_width=True):
+                st.session_state['fecha_pendiente_cierre'] = fp
+                st.success(f"Procesando cierre para el día {fp}...")
+                st.rerun()
+            
+            st.stop() 
+    # --- FIN DEL BLOQUEO ---
+
+        res_cierre = tabla_cierres.query(
+            KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant),
+            FilterExpression=Attr('Fecha').eq(f_hoy) & Attr('Usuario').eq(st.session_state.usuario)
+        )
+        
+        ya_cerro = len(res_cierre.get('Items', [])) > 0
+        hora_cierre = max([c['Hora'] for c in res_cierre.get('Items', [])]) if ya_cerro else None
 
     if ya_cerro:
         st.warning(f"⚠️ YA CERRASTE CAJA HOY A LAS {hora_cierre}")
