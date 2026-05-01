@@ -27,7 +27,7 @@ st.set_page_config(
     page_title="NEXUS BALLARTA - Sistema POS",
     layout="wide",
     page_icon="💎",
-    initial_sidebar_state="collapsed",
+    initial_sidebar_state="expanded",
     menu_items={
         'About': "NEXUS BALLARTA v3.0 - Sistema de Punto de Venta Empresarial"
     }
@@ -670,6 +670,23 @@ if not st.session_state.auth:
 sistema_vencimiento_inteligente()
 MAX_PRODUCTOS_TOTALES, MAX_STOCK_POR_PRODUCTO, PLAN_ACTUAL, PRECIO_ACTUAL = obtener_limites_tenant()
 df_inv = obtener_datos()
+with st.sidebar:
+    st.markdown(f"### 👤 {st.session_state.usuario}")
+    st.write(f"**Rol:** {st.session_state.rol}")
+    
+    # El contador que querías (11/700)
+    cant_actual = len(df_inv) 
+    st.metric(f"📊 {PLAN_ACTUAL}", f"{cant_actual}/{MAX_PRODUCTOS_TOTALES}")
+    
+    st.divider()
+    
+    st.markdown(f"👨‍💻 **{DESARROLLADOR}**")
+    st.caption("Versión 3.0")
+    
+    if st.button("🚪 Cerrar Sesión", key="logout_sidebar"):
+        st.session_state.clear()
+        st.rerun()
+# ----------------------
 if st.session_state.get('modo_lectura', False): st.warning(st.session_state.mensaje_lectura)
 
 # === TABS === EMPLEADO AHORA VE HISTORIAL
