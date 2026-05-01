@@ -22,11 +22,6 @@ st.set_page_config(
 ENTORNO = st.secrets.get("ENTORNO", "PROD") # PROD por defecto para seguridad
 SUFIJO = "_PRUEBA" if ENTORNO == "DEV" else ""
 TABLA_TENANTS = "NEXUS_TENANTS" + SUFIJO
-
-# DEBUG - BORRA ESTO DESPUÉS
-st.error(f"DEBUG 1: ENTORNO='{ENTORNO}' | SUFIJO='{SUFIJO}' | TABLA='{TABLA_TENANTS}'")
-st.error(f"DEBUG 2: SECTIONS EN SECRETS = {list(st.secrets.keys())}")
-st.stop() # Para que no siga y crashee
 if ENTORNO == "DEV":
     st.error("🔥 MODO PRUEBA - Datos ficticios")
 # === FIN ===
