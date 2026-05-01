@@ -696,42 +696,39 @@ if st.session_state.rol == "DUEÑO" and not st.session_state.get('modo_lectura',
 tabs = st.tabs(tabs_list)
 # === TAB VENTA ===
 with tabs[0]:
-    f_hoy, h_hoy, _ = obtener_tiempo_peru()
-    # === TAB VENTA ===
-    # --- BLOQUEO DE SEGURIDAD PARA CLIENTES SaaS --- (MOVIDO AQUÍ DENTRO)
-    # Buscamos ventas de días anteriores para este usuario
-res_p = tabla_ventas.query(
-    KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant),
-    FilterExpression=Attr('Usuario').eq(st.session_state.usuario) & Attr('Fecha').ne(f_hoy)
-)
-fechas_p = sorted(list(set([v['Fecha'] for v in res_p.get('Items', [])])))
-
-if fechas_p and 'fecha_pendiente_cierre' not in st.session_state:
-    fp = fechas_p[0]
-    rc = tabla_cierres.query(
-        KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant),
-        FilterExpression=Attr('Fecha').eq(fp) & Attr('Usuario').eq(st.session_state.usuario)
-    )
-    if not rc.get('Items'):
-        st.error(f"🛑 **CAJA PENDIENTE:** No cerraste la caja del día {fp}")
-        if st.button(f"🚩 Iniciar Cierre Pendiente: {fp}", type="primary", key="btn_cierre_bloqueo"):
-            st.session_state['fecha_pendiente_cierre'] = fp
-            st.rerun()
-        st.stop()
-
-        st.success("✅ Todo al día. ¡Buenas ventas!")
+        # 1. Cargar datos básicos primero
+        f_hoy, h_hoy, _ = obtener_tiempo_peru()
         suffix = st.session_state.get('fecha_pendiente_cierre', 'hoy')
 
+        # 2. Búsqueda de pendientes
+        res_p = tabla_ventas.query(
+            KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant),
+            FilterExpression=Attr('Usuario').eq(st.session_state.usuario) & Attr('Fecha').ne(f_hoy)
+        )
+        fechas_p = sorted(list(set([v['Fecha'] for v in res_p.get('Items', [])])))
+
+        # 3. Bloqueo si hay pendientes
+        if fechas_p and 'fecha_pendiente_cierre' not in st.session_state:
+            fp = fechas_p[0] # Tomamos la más antigua
+            st.error(f"🛑 **CAJA PENDIENTE:** No cerraste la caja del {fp}")
+            if st.button(f"🚩 Iniciar Cierre Pendiente: {fp}", type="primary", key="btn_bloqueo_inicial"):
+                st.session_state['fecha_pendiente_cierre'] = fp
+                st.rerun()
+            st.stop()
+
+        # 4. Mensaje de éxito y preparación de variables de cierre
+        st.success("✅ Todo al día. ¡Buenas ventas!")
+        
         if 'fecha_pendiente_cierre' in st.session_state:
             ya_cerro = False
             res_cierre = {'Items': []}
-            f_hoy, h_hoy, _ = obtener_tiempo_peru()
         else:
             res_cierre = tabla_cierres.query(
                 KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant),
                 FilterExpression=Attr('Fecha').eq(f_hoy) & Attr('Usuario').eq(st.session_state.usuario)
             )
             ya_cerro = len(res_cierre.get('Items', [])) > 0
+
 
         res_items = res_cierre.get('Items', [])
         hora_cierre = max([c['Hora'] for c in res_items]) if ya_cerro else None
