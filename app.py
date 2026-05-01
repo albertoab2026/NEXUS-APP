@@ -725,6 +725,7 @@ st.success("✅ Todo al día. ¡Buenas ventas!")
 # 2. VERIFICAR CIERRE DE HOY (O SALTAR SI ESTAMOS EN MODO PENDIENTE)
 if 'fecha_pendiente_cierre' in st.session_state:
     ya_cerro = False
+    res_cierre = {'Items': []}
 else:
     res_cierre = tabla_cierres.query(
         KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant),
