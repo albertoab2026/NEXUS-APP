@@ -722,12 +722,12 @@ if fechas_p:
 
 st.success("✅ Todo al día. ¡Buenas ventas!")
         # --- FIN DEL BLOQUEO ---
-
+        
         res_cierre = tabla_cierres.query(
             KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant),
             FilterExpression=Attr('Fecha').eq(f_hoy) & Attr('Usuario').eq(st.session_state.usuario)
         )
-
+        
         ya_cerro = len(res_cierre.get('Items', [])) > 0
         hora_cierre = max([c['Hora'] for c in res_cierre.get('Items', [])]) if ya_cerro else None
 
@@ -750,42 +750,6 @@ st.success("✅ Todo al día. ¡Buenas ventas!")
                 <div style="display:flex;justify-content:space-between;color:#ef4444;"><span>DESC:</span><span>- S/{float(b['rebaja']):.2f}</span></div>
                 <div style="display:flex;justify-content:space-between;font-size:18px;color:#3b82f6;"><b>NETO:</b><b>S/{float(b['t_neto']):.2f}</b></div>""", unsafe_allow_html=True)
 
-            pdf = FPDF(orientation='P', unit='mm', format=(80, 200))
-            pdf.add_page()
-            pdf.set_font('Courier', 'B', 12)
-            pdf.cell(0, 5, st.session_state.tenant, 0, 1, 'C')
-            pdf.set_font('Courier', '', 8)
-            pdf.cell(0, 4, f"{b['fecha']} {b['hora']}", 0, 1, 'C')
-            pdf.cell(0, 2, '-'*40, 0, 1, 'C')
-            for i in b['items']:
-                nombre = str(i['Producto'])[:15]
-                pdf.cell(40, 4, f"{i['Cantidad']}x {nombre}", 0, 0)
-                pdf.cell(0, 4, f"S/{float(i['Subtotal']):.2f}", 0, 1, 'R')
-            pdf.cell(0, 2, '-'*40, 0, 1, 'C')
-            metodo_pdf = str(b['metodo']).replace('🟣 ', '').replace('🔵 ', '').replace('💵 ', '')
-            pdf.cell(40, 4, f"METODO:", 0, 0)
-            pdf.cell(0, 4, metodo_pdf, 0, 1, 'R')
-            pdf.cell(40, 4, f"DESC:", 0, 0)
-            pdf.cell(0, 4, f"- S/{float(b['rebaja']):.2f}", 0, 1, 'R')
-            pdf.set_font('Courier', 'B', 10)
-            pdf.cell(40, 5, f"NETO:", 0, 0)
-            pdf.cell(0, 5, f"S/{float(b['t_neto']):.2f}", 0, 1, 'R')
-            pdf_output = pdf.output(dest='S').encode('latin-1')
-
-            df_boleta = pd.DataFrame(b['items'])
-            df_boleta['Fecha'] = b['fecha']
-            df_boleta['Hora'] = b['hora']
-            df_boleta['Metodo'] = b['metodo']
-            df_boleta['Descuento'] = float(b['rebaja'])
-            df_boleta['Total_Neto'] = float(b['t_neto'])
-            buf_excel = io.BytesIO()
-            with pd.ExcelWriter(buf_excel, engine='openpyxl') as w:
-                df_boleta[['Fecha', 'Hora', 'Producto', 'Cantidad', 'Precio', 'Subtotal', 'Metodo', 'Descuento', 'Total_Neto']].to_excel(w, index=False, sheet_name='Ticket')
-
-            col1, col2 = st.columns(2)
-            col1.download_button("📄 PDF", pdf_output, f"Ticket_{b['fecha']}.pdf", "application/pdf", use_container_width=True)
-            col2.download_button("📊 EXCEL", buf_excel.getvalue(), f"Ticket_{b['fecha']}.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
-            
             if st.button("⬅️ NUEVA VENTA", use_container_width=True):
                 st.session_state.boleta = None
                 st.rerun()
