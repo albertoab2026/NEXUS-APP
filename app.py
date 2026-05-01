@@ -702,7 +702,7 @@ with tabs[0]:
     # Buscamos ventas de días anteriores para este usuario
     res_p = tabla_ventas.query(
         KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant),
-        FilterExpression=Attr('Usuario').eq(st.session_state.usuario) & Attr('Fecha').lt(f_hoy)
+        FilterExpression=Attr('Usuario').eq(st.session_state.usuario) & Attr('Fecha').ne(f_hoy)
     )
 
     fechas_p = sorted(list(set([v['Fecha'] for v in res_p.get('Items', [])])))
@@ -734,7 +734,7 @@ with tabs[0]:
         ya_cerro = len(res_cierre.get('Items', [])) > 0
         hora_cierre = max([c['Hora'] for c in res_cierre.get('Items', [])]) if ya_cerro else None
 
-    if ya_cerro:
+    if vars().get('ya_cerro'):
         st.warning(f"⚠️ YA CERRASTE CAJA HOY A LAS {hora_cierre}")
         st.info("Las ventas que hagas ahora son POST-CIERRE. Se sumarán al reporte de mañana.")
         if st.button("🔓 REABRIR CAJA - SOLO DUEÑO", use_container_width=True, key="btn_reabrir_caja") and st.session_state.rol == "DUEÑO":
