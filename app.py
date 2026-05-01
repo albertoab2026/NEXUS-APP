@@ -784,60 +784,31 @@ with tabs[0]:
                     if st.button("🚀 FINALIZAR", use_container_width=True, type="primary", key=f"btn_fin_{suffix}"): st.session_state.confirmar = True
                     if st.session_state.get('confirmar'):
                         if st.button(f"✅ CONFIRMAR", use_container_width=True, key=f"btn_conf_{suffix}"):
-                            # Aquí iría tu lógica de guardado en DynamoDB
-                            st.success("Venta Guardada")
+                        f, h, uid = obtener_tiempo_peru()
+                        f_v = st.session_state.get('fecha_pendiente_cierre', f)
+                        for item in st.session_state.carrito:
+                            # 1. Descontar Stock
+                            tabla_stock.update_item(
+                                Key={'TenantID': st.session_state.tenant, 'Producto': item['Producto']},
+                                UpdateExpression="SET Stock = Stock - :s",
+                                ConditionExpression="Stock >= :s",
+                                ExpressionAttributeValues={':s': item['Cantidad']}
+                            )
+                            # 2. Registrar Venta
+                            tabla_ventas.put_item(Item={
+                                'TenantID': st.session_state.tenant, 
+                                'VentaID': f"V-{uid}-{item['Producto']}", 
+                                'Fecha': f_v, 
+                                'Hora': h, 
+                                'Producto': item['Producto'], 
+                                'Cantidad': item['Cantidad'], 
+                                'Metodo': st.session_state.metodo_pago, 
+                                'Usuario': st.session_state.usuario
+                            })
+                        st.success("✅ Venta Registrada")
+                        st.session_state.carrito = []; st.session_state.confirmar = False; st.rerun()
 
-                
-                if st.session_state.carrito:
-                    for idx, item in enumerate(st.session_state.carrito):
-                        c1, c2 = st.columns([3,1])
-                        c1.write(f"{item['Producto']} x{item['Cantidad']}")
-                        c2.write(f"S/{float(item['Subtotal']):.2f}")
-                    st.button("🗑️ VACIAR", key=f"btn_vaciar_{suffix}")
-                    st.write("**Método de Pago:**")
-                    col_ef, col_yape, col_plin = st.columns(3)
-
-                    with col_ef:
-                        st.markdown("<div style='text-align:center;font-size:40px;'>💵</div>", unsafe_allow_html=True)
-                        if st.button("EFECTIVO", use_container_width=True, type="primary" if st.session_state.metodo_pago=="💵 EFECTIVO" else "secondary", key="btn_efectivo"):
-                            st.session_state.metodo_pago = "💵 EFECTIVO"
-                            st.rerun()
-
-                    with col_yape:
-                        st.markdown("<div style='text-align:center;font-size:40px;'>🟣</div>", unsafe_allow_html=True)
-                        if st.button("YAPE", use_container_width=True, type="primary" if st.session_state.metodo_pago=="🟣 YAPE" else "secondary", key="btn_yape"):
-                            st.session_state.metodo_pago = "🟣 YAPE"
-                            st.rerun()
-
-                    with col_plin:
-                        st.markdown("<div style='text-align:center;font-size:40px;'>🔵</div>", unsafe_allow_html=True)
-                        if st.button("PLIN", use_container_width=True, type="primary" if st.session_state.metodo_pago=="🔵 PLIN" else "secondary", key="btn_plin"):
-                            st.session_state.metodo_pago = "🔵 PLIN"
-                            st.rerun()
-
-                    metodo = st.session_state.metodo_pago
-                    st.markdown(f"<h3 style='text-align:center;color:#3b82f6;'>Seleccionado: {metodo}</h3>", unsafe_allow_html=True)
-
-                    rebaja = st.number_input("💸 Descuento:", min_value=0.0, value=0.0, key="num_rebaja")
-                    total = max(Decimal('0.00'), sum(i['Subtotal'] for i in st.session_state.carrito) - to_decimal(rebaja))
-                    st.markdown(f"<h1 style='text-align:center;color:#3b82f6;font-size:3rem;'>S/ {float(total):.2f}</h1>", unsafe_allow_html=True)
-                    
-                    if st.button("🚀 FINALIZAR", use_container_width=True, type="primary", key="btn_finalizar"): 
-                        st.session_state.confirmar = True
-                    
-                    if st.session_state.confirmar:
-                        if st.button(f"✅ CONFIRMAR S/ {float(total):.2f}", use_container_width=True, key=f"btn_conf_{suffix}"):
-                            f, h, uid = obtener_tiempo_peru()
-                            f_venta = st.session_state.get('fecha_pendiente_cierre', f)
-                
-                            for item in st.session_state.carrito:
-                                tabla_stock.update_item(Key={'TenantID': st.session_state.tenant, 'Producto': item['Producto']}, UpdateExpression="SET Stock = Stock - :s", ConditionExpression="Stock >= :s", ExpressionAttributeValues={':s': item['Cantidad']})
-                                tabla_ventas.put_item(Item={'TenantID': st.session_state.tenant, 'VentaID': f"V-{uid}-{item['Producto']}", 'Fecha': f_venta, 'Hora': h, 'Producto': item['Producto'], 'Cantidad': item['Cantidad'], 'Metodo': metodo, 'Usuario': st.session_state.usuario})
-                                registrar_kardex(item['Producto'], item['Cantidad'], "VENTA", item['Subtotal'], item['Precio_Compra'], metodo)
-                
-                            st.session_state.boleta = {'items': st.session_state.carrito, 't_neto': total, 'rebaja': to_decimal(rebaja), 'metodo': metodo, 'fecha': f_venta, 'hora': h}
-                            st.session_state.carrito = []; st.session_state.confirmar = False; st.rerun()
-
+                              
         with tab_ingreso_emp:
             st.subheader("📦 Registrar Ingreso de Mercadería")
             st.caption("Busca y haz click en el producto")
