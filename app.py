@@ -726,6 +726,7 @@ st.success("✅ Todo al día. ¡Buenas ventas!")
 if 'fecha_pendiente_cierre' in st.session_state:
     ya_cerro = False
     res_cierre = {'Items': []}
+    f_hoy, h_hoy, _ = obtener_tiempo_peru()
 else:
     res_cierre = tabla_cierres.query(
         KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant),
