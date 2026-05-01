@@ -719,8 +719,6 @@ if fechas_p and 'fecha_pendiente_cierre' not in st.session_state:
             st.session_state['fecha_pendiente_cierre'] = fp
             st.rerun()
         st.stop()
-        else:
-            fp = st.session_state['fecha_pendiente_cierre']
 
 st.success("✅ Todo al día. ¡Buenas ventas!")
 # --- FIN DEL BLOQUEO ---
