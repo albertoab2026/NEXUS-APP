@@ -715,10 +715,11 @@ if fechas_p:
     )
     if not rc.get('Items'):
         st.error(f"🛑 **CAJA PENDIENTE:** No cerraste la caja del día {fp}")
-        if st.button(f"🔒 Iniciar Cierre Pendiente: {fp}", type="primary", key="btn_cierre_bloqueo"):
+        if st.button(f"🚩 Iniciar Cierre Pendiente: {fp}", type="primary", key="btn_cierre_bloqueo"):
             st.session_state['fecha_pendiente_cierre'] = fp
             st.rerun()
-        st.stop()
+        if 'fecha_pendiente_cierre' not in st.session_state:
+            st.stop()
 
 st.success("✅ Todo al día. ¡Buenas ventas!")
 # --- FIN DEL BLOQUEO ---
