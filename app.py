@@ -721,43 +721,42 @@ if fechas_p:
         st.stop()
 
 st.success("✅ Todo al día. ¡Buenas ventas!")
-# --- FIN DEL BLOQUEO ---
+        # --- FIN DEL BLOQUEO ---
 
-res_cierre = tabla_cierres.query(
-    KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant),
-    FilterExpression=Attr('Fecha').eq(f_hoy) & Attr('Usuario').eq(st.session_state.usuario)
-)
+        res_cierre = tabla_cierres.query(
+            KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant),
+            FilterExpression=Attr('Fecha').eq(f_hoy) & Attr('Usuario').eq(st.session_state.usuario)
+        )
 
-ya_cerro = len(res_cierre.get('Items', [])) > 0
-hora_cierre = max([c['Hora'] for c in res_cierre.get('Items', [])]) if ya_cerro else None
+        ya_cerro = len(res_cierre.get('Items', [])) > 0
+        hora_cierre = max([c['Hora'] for c in res_cierre.get('Items', [])]) if ya_cerro else None
 
-if ya_cerro:
-    st.warning(f"⚠️ YA CERRASTE CAJA HOY A LAS {hora_cierre}")
-    st.info("Las ventas que hagas ahora son POST-CIERRE. Se sumarán al reporte de mañana.")
-    if st.button("🔓 REABRIR CAJA - SOLO DUEÑO", use_container_width=True, key="btn_reabrir_caja") and st.session_state.rol == "DUEÑO":
-        for c in res_cierre.get('Items', []):
-            tabla_cierres.delete_item(Key={'TenantID': st.session_state.tenant, 'CierreID': c['CierreID']})
-        st.success("✅ Caja reabierta"); time.sleep(1); st.rerun()
+        if ya_cerro:
+            st.warning(f"⚠️ YA CERRASTE CAJA HOY A LAS {hora_cierre}")
+            st.info("Las ventas que hagas ahora son POST-CIERRE. Se sumarán al reporte de mañana.")
+            if st.button("🔓 REABRIR CAJA - SOLO DUEÑO", use_container_width=True, key="btn_reabrir_caja") and st.session_state.rol == "DUEÑO":
+                for c in res_cierre.get('Items', []):
+                    tabla_cierres.delete_item(Key={'TenantID': st.session_state.tenant, 'CierreID': c['CierreID']})
+                st.success("✅ Caja reabierta"); time.sleep(1); st.rerun()
 
-if st.session_state.boleta:
-    b = st.session_state.boleta
-    st.success("✅ VENTA REALIZADA")
-    st.markdown(f"""<div style="background:white;color:black;padding:20px;border:2px solid #3b82f6;max-width:350px;margin:auto;font-family:monospace;border-radius:16px;box-shadow:0 10px 15px -3px rgba(59,130,246,0.3);">
-        <h3 style="text-align:center;margin:0;color:#3b82f6;">{st.session_state.tenant}</h3>
-        <p style="text-align:center;margin:0;">{b['fecha']} {b['hora']}</p><hr style="border-color:#3b82f6;">
-        {''.join([f'<div style="display:flex;justify-content:space-between;"><span>{i["Cantidad"]}x {i["Producto"]}</span><span>S/{float(i["Subtotal"]):.2f}</span></div>' for i in b['items']])}
-        <hr style="border-color:#3b82f6;"><div style="display:flex;justify-content:space-between;"><span>MÉTODO:</span><span>{b['metodo']}</span></div>
-        <div style="display:flex;justify-content:space-between;color:#ef4444;"><span>DESC:</span><span>- S/{float(b['rebaja']):.2f}</span></div>
-        <div style="display:flex;justify-content:space-between;font-size:18px;color:#3b82f6;"><b>NETO:</b><b>S/{float(b['t_neto']):.2f}</b></div>""", unsafe_allow_html=True)
-
-    if st.button("⬅️ NUEVA VENTA", use_container_width=True):
-        st.session_state.boleta = None
-        st.rerun()
+        if st.session_state.boleta:
+            b = st.session_state.boleta
+            st.success("✅ VENTA REALIZADA")
+            st.markdown(f"""<div style="background:white;color:black;padding:20px;border:2px solid #3b82f6;max-width:350px;margin:auto;font-family:monospace;border-radius:16px;box-shadow:0 10px 15px -3px rgba(59,130,246,0.3);">
+                <h3 style="text-align:center;margin:0;color:#3b82f6;">{st.session_state.tenant}</h3>
+                <p style="text-align:center;margin:0;">{b['fecha']} {b['hora']}</p><hr style="border-color:#3b82f6;">
+                {''.join([f'<div style="display:flex;justify-content:space-between;"><span>{i["Cantidad"]}x {i["Producto"]}</span><span>S/{float(i["Subtotal"]):.2f}</span></div>' for i in b['items']])}
+                <hr style="border-color:#3b82f6;"><div style="display:flex;justify-content:space-between;"><span>MÉTODO:</span><span>{b['metodo']}</span></div>
+                <div style="display:flex;justify-content:space-between;color:#ef4444;"><span>DESC:</span><span>- S/{float(b['rebaja']):.2f}</span></div>
+                <div style="display:flex;justify-content:space-between;font-size:18px;color:#3b82f6;"><b>NETO:</b><b>S/{float(b['t_neto']):.2f}</b></div>""", unsafe_allow_html=True)
 
             if tiene_whatsapp_habilitado():
                 texto = f"*TICKET - {st.session_state.tenant}*\n{b['fecha']} {b['hora']}\n---\n" + "\n".join([f"{i['Cantidad']}x {i['Producto']} - S/{float(i['Subtotal']):.2f}" for i in b['items']]) + f"\n---\n*TOTAL: S/{float(b['t_neto']):.2f}*\nMetodo: {b['metodo']}"
                 st.link_button("📲 WhatsApp", f"https://wa.me/?text={urllib.parse.quote(texto)}", use_container_width=True)
-            if st.button("⬅️ NUEVA VENTA", use_container_width=True, key="btn_nueva_venta"): st.session_state.boleta = None; st.rerun()
+            
+            if st.button("⬅️ NUEVA VENTA", use_container_width=True, key="btn_nueva_venta"): 
+                st.session_state.boleta = None
+                st.rerun()
         else:
             tab_vender, tab_ingreso_emp = st.tabs(["🛒 VENDER", "📦 INGRESAR MERCADERÍA"])
 
@@ -769,14 +768,14 @@ if st.session_state.boleta:
                     if busq in str(f['Producto']):
                         est = f"STOCK: {f['Stock']}" if f['Stock'] > 0 else "🚫 AGOTADO"
                         ops.append(f"{f['Producto']} | S/ {f['Precio']:.2f} | {est}")
+                
                 col1, col2 = st.columns([3, 1])
                 if ops:
                     sel = col1.selectbox("Producto:", ops, key="sel_v", placeholder="Busca y selecciona producto")
                     p_sel = sel.split(" | ")[0] if sel else None
                 else:
                     st.info("👆 Escribe arriba para buscar productos")
-                    sel = None
-                    p_sel = None
+                    sel = p_sel = None
                 
                 cant = col2.number_input("Cant:", min_value=1, value=1, key="cant_v")
                 if p_sel:
@@ -824,7 +823,9 @@ if st.session_state.boleta:
                     rebaja = st.number_input("💸 Descuento:", min_value=0.0, value=0.0, key="num_rebaja")
                     total = max(Decimal('0.00'), sum(i['Subtotal'] for i in st.session_state.carrito) - to_decimal(rebaja))
                     st.markdown(f"<h1 style='text-align:center;color:#3b82f6;font-size:3rem;'>S/ {float(total):.2f}</h1>", unsafe_allow_html=True)
-                    if st.button("🚀 FINALIZAR", use_container_width=True, type="primary", key="btn_finalizar"): st.session_state.confirmar = True
+                    
+                    if st.button("🚀 FINALIZAR", use_container_width=True, type="primary", key="btn_finalizar"): 
+                        st.session_state.confirmar = True
                     
                     if st.session_state.confirmar:
                         if st.button(f"✅ CONFIRMAR S/ {float(total):.2f}", use_container_width=True, key="btn_confirmar_venta"):
