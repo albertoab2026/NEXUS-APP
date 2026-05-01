@@ -705,29 +705,28 @@ with tabs[0]:
         FilterExpression=Attr('Usuario').eq(st.session_state.usuario) & Attr('Fecha').ne(f_hoy)
     )
 
-    fechas_p = sorted(list(set([v['Fecha'] for v in res_p.get('Items', [])])))
+fechas_p = sorted(list(set([v['Fecha'] for v in res_p.get('Items', [])])))
 
-    # Solo tomamos la fecha más antigua que falte cerrar (la primera de la lista)
-        if fechas_p:
-            fp = fechas_p[0] 
-            
-            # Verificamos si esta fecha específica tiene cierre registrado
-            rc = tabla_cierres.query(
-                KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant),
-                FilterExpression=Attr('Fecha').eq(fp) & Attr('Usuario').eq(st.session_state.usuario)
-            )
-            
-            if not rc.get('Items'):
-                st.error(f"🛑 **CAJA PENDIENTE:** No cerraste la caja del día {fp}")
-                st.info("Debes regularizar tus cierres en orden cronológico para poder vender hoy.")
-                
-                if st.button(f"🔒 Iniciar Cierre Pendiente: {fp}", type="primary", key="btn_cierre_unico"):
-                    st.session_state['fecha_pendiente_cierre'] = fp
-                    st.rerun()
+if fechas_p:
+    fp = fechas_p[0] 
+    
+    # Verificamos si esta fecha específica tiene cierre registrado
+    rc = tabla_cierres.query(
+        KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant),
+        FilterExpression=Attr('Fecha').eq(fp) & Attr('Usuario').eq(st.session_state.usuario)
+    )
+    
+    if not rc.get('Items'):
+        st.error(f"🛑 **CAJA PENDIENTE:** No cerraste la caja del día {fp}")
+        st.info("Debes regularizar tus cierres en orden cronológico para poder vender hoy.")
+        
+        if st.button(f"🔒 Iniciar Cierre Pendiente: {fp}", type="primary", key="btn_cierre_unico"):
+            st.session_state['fecha_pendiente_cierre'] = fp
+            st.rerun()
 
-                # Detenemos todo hasta que se procese ESTA fecha específica
-                if st.session_state.get('fecha_pendiente_cierre') != fp:
-                    st.stop()
+        # Detenemos todo hasta que se procese ESTA fecha específica
+        if st.session_state.get('fecha_pendiente_cierre') != fp:
+            st.stop()
     # --- FIN DEL BLOQUEO ---
 
         res_cierre = tabla_cierres.query(
