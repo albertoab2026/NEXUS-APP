@@ -743,35 +743,35 @@ if ya_cerro:
             tabla_cierres.delete_item(Key={'TenantID': st.session_state.tenant, 'CierreID': c['CierreID']})
         st.success("✅ Caja reabierta"); time.sleep(1); st.rerun()
 
-        if st.session_state.boleta:
-            b = st.session_state.boleta
-            st.success("✅ VENTA REALIZADA")
-            st.markdown(f"""<div style="background:white;color:black;padding:20px;border:2px solid #3b82f6;max-width:350px;margin:auto;font-family:monospace;border-radius:16px;box-shadow:0 10px 15px -3px rgba(59,130,246,0.3);">
-                <h3 style="text-align:center;margin:0;color:#3b82f6;">{st.session_state.tenant}</h3>
-                <p style="text-align:center;margin:0;">{b['fecha']} {b['hora']}</p><hr style="border-color:#3b82f6;">
-                {''.join([f'<div style="display:flex;justify-content:space-between;"><span>{i["Cantidad"]}x {i["Producto"]}</span><span>S/{float(i["Subtotal"]):.2f}</span></div>' for i in b['items']])}
-                <hr style="border-color:#3b82f6;"><div style="display:flex;justify-content:space-between;"><span>MÉTODO:</span><span>{b['metodo']}</span></div>
-                <div style="display:flex;justify-content:space-between;color:#ef4444;"><span>DESC:</span><span>- S/{float(b['rebaja']):.2f}</span></div>
-                <div style="display:flex;justify-content:space-between;font-size:18px;color:#3b82f6;"><b>NETO:</b><b>S/{float(b['t_neto']):.2f}</b></div>""", unsafe_allow_html=True)
+if st.session_state.boleta:
+    b = st.session_state.boleta
+    st.success("✅ VENTA REALIZADA")
+    st.markdown(f"""<div style="background:white;color:black;padding:20px;border:2px solid #3b82f6;max-width:350px;margin:auto;font-family:monospace;border-radius:16px;box-shadow:0 10px 15px -3px rgba(59,130,246,0.3);">
+        <h3 style="text-align:center;margin:0;color:#3b82f6;">{st.session_state.tenant}</h3>
+        <p style="text-align:center;margin:0;">{b['fecha']} {b['hora']}</p><hr style="border-color:#3b82f6;">
+        {''.join([f'<div style="display:flex;justify-content:space-between;"><span>{i["Cantidad"]}x {i["Producto"]}</span><span>S/{float(i["Subtotal"]):.2f}</span></div>' for i in b['items']])}
+        <hr style="border-color:#3b82f6;"><div style="display:flex;justify-content:space-between;"><span>MÉTODO:</span><span>{b['metodo']}</span></div>
+        <div style="display:flex;justify-content:space-between;color:#ef4444;"><span>DESC:</span><span>- S/{float(b['rebaja']):.2f}</span></div>
+        <div style="display:flex;justify-content:space-between;font-size:18px;color:#3b82f6;"><b>NETO:</b><b>S/{float(b['t_neto']):.2f}</b></div>""", unsafe_allow_html=True)
 
-            if tiene_whatsapp_habilitado():
-                texto = f"*TICKET - {st.session_state.tenant}*\n{b['fecha']} {b['hora']}\n---\n" + "\n".join([f"{i['Cantidad']}x {i['Producto']} - S/{float(i['Subtotal']):.2f}" for i in b['items']]) + f"\n---\n*TOTAL: S/{float(b['t_neto']):.2f}*\nMetodo: {b['metodo']}"
-                st.link_button("📲 WhatsApp", f"https://wa.me/?text={urllib.parse.quote(texto)}", use_container_width=True)
-            
-            if st.button("⬅️ NUEVA VENTA", use_container_width=True, key="btn_nueva_venta"): 
-                st.session_state.boleta = None
-                st.rerun()
-        else:
-            tab_vender, tab_ingreso_emp = st.tabs(["🛒 VENDER", "📦 INGRESAR MERCADERÍA"])
+    if tiene_whatsapp_habilitado():
+        texto = f"*TICKET - {st.session_state.tenant}*\n{b['fecha']} {b['hora']}\n---\n" + "\n".join([f"{i['Cantidad']}x {i['Producto']} - S/{float(i['Subtotal']):.2f}" for i in b['items']]) + f"\n---\n*TOTAL: S/{float(b['t_neto']):.2f}*\nMetodo: {b['metodo']}"
+        st.link_button("📲 WhatsApp", f"https://wa.me/?text={urllib.parse.quote(texto)}", use_container_width=True)
+    
+    if st.button("⬅️ NUEVA VENTA", use_container_width=True, key="btn_nueva_venta"): 
+        st.session_state.boleta = None
+        st.rerun()
+else:
+    tab_vender, tab_ingreso_emp = st.tabs(["🛒 VENDER", "📦 INGRESAR MERCADERÍA"])
 
-            with tab_vender:
-                st.subheader("🛍️ Nueva Venta")
-                busq = st.text_input("🔍 Buscar:", key="bv", placeholder="Escribe nombre del producto...").upper()
-                ops = []
-                for _, f in df_inv.iterrows():
-                    if busq in str(f['Producto']):
-                        est = f"STOCK: {f['Stock']}" if f['Stock'] > 0 else "🚫 AGOTADO"
-                        ops.append(f"{f['Producto']} | S/ {f['Precio']:.2f} | {est}")
+    with tab_vender:
+        st.subheader("🛍️ Nueva Venta")
+        busq = st.text_input("🔍 Buscar:", key="bv", placeholder="Escribe nombre del producto...").upper()
+        ops = []
+        for _, f in df_inv.iterrows():
+            if busq in str(f['Producto']):
+                est = f"STOCK: {f['Stock']}" if f['Stock'] > 0 else "🚫 AGOTADO"
+                ops.append(f"{f['Producto']} | S/ {f['Precio']:.2f} | {est}")
                 
                 col1, col2 = st.columns([3, 1])
                 if ops:
