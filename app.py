@@ -21,6 +21,7 @@ st.set_page_config(
 # === CONFIGURACIÓN DE ENTORNO ===
 ENTORNO = st.secrets["ENTORNO"]
 SUFIJO = "_PRUEBA" if ENTORNO == "DEV" else ""
+TABLA_TENANTS = "NEXUS_TENANTS" + SUFIJO
 if ENTORNO == "DEV":
     st.error("🔥 MODO PRUEBA - Datos ficticios")
 # === FIN ===
