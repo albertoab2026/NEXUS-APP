@@ -723,9 +723,12 @@ if fechas_p and 'fecha_pendiente_cierre' not in st.session_state:
 st.success("✅ Todo al día. ¡Buenas ventas!")
 # --- FIN DEL BLOQUEO ---
 
+# Si hay un cierre pendiente, NO bloqueamos la pantalla de hoy
+f_bloqueo = f_hoy if 'fecha_pendiente_cierre' not in st.session_state else "NINGUNA"
+
 res_cierre = tabla_cierres.query(
     KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant),
-    FilterExpression=Attr('Fecha').eq(f_hoy) & Attr('Usuario').eq(st.session_state.usuario)
+    FilterExpression=Attr('Fecha').eq(f_bloqueo) & Attr('Usuario').eq(st.session_state.usuario)
 )
 
 ya_cerro = len(res_cierre.get('Items', [])) > 0
