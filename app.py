@@ -750,7 +750,7 @@ with tabs[0]:
   #  st.write("debug:", res_ayer.get('Items', []))
 if not cerrado_ayer:
     st.warning(f"⚠️ Ayer {ayer.strftime('%d/%m/%Y')} no se cerró caja. Cierra cuando puedas.")
-    st.stop()
+   # st.stop()
 f_hoy, h_hoy, _ = obtener_tiempo_peru()
 res_cierre = tabla_cierres.query(
     KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant),
