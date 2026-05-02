@@ -666,6 +666,51 @@ if not st.session_state.auth:
             st.caption("Soporte 24/7: +51 914 282 688")
     st.stop()
 
+# === FUNCIONES NUEVAS PARA CIERRE PENDIENTE ===
+def calcular_total_pendiente():
+    fecha_ayer = (datetime.now(tz_peru) - timedelta(days=1)).strftime("%d/%m/%Y")
+    res = tabla_ventas.query(
+        KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant),
+        FilterExpression=Attr('Fecha').eq(fecha_ayer) & Attr('Usuario').eq(st.session_state.usuario)
+    )
+    items = res.get('Items', [])
+    total = sum([float(i.get('Total', 0)) for i in items])
+    return total
+
+def verificar_cierre_pendiente():
+    fecha_ayer = (datetime.now(tz_peru) - timedelta(days=1)).strftime("%d/%m/%Y")
+    res_cierre = tabla_cierres.query(
+        KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant),
+        FilterExpression=Attr('Fecha').eq(fecha_ayer) & Attr('UsuarioTurno').eq(st.session_state.usuario)
+    )
+    if len(res_cierre.get('Items', [])) == 0:
+        st.markdown(f"""
+        <div style="position:fixed; top:0; left:0; width:100vw; height:100vh; 
+                    background:rgba(0,0,0,0.6); display:flex; align-items:center; 
+                    justify-content:center; z-index:9999;">
+            <div style="background:white; padding:40px; border-radius:20px; 
+                        text-align:center; max-width:500px; box-shadow:0 20px 40px rgba(0,0,0,0.3);">
+                <h2 style="color:#92400e;">⚠️ Caja pendiente</h2>
+                <p style="color:#92400e; font-size:16px;">
+                    No cerraste caja el <b>{fecha_ayer}</b>. Debes cerrarla antes de continuar vendiendo.
+                </p>
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        if st.button("🔒 CERRAR CAJA PENDIENTE", use_container_width=True, type="primary"):
+            total_pendiente = calcular_total_pendiente()
+            registrar_cierre(
+                total=total_pendiente,
+                u_turno=st.session_state.usuario,
+                tipo="OBLIGADO",
+                u_cierre=st.session_state.usuario,
+                fecha=fecha_ayer
+            )
+            st.success("✅ Caja pendiente cerrada. Ahora puedes continuar.")
+            time.sleep(1)
+            st.rerun()
+        st.stop()
 # === POST LOGIN ===
 sistema_vencimiento_inteligente()
 MAX_PRODUCTOS_TOTALES, MAX_STOCK_POR_PRODUCTO, PLAN_ACTUAL, PRECIO_ACTUAL = obtener_limites_tenant()
