@@ -747,7 +747,7 @@ with tabs[0]:
     )
 
     cerrado_ayer = any(i.get('Estado') == 'CERRADO' for i in res_ayer.get('Items', []))
-    st.write("debug:", res_ayer.get('Items', []))
+  #  st.write("debug:", res_ayer.get('Items', []))
 if not cerrado_ayer:
     st.warning(f"⚠️ Ayer {ayer.strftime('%d/%m/%Y')} no se cerró caja. Cierra cuando puedas.")
     st.stop()
@@ -769,10 +769,16 @@ if ya_cerro:
         st.warning("⚠️ YA CERRASTE CAJA HOY")
     st.info("Las ventas que hagas ahora se guardarán para mañana")
     if st.button("🔓 REABRIR CAJA - SOLO ADMIN"):
-        for c in res_cierre.get('Items', []):
-            tabla_cierres.delete_item(Key={'TenantID': st.session_state.tenant, 'CierreID': c['CierreID']})
-        st.success("✅ Caja reabierta")
-        st.rerun()
+        try:
+            for c in res_cierre.get('Items', []):
+                tabla_cierres.delete_item(
+                    Key={'TenantID': st.session_state.tenant, 'CierreID': c['CierreID']}
+                )
+            st.success("✅ Caja reabierta correctamente")
+            time.sleep(1)  # Espera 1 segundo
+            st.rerun()
+        except Exception as e:
+            st.error(f"❌ Error al reabrir: {e}")
   
     if st.session_state.boleta:
         b = st.session_state.boleta
