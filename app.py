@@ -781,16 +781,18 @@ with tabs[0]:
                     total = max(Decimal('0.00'), sum(i['Subtotal'] for i in st.session_state.carrito) - to_decimal(rebaja))
                     st.markdown(f"<h1 style='text-align:center;'>S/ {float(total):.2f}</h1>", unsafe_allow_html=True)
                     
-                    if st.button("🚀 FINALIZAR", use_container_width=True, type="primary", key=f"btn_fin_{suffix}"): st.session_state.confirmar = True
-                     if st.session_state.get('confirmar'):
-                        if st.button(f"✅ CONFIRMAR", use_container_width=True, key=f"btn_conf_{suffix}"):
-                                            f, h, uid = obtener_tiempo_peru()
-                    f_v = st.session_state.get('fecha_pendiente_cierre', f)
-                    for item in st.session_state.carrito:
-                        tabla_stock.update_item(Key={'TenantID': st.session_state.tenant, 'Producto': item['Producto']}, UpdateExpression="SET Stock = Stock - :s", ConditionExpression="Stock >= :s", ExpressionAttributeValues={':s': item['Cantidad']})
-                        tabla_ventas.put_item(Item={'TenantID': st.session_state.tenant, 'VentaID': f"V-{uid}-{item['Producto']}", 'Fecha': f_v, 'Hora': h, 'Producto': item['Producto'], 'Cantidad': item['Cantidad'], 'Metodo': st.session_state.metodo_pago, 'Usuario': st.session_state.usuario})
-                    st.success("✅ Venta Registrada")
-                    st.session_state.carrito = []; st.session_state.confirmar = False; st.rerun()
+                            if st.button("🚀 FINALIZAR", use_container_width=True, type="primary", key=f"btn_fin_{suffix}"): 
+            st.session_state.confirmar = True
+
+        if st.session_state.get('confirmar'):
+            if st.button(f"✅ CONFIRMAR", use_container_width=True, key=f"btn_conf_{suffix}"):
+                f, h, uid = obtener_tiempo_peru()
+                f_v = st.session_state.get('fecha_pendiente_cierre', f)
+                for item in st.session_state.carrito:
+                    tabla_stock.update_item(Key={'TenantID': st.session_state.tenant, 'Producto': item['Producto']}, UpdateExpression="SET Stock = Stock - :s", ConditionExpression="Stock >= :s", ExpressionAttributeValues={':s': item['Cantidad']})
+                    tabla_ventas.put_item(Item={'TenantID': st.session_state.tenant, 'VentaID': f"V-{uid}-{item['Producto']}", 'Fecha': f_v, 'Hora': h, 'Producto': item['Producto'], 'Cantidad': item['Cantidad'], 'Metodo': st.session_state.metodo_pago, 'Usuario': st.session_state.usuario})
+                st.success("✅ Venta Registrada")
+                st.session_state.carrito = []; st.session_state.confirmar = False; st.rerun()
                           
         with tab_ingreso_emp:
             st.subheader("📦 Registrar Ingreso de Mercadería")
