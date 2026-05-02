@@ -697,6 +697,8 @@ def verificar_cierre_pendiente():
         KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant),
         FilterExpression=Attr('Fecha').eq(fecha_ayer) & Attr('UsuarioTurno').eq(st.session_state.usuario)
     )
+    st.write("Consulta cierres devuelve:", res_cierre)
+
     if len(res_cierre.get('Items', [])) == 0:
         st.markdown(f"""
         <div style="position:fixed; top:0; left:0; width:100vw; height:100vh; 
