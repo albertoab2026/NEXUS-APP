@@ -844,229 +844,144 @@ else:
             texto = f"*TICKET - {st.session_state.tenant}*\n{b['fecha']} {b['hora']}\n---\n" + "\n".join([f"{i['Cantidad']}x {i['Producto']} - S/{float(i['Subtotal']):.2f}" for i in b['items']]) + f"\n---\n*TOTAL: S/{float(b['t_neto']):.2f}*\nMetodo: {b['metodo']}"
             st.link_button("📲 WhatsApp", f"https://wa.me/?text={urllib.parse.quote(texto)}", use_container_width=True)
 
-        # NUEVA VENTA
+# NUEVA VENTA
 if st.button("⬅️ NUEVA VENTA", use_container_width=True, key="btn_nueva_venta"):
     st.session_state.boleta = None
     st.rerun()
 else:
     tab_vender, tab_ingreso_emp = st.tabs(["🛒 VENDER", "📦 INGRESAR MERCADERÍA"])
-
-        with tab_vender:
-            st.subheader("🛍️ Nueva Venta")
-            busq = st.text_input("🔍 Buscar:", key="bv", placeholder="Escribe nombre del producto...").upper()
-            ops = []
-            for _, f in df_inv.iterrows():
-                if busq in str(f['Producto']):
-                    est = f"STOCK: {f['Stock']}" if f['Stock'] > 0 else "🚫 AGOTADO"
-                    ops.append(f"{f['Producto']} | S/ {f['Precio']:.2f} | {est}")
-            col1, col2 = st.columns([3, 1])
-            if ops:
-                sel = col1.selectbox("Producto:", ops, key="sel_v", placeholder="Busca y selecciona producto")
-                p_sel = sel.split(" | ")[0] if sel else None
-            else:
-                st.info("No hay productos")
-                sel = None
-                p_sel = None
-            cant = col2.number_input("Cant:", min_value=1, value=1, key="cant_v")
-            if p_sel:
-                dp = df_inv[df_inv['Producto'] == p_sel].iloc[0]
-                en_carro = sum(i['Cantidad'] for i in st.session_state.carrito if i['Producto'] == p_sel)
-                disp = dp.Stock - en_carro
-                st.info(f"Disponible: {disp}")
-                if st.button("➕ Añadir", use_container_width=True, key="btn_add_carrito"):
-                    if cant <= disp:
-                        st.session_state.carrito.append({'Producto': p_sel, 'Cantidad': int(cant), 'Precio': to_decimal(dp.Precio), 'Precio_Compra': to_decimal(dp.Precio_Compra), 'Subtotal': to_decimal(dp.Precio) * int(cant)})
-                        st.rerun()
-                    else: st.error("❌ Sin stock")
-            if st.session_state.carrito:
-                for idx, item in enumerate(st.session_state.carrito):
-                    c1, c2 = st.columns([3,1])
-                    c1.write(f"{item['Producto']} x{item['Cantidad']}")
-                    c2.write(f"S/{float(item['Subtotal']):.2f}")
-                if st.button("🗑️ VACIAR", key="btn_vaciar_carrito"): st.session_state.carrito = []; st.rerun()
-
-                st.write("**Método de Pago:**")
-                col_ef, col_yape, col_plin = st.columns(3)
-
-                with col_ef:
-                    st.markdown("<div style='text-align:center;font-size:40px;'>💵</div>", unsafe_allow_html=True)
-                    if st.button("EFECTIVO", use_container_width=True, type="primary" if st.session_state.metodo_pago=="💵 EFECTIVO" else "secondary", key="btn_efectivo"):
-                        st.session_state.metodo_pago = "💵 EFECTIVO"
-                        st.rerun()
-
-                with col_yape:
-                    st.markdown("<div style='text-align:center;font-size:40px;'>🟣</div>", unsafe_allow_html=True)
-                    if st.button("YAPE", use_container_width=True, type="primary" if st.session_state.metodo_pago=="🟣 YAPE" else "secondary", key="btn_yape"):
-                        st.session_state.metodo_pago = "🟣 YAPE"
-                        st.rerun()
-
-                with col_plin:
-                    st.markdown("<div style='text-align:center;font-size:40px;'>🔵</div>", unsafe_allow_html=True)
-                    if st.button("PLIN", use_container_width=True, type="primary" if st.session_state.metodo_pago=="🔵 PLIN" else "secondary", key="btn_plin"):
-                        st.session_state.metodo_pago = "🔵 PLIN"
-                        st.rerun()
-
-        # NUEVA VENTA
-        if st.button("⬅️ NUEVA VENTA", use_container_width=True, key="btn_nueva_venta"):
-            st.session_state.boleta = None
-            st.rerun()
+    with tab_vender:
+        st.subheader("🛍️ Nueva Venta")
+        busq = st.text_input("🔍 Buscar:", key="bv", placeholder="Escribe nombre del producto...").upper()
+        ops = []
+        for _, f in df_inv.iterrows():
+            if busq in str(f['Producto']):
+                est = f"STOCK: {f['Stock']}" if f['Stock'] > 0 else "🚫 AGOTADO"
+                ops.append(f"{f['Producto']} | S/ {f['Precio']:.2f} | {est}")
+        col1, col2 = st.columns([3, 1])
+        if ops:
+            sel = col1.selectbox("Producto:", ops, key="sel_v", placeholder="Busca y selecciona producto")
+            p_sel = sel.split(" | ")[0] if sel else None
         else:
-            tab_vender, tab_ingreso_emp = st.tabs(["🛒 VENDER", "📦 INGRESAR MERCADERÍA"])
-
-            with tab_vender:
-                st.subheader("🛍️ Nueva Venta")
-                busq = st.text_input("🔍 Buscar:", key="bv", placeholder="Escribe nombre del producto...").upper()
-                ops = []
-                for _, f in df_inv.iterrows():
-                    if busq in str(f['Producto']):
-                        est = f"STOCK: {f['Stock']}" if f['Stock'] > 0 else "🚫 AGOTADO"
-                        ops.append(f"{f['Producto']} | S/ {f['Precio']:.2f} | {est}")
-                col1, col2 = st.columns([3, 1])
-                if ops:
-                    sel = col1.selectbox("Producto:", ops, key="sel_v", placeholder="Busca y selecciona producto")
-                    p_sel = sel.split(" | ")[0] if sel else None
-                else:
-                    st.info("No hay productos")
-                    sel = None
-                    p_sel = None
-                cant = col2.number_input("Cant:", min_value=1, value=1, key="cant_v")
-                if p_sel:
-                    dp = df_inv[df_inv['Producto'] == p_sel].iloc[0]
-                    en_carro = sum(i['Cantidad'] for i in st.session_state.carrito if i['Producto'] == p_sel)
-                    disp = dp.Stock - en_carro
-                    st.info(f"Disponible: {disp}")
-                    if st.button("➕ Añadir", use_container_width=True, key="btn_add_carrito"):
-                        if cant <= disp:
-                            st.session_state.carrito.append({'Producto': p_sel, 'Cantidad': int(cant), 'Precio': to_decimal(dp.Precio), 'Precio_Compra': to_decimal(dp.Precio_Compra), 'Subtotal': to_decimal(dp.Precio) * int(cant)})
-                            st.rerun()
-                        else: st.error("❌ Sin stock")
-                if st.session_state.carrito:
-                    for idx, item in enumerate(st.session_state.carrito):
-                        c1, c2 = st.columns([3,1])
-                        c1.write(f"{item['Producto']} x{item['Cantidad']}")
-                        c2.write(f"S/{float(item['Subtotal']):.2f}")
-                    if st.button("🗑️ VACIAR", key="btn_vaciar_carrito"): st.session_state.carrito = []; st.rerun()
-
-                    st.write("**Método de Pago:**")
-                    col_ef, col_yape, col_plin = st.columns(3)
-
-                    with col_ef:
-                        st.markdown("<div style='text-align:center;font-size:40px;'>💵</div>", unsafe_allow_html=True)
-                        if st.button("EFECTIVO", use_container_width=True, type="primary" if st.session_state.metodo_pago=="💵 EFECTIVO" else "secondary", key="btn_efectivo"):
-                            st.session_state.metodo_pago = "💵 EFECTIVO"
-                            st.rerun()
-
-                    with col_yape:
-                        st.markdown("<div style='text-align:center;font-size:40px;'>🟣</div>", unsafe_allow_html=True)
-                        if st.button("YAPE", use_container_width=True, type="primary" if st.session_state.metodo_pago=="🟣 YAPE" else "secondary", key="btn_yape"):
-                            st.session_state.metodo_pago = "🟣 YAPE"
-                            st.rerun()
-
-                    with col_plin:
-                        st.markdown("<div style='text-align:center;font-size:40px;'>🔵</div>", unsafe_allow_html=True)
-                        if st.button("PLIN", use_container_width=True, type="primary" if st.session_state.metodo_pago=="🔵 PLIN" else "secondary", key="btn_plin"):
-                            st.session_state.metodo_pago = "🔵 PLIN"
-                            st.rerun()
-
-                    metodo = st.session_state.metodo_pago
-                    st.markdown(f"<h3 style='text-align:center;color:#3b82f6;'>Seleccionado: {metodo}</h3>", unsafe_allow_html=True)
-
-                    rebaja = st.number_input("💸 Descuento:", min_value=0.0, value=0.0, key="num_rebaja")
-                    total = max(Decimal('0.00'), sum(i['Subtotal'] for i in st.session_state.carrito) - to_decimal(rebaja))
-                    st.markdown(f"<h1 style='text-align:center;color:#3b82f6;font-size:3rem;'>S/ {float(total):.2f}</h1>", unsafe_allow_html=True)
-                    if st.button("🚀 FINALIZAR", use_container_width=True, type="primary", key="btn_finalizar"): st.session_state.confirmar = True
-                    if st.session_state.confirmar:
-                        if st.button(f"✅ CONFIRMAR S/ {float(total):.2f}", use_container_width=True, key="btn_confirmar_venta"):
-                            f, h, uid = obtener_tiempo_peru()
-                            for item in st.session_state.carrito:
-                                tabla_stock.update_item(Key={'TenantID': st.session_state.tenant, 'Producto': item['Producto']}, UpdateExpression="SET Stock = Stock - :s", ConditionExpression="Stock >= :s", ExpressionAttributeValues={':s': item['Cantidad']})
-                                tabla_ventas.put_item(Item={'TenantID': st.session_state.tenant, 'VentaID': f"V-{uid}", 'Fecha': f, 'Hora': h, 'Producto': item['Producto'], 'Cantidad': int(item['Cantidad']), 'Total': item['Subtotal'], 'Precio_Compra': item['Precio_Compra'], 'Metodo': metodo, 'Rebaja': to_decimal(rebaja), 'Usuario': st.session_state.usuario})
-                                registrar_kardex(item['Producto'], item['Cantidad'], "VENTA", item['Subtotal'], item['Precio_Compra'], metodo)
-                            st.session_state.boleta = {'items': st.session_state.carrito, 't_neto': total, 'rebaja': to_decimal(rebaja), 'metodo': metodo, 'fecha': f, 'hora': h}
-                            st.session_state.carrito = []; st.session_state.confirmar = False; st.rerun()
-
-            with tab_ingreso_emp:
-                st.subheader("📦 Registrar Ingreso de Mercadería")
-                st.caption("Busca y haz click en el producto")
-
-                if not df_inv.empty:
-                    busq_ingreso = st.text_input("🔍 Buscar producto:", key="busq_ingreso_emp", placeholder="Ej: CUADERNO, LAPIZ...").upper()
-
-                    if busq_ingreso:
-                        df_filtrado = df_inv[df_inv['Producto'].str.contains(busq_ingreso, na=False)]
-                    else:
-                        df_filtrado = df_inv.head(20)
-                        st.caption("Mostrando primeros 20 productos. Escribe para buscar más.")
-
-                    if not df_filtrado.empty:
-                        st.write("**Click en la fila para seleccionar:**")
-                        df_tabla_busq = df_filtrado[['Producto', 'Stock', 'Precio_Compra']].copy()
-                        df_tabla_busq.columns = ['PRODUCTO', 'STOCK', 'COSTO']
-                        df_tabla_busq['STOCK'] = df_tabla_busq['STOCK'].astype(int)
-
-                    evento = st.dataframe(
-                        df_tabla_busq,
-                        use_container_width=True,
-                        hide_index=True,
-                        height=300,
-                        on_select="rerun",
-                        selection_mode="single-row",
-                        column_config={
-                            "PRODUCTO": st.column_config.TextColumn("PRODUCTO", width="large"),
-                            "STOCK": st.column_config.NumberColumn("STOCK", width="small"),
-                            "COSTO": st.column_config.NumberColumn("COSTO", width="small", format="S/ %.2f")
-                        }
-                    )
-
-                    if evento.selection.rows:
-                        idx = evento.selection.rows[0]
-                        prod_ingreso = df_filtrado.iloc[idx]['Producto']
-                        df_prod = df_inv[df_inv['Producto'] == prod_ingreso].iloc[0]
-
-                        st.success(f"Seleccionado: **{prod_ingreso}**")
-                        st.info(f"Stock actual: {int(df_prod['Stock'])} unidades | Costo actual: S/{df_prod['Precio_Compra']:.2f}")
-
-                        st.markdown("**📦 DATOS DE LA COMPRA:**")
-                        col1, col2, col3 = st.columns(3)
-                        unidad_medida = col1.selectbox("Unidad:", ["Unidades", "Docenas", "Cajas", "Paquetes", "Millares"], key="unidad_medida_emp")
-                        cantidad = col2.number_input(f"Cantidad:", min_value=1, value=1, key="cant_lote_emp")
-                        costo_x_unidad = col3.number_input(f"Costo x unidad S/:", min_value=0.0, value=0.0, key="costo_x_unidad_emp")
-
-                        multiplicador = {"Unidades": 1, "Docenas": 12, "Cajas": 1, "Paquetes": 1, "Millares": 1000}[unidad_medida]
-                        if unidad_medida in ["Cajas", "Paquetes"]:
-                            unid_x_bulto = st.number_input(f"¿Cuántas unidades trae cada {unidad_medida[:-1]}?", min_value=1, value=50, key="unid_bulto_emp")
-                            multiplicador = unid_x_bulto
-
-                        cant_ingreso = cantidad * multiplicador
-                        nuevo_pc = costo_x_unidad
-
-                        st.success(f"✅ Total: {cant_ingreso} unidades | Costo unitario: S/{nuevo_pc:.2f}")
-                        stock_final = int(df_prod['Stock']) + cant_ingreso
-                        st.metric("Stock nuevo", f"{stock_final} unidades")
-
-                        if st.button("📥 REGISTRAR", use_container_width=True, type="primary", key="btn_ingreso_stock_emp"):
-                            if stock_final > MAX_STOCK_POR_PRODUCTO:
-                                st.error(f"❌ Stock máximo: {MAX_STOCK_POR_PRODUCTO}")
-                            else:
-                                stock_viejo = int(df_prod['Stock'])
-                                pc_viejo = float(df_prod['Precio_Compra'])
-                                pc_promedio = ((stock_viejo * pc_viejo) + (cant_ingreso * nuevo_pc)) / stock_final if stock_viejo > 0 else nuevo_pc
-
-                                tabla_stock.update_item(
-                                    Key={'TenantID': st.session_state.tenant, 'Producto': prod_ingreso},
-                                    UpdateExpression="SET Stock = :s, Precio_Compra = :pc",
-                                    ExpressionAttributeValues={':s': stock_final, ':pc': to_decimal(pc_promedio)}
-                                )
-                                registrar_kardex(prod_ingreso, cant_ingreso, "INGRESO_STOCK", cant_ingreso * nuevo_pc, nuevo_pc, f"INGRESO_{st.session_state.usuario}")
-                                st.success(f"✅ {st.session_state.usuario} ingresó {cant_ingreso} {prod_ingreso} | Nuevo costo: S/{pc_promedio:.2f}")
-                                time.sleep(1)
-                                st.ii8rerun()
-                    else:
-                        st.info("👆 Haz click en una fila de la tabla para seleccionar")
-                else:
-                    st.warning("❌ No se encontró ese producto")
+            st.info("No hay productos")
+            sel = None
+            p_sel = None
+        cant = col2.number_input("Cant:", min_value=1, value=1, key="cant_v")
+        if p_sel:
+            dp = df_inv[df_inv['Producto'] == p_sel].iloc[0]
+            en_carro = sum(i['Cantidad'] for i in st.session_state.carrito if i['Producto'] == p_sel)
+            disp = dp.Stock - en_carro
+            st.info(f"Disponible: {disp}")
+            if st.button("➕ Añadir", use_container_width=True, key="btn_add_carrito"):
+                if cant <= disp:
+                    st.session_state.carrito.append({'Producto': p_sel, 'Cantidad': int(cant), 'Precio': to_decimal(dp.Precio), 'Precio_Compra': to_decimal(dp.Precio_Compra), 'Subtotal': to_decimal(dp.Precio) * int(cant)})
+                    st.rerun()
+                else: st.error("❌ Sin stock")
+        if st.session_state.carrito:
+            for idx, item in enumerate(st.session_state.carrito):
+                c1, c2 = st.columns([3,1])
+                c1.write(f"{item['Producto']} x{item['Cantidad']}")
+                c2.write(f"S/{float(item['Subtotal']):.2f}")
+            if st.button("🗑️ VACIAR", key="btn_vaciar_carrito"): st.session_state.carrito = []; st.rerun()
+            st.write("**Método de Pago:**")
+            col_ef, col_yape, col_plin = st.columns(3)
+            with col_ef:
+                st.markdown("<div style='text-align:center;font-size:40px;'>💵</div>", unsafe_allow_html=True)
+                if st.button("EFECTIVO", use_container_width=True, type="primary" if st.session_state.metodo_pago=="💵 EFECTIVO" else "secondary", key="btn_efectivo"):
+                    st.session_state.metodo_pago = "💵 EFECTIVO"
+                    st.rerun()
+            with col_yape:
+                st.markdown("<div style='text-align:center;font-size:40px;'>🟣</div>", unsafe_allow_html=True)
+                if st.button("YAPE", use_container_width=True, type="primary" if st.session_state.metodo_pago=="🟣 YAPE" else "secondary", key="btn_yape"):
+                    st.session_state.metodo_pago = "🟣 YAPE"
+                    st.rerun()
+            with col_plin:
+                st.markdown("<div style='text-align:center;font-size:40px;'>🔵</div>", unsafe_allow_html=True)
+                if st.button("PLIN", use_container_width=True, type="primary" if st.session_state.metodo_pago=="🔵 PLIN" else "secondary", key="btn_plin"):
+                    st.session_state.metodo_pago = "🔵 PLIN"
+                    st.rerun()
+            metodo = st.session_state.metodo_pago
+            st.markdown(f"<h3 style='text-align:center;color:#3b82f6;'>Seleccionado: {metodo}</h3>", unsafe_allow_html=True)
+            rebaja = st.number_input("💸 Descuento:", min_value=0.0, value=0.0, key="num_rebaja")
+            total = max(Decimal('0.00'), sum(i['Subtotal'] for i in st.session_state.carrito) - to_decimal(rebaja))
+            st.markdown(f"<h1 style='text-align:center;color:#3b82f6;font-size:3rem;'>S/ {float(total):.2f}</h1>", unsafe_allow_html=True)
+            if st.button("🚀 FINALIZAR", use_container_width=True, type="primary", key="btn_finalizar"): st.session_state.confirmar = True
+            if st.session_state.confirmar:
+                if st.button(f"✅ CONFIRMAR S/ {float(total):.2f}", use_container_width=True, key="btn_confirmar_venta"):
+                    f, h, uid = obtener_tiempo_peru()
+                    for item in st.session_state.carrito:
+                        tabla_stock.update_item(Key={'TenantID': st.session_state.tenant, 'Producto': item['Producto']}, UpdateExpression="SET Stock = Stock - :s", ConditionExpression="Stock >= :s", ExpressionAttributeValues={':s': item['Cantidad']})
+                        tabla_ventas.put_item(Item={'TenantID': st.session_state.tenant, 'VentaID': f"V-{uid}", 'Fecha': f, 'Hora': h, 'Producto': item['Producto'], 'Cantidad': int(item['Cantidad']), 'Total': item['Subtotal'], 'Precio_Compra': item['Precio_Compra'], 'Metodo': metodo, 'Rebaja': to_decimal(rebaja), 'Usuario': st.session_state.usuario})
+                        registrar_kardex(item['Producto'], item['Cantidad'], "VENTA", item['Subtotal'], item['Precio_Compra'], metodo)
+                    st.session_state.boleta = {'items': st.session_state.carrito, 't_neto': total, 'rebaja': to_decimal(rebaja), 'metodo': metodo, 'fecha': f, 'hora': h}
+                    st.session_state.carrito = []; st.session_state.confirmar = False; st.rerun()
+    with tab_ingreso_emp:
+        st.subheader("📦 Registrar Ingreso de Mercadería")
+        st.caption("Busca y haz click en el producto")
+        if not df_inv.empty:
+            busq_ingreso = st.text_input("🔍 Buscar producto:", key="busq_ingreso_emp", placeholder="Ej: CUADERNO, LAPIZ...").upper()
+            if busq_ingreso:
+                df_filtrado = df_inv[df_inv['Producto'].str.contains(busq_ingreso, na=False)]
             else:
-                st.warning("⚠️ No hay productos")
+                df_filtrado = df_inv.head(20)
+                st.caption("Mostrando primeros 20 productos. Escribe para buscar más.")
+            if not df_filtrado.empty:
+                st.write("**Click en la fila para seleccionar:**")
+                df_tabla_busq = df_filtrado[['Producto', 'Stock', 'Precio_Compra']].copy()
+                df_tabla_busq.columns = ['PRODUCTO', 'STOCK', 'COSTO']
+                df_tabla_busq['STOCK'] = df_tabla_busq['STOCK'].astype(int)
+            evento = st.dataframe(
+                df_tabla_busq,
+                use_container_width=True,
+                hide_index=True,
+                height=300,
+                on_select="rerun",
+                selection_mode="single-row",
+                column_config={
+                    "PRODUCTO": st.column_config.TextColumn("PRODUCTO", width="large"),
+                    "STOCK": st.column_config.NumberColumn("STOCK", width="small"),
+                    "COSTO": st.column_config.NumberColumn("COSTO", width="small", format="S/ %.2f")
+                }
+            )
+            if evento.selection.rows:
+                idx = evento.selection.rows[0]
+                prod_ingreso = df_filtrado.iloc[idx]['Producto']
+                df_prod = df_inv[df_inv['Producto'] == prod_ingreso].iloc[0]
+                st.success(f"Seleccionado: **{prod_ingreso}**")
+                st.info(f"Stock actual: {int(df_prod['Stock'])} unidades | Costo actual: S/{df_prod['Precio_Compra']:.2f}")
+                st.markdown("**📦 DATOS DE LA COMPRA:**")
+col1, col2, col3 = st.columns(3)
+unidad_medida = col1.selectbox("Unidad:", ["Unidades", "Docenas", "Cajas", "Paquetes", "Millares"], key="unidad_medida_emp")
+cantidad = col2.number_input(f"Cantidad:", min_value=1, value=1, key="cant_lote_emp")
+costo_x_unidad = col3.number_input(f"Costo x unidad S/:", min_value=0.0, value=0.0, key="costo_x_unidad_emp")
+multiplicador = {"Unidades": 1, "Docenas": 12, "Cajas": 1, "Paquetes": 1, "Millares": 1000}[unidad_medida]
+if unidad_medida in ["Cajas", "Paquetes"]:
+    unid_x_bulto = st.number_input(f"¿Cuántas unidades trae cada {unidad_medida[:-1]}?", min_value=1, value=50, key="unid_bulto_emp")
+    multiplicador = unid_x_bulto
+cant_ingreso = cantidad * multiplicador
+nuevo_pc = costo_x_unidad
+st.success(f"✅ Total: {cant_ingreso} unidades | Costo unitario: S/{nuevo_pc:.2f}")
+stock_final = int(df_prod['Stock']) + cant_ingreso
+st.metric("Stock nuevo", f"{stock_final} unidades")
+if st.button("📥 REGISTRAR", use_container_width=True, type="primary", key="btn_ingreso_stock_emp"):
+    if stock_final > MAX_STOCK_POR_PRODUCTO:
+        st.error(f"❌ Stock máximo: {MAX_STOCK_POR_PRODUCTO}")
+    else:
+        stock_viejo = int(df_prod['Stock'])
+        pc_viejo = float(df_prod['Precio_Compra'])
+        pc_promedio = ((stock_viejo * pc_viejo) + (cant_ingreso * nuevo_pc)) / stock_final if stock_viejo > 0 else nuevo_pc
+        tabla_stock.update_item(
+            Key={'TenantID': st.session_state.tenant, 'Producto': prod_ingreso},
+            UpdateExpression="SET Stock = :s, Precio_Compra = :pc",
+            ExpressionAttributeValues={':s': stock_final, ':pc': to_decimal(pc_promedio)}
+        )
+        registrar_kardex(prod_ingreso, cant_ingreso, "INGRESO_STOCK", cant_ingreso * nuevo_pc, nuevo_pc, f"INGRESO_{st.session_state.usuario}")
+        st.success(f"✅ {st.session_state.usuario} ingresó {cant_ingreso} {prod_ingreso} | Nuevo costo: S/{pc_promedio:.2f}")
+        time.sleep(1)
+        st.rerun()
+else:
+    st.info("👆 Haz click en una fila de la tabla para seleccionar")
+
 # === TAB STOCK - SIN SCROLL + COSTO SOLO DUEÑO ===
 with tabs[1]:
     st.subheader("📦 Inventario")
