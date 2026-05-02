@@ -478,12 +478,22 @@ def registrar_kardex(prod, cant, tipo, total=0, pc=0, metodo=""):
 
 def registrar_cierre(total, u_turno, tipo, u_cierre, fecha=None):
     f, h, uid = obtener_tiempo_peru()
-    if fecha: f = fecha
-    tabla_cierres.put_item(Item={
-        'TenantID': st.session_state.tenant, 'CierreID': f"C-{uid}", 'Fecha': f, 'Hora': h,
-        'UsuarioTurno': u_turno, 'UsuarioCierre': u_cierre, 'Total': to_decimal(total), 'Tipo': tipo
-    })
 
+    if fecha:
+        f = fecha
+
+    tabla_cierres.put_item(Item={
+        'TenantID': st.session_state.tenant,
+        'CierreID': f"C-{uid}",
+        'Fecha': f,  # formato normal (02/05/2026)
+
+        # ✅ ESTA ES LA LÍNEA CLAVE
+        'FechaISO': datetime.strptime(f, "%d/%m/%Y").strftime('%Y-%m-%d'),
+
+        'UsuarioTurno': u_turno,
+        'Total': total,
+        'Estado': 'CERRADO'
+    })
 def obtener_limites_tenant():
     item = tabla_tenants.get_item(Key={'TenantID': st.session_state.tenant}).get('Item', {})
     if not item: st.error("Tenant no existe"); st.stop()
@@ -696,6 +706,54 @@ if st.session_state.rol == "DUEÑO" and not st.session_state.get('modo_lectura',
 tabs = st.tabs(tabs_list)
 # === TAB VENTA ===
 with tabs[0]:
+    # 🔒 VALIDACIÓN PROFESIONAL DE CAJA
+    hoy = datetime.now(tz_peru).date()
+    hoy_iso = hoy.strftime('%Y-%m-%d')
+
+    # 🔍 Verificar caja de HOY (apertura)
+    res = tabla_cierres.query(
+        KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant),
+        FilterExpression=Attr('FechaISO').eq(hoy_iso)
+    )
+
+    items = res.get('Items', [])
+    caja_abierta = any(i.get('Estado') == 'ABIERTA' for i in items)
+
+    if not caja_abierta:
+        st.warning("⚠️ Debes abrir caja antes de vender")
+
+        if st.button("🔓 ABRIR CAJA"):
+            tabla_cierres.put_item(Item={
+                'TenantID': st.session_state.tenant,
+                'CierreID': f"APERTURA#{hoy_iso}",
+                'FechaISO': hoy_iso,
+                'Fecha': hoy.strftime('%d/%m/%Y'),
+                'UsuarioTurno': st.session_state.usuario,
+                'Estado': 'ABIERTA',
+                'Total': 0
+            })
+            st.success("Caja abierta")
+            st.rerun()
+
+        st.stop()
+
+    # 🔒 BLOQUEAR SI AYER NO SE CERRÓ
+    ayer = hoy - timedelta(days=1)
+    ayer_iso = ayer.strftime('%Y-%m-%d')
+
+    res_ayer = tabla_cierres.query(
+        KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant),
+        FilterExpression=Attr('FechaISO').eq(ayer_iso)
+    )
+
+    cerrado_ayer = any(i.get('Estado') == 'CERRADO' for i in res_ayer.get('Items', []))
+
+    if not cerrado_ayer:
+        st.error(f"❌ Debes cerrar la caja del {ayer.strftime('%d/%m/%Y')}")
+        st.stop()
+
+
+    
     f_hoy, h_hoy, _ = obtener_tiempo_peru()
     res_cierre = tabla_cierres.query(KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant), FilterExpression=Attr('Fecha').eq(f_hoy) & Attr('UsuarioTurno').eq(st.session_state.usuario))
     ya_cerro = len(res_cierre.get('Items', [])) > 0
