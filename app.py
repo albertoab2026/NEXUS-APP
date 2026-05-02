@@ -770,9 +770,8 @@ if not cerrado_ayer:
 else:
     # VERIFICAR CIERRE DE HOY
     res_cierre = tabla_cierres.query(
-        KeyConditionExpression=Key('TenantID').eq(st.session.tenant),& Key('Fecha').eq(ayer)
-        FilterExpression=Attr('FechaISO').eq(f_hoy)
-    )
+    KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant) & Key('Fecha').eq(ayer),
+    FilterExpression=Attr('FechaISO').eq(f_hoy)
     ya_cerro = len(res_cierre.get('Items', [])) > 0
     hora_cierre = None
     if res_cierre.get('Items'):
