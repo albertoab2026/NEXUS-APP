@@ -855,6 +855,19 @@ else:
         res_cierre = {'Items': []}
 
     ya_cerro = False
+    helse:
+    # VERIFICAR CIERRE DE HOY
+    f_hoy = datetime.now(tz_peru).strftime('%Y-%m-%d')
+
+    try:
+        res_cierre = tabla_cierres.query(
+            KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant),
+            FilterExpression=Attr('FechaISO').eq(f_hoy)
+        )
+    except Exception as e:
+        res_cierre = {'Items': []}
+
+    ya_cerro = False
     hora_cierre = None
 
     if res_cierre.get('Items'):
