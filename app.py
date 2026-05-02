@@ -769,30 +769,31 @@ with tabs[0]:
                             st.rerun()
                         else: st.error("❌ Sin stock")
                 
-        if st.session_state.carrito:
+                if st.session_state.carrito:
             if st.button("🗑️ VACIAR", key=f"btn_vaciar_{suffix}"):
                 st.session_state.carrito = []; st.rerun()
-                col_ef, col_ya, col_pl = st.columns(3)
-                if col_ef.button("💵 EFECTIVO", use_container_width=True, key=f"btn_ef_{suffix}"): st.session_state.metodo_pago = "💵 EFECTIVO"; st.rerun()
-                if col_ya.button("🟣 YAPE", use_container_width=True, key=f"btn_ya_{suffix}"): st.session_state.metodo_pago = "🟣 YAPE"; st.rerun()
-                if col_pl.button("🔵 PLIN", use_container_width=True, key=f"btn_pl_{suffix}"): st.session_state.metodo_pago = "🔵 PLIN"; st.rerun()
 
-                rebaja = st.number_input("💸 Descuento:", min_value=0.0, value=0.0, key=f"num_reb_{suffix}")
-                total = max(Decimal('0.00'), sum(i['Subtotal'] for i in st.session_state.carrito) - to_decimal(rebaja))
-                st.markdown(f"<h1 style='text-align:center;color:#3b82f6;'>S/ {float(total):.2f}</h1>", unsafe_allow_html=True)
-    
-    if st.button("🚀 FINALIZAR VENTA", use_container_width=True, type="primary", key=f"btn_fin_{suffix}"): 
-        st.session_state.confirmar = True
+            col_ef, col_ya, col_pl = st.columns(3)
+            if col_ef.button("💵 EFECTIVO", use_container_width=True, key=f"btn_ef_{suffix}"): st.session_state.metodo_pago = "💵 EFECTIVO"; st.rerun()
+            if col_ya.button("🟣 YAPE", use_container_width=True, key=f"btn_ya_{suffix}"): st.session_state.metodo_pago = "🟣 YAPE"; st.rerun()
+            if col_pl.button("🔵 PLIN", use_container_width=True, key=f"btn_pl_{suffix}"): st.session_state.metodo_pago = "🔵 PLIN"; st.rerun()
 
-    if st.session_state.get('confirmar'):
-            if st.button(f"✅ CONFIRMAR", use_container_width=True, key=f"btn_conf_{suffix}"):
-                f, h, uid = obtener_tiempo_peru()
-                f_v = st.session_state.get('fecha_pendiente_cierre', f)
-                for item in st.session_state.carrito:
-                    tabla_stock.update_item(Key={'TenantID': st.session_state.tenant, 'Producto': item['Producto']}, UpdateExpression="SET Stock = Stock - :s", ConditionExpression="Stock >= :s", ExpressionAttributeValues={':s': item['Cantidad']})
-                    tabla_ventas.put_item(Item={'TenantID': st.session_state.tenant, 'VentaID': f"V-{uid}-{item['Producto']}", 'Fecha': f_v, 'Hora': h, 'Producto': item['Producto'], 'Cantidad': item['Cantidad'], 'Metodo': st.session_state.metodo_pago, 'Usuario': st.session_state.usuario})
-                st.success("✅ Venta Registrada")
-                st.session_state.carrito = []; st.session_state.confirmar = False; st.rerun()
+            rebaja = st.number_input("💸 Descuento:", min_value=0.0, value=0.0, key=f"num_reb_{suffix}")
+            total = max(Decimal('0.00'), sum(i['Subtotal'] for i in st.session_state.carrito) - to_decimal(rebaja))
+            st.markdown(f"<h1 style='text-align:center;color:#3b82f6;'>S/ {float(total):.2f}</h1>", unsafe_allow_html=True)
+
+            if st.button("🚀 FINALIZAR VENTA", use_container_width=True, type="primary", key=f"btn_fin_{suffix}"): 
+                st.session_state.confirmar = True
+            
+            if st.session_state.get('confirmar'):
+                if st.button(f"✅ CONFIRMAR", use_container_width=True, key=f"btn_conf_{suffix}"):
+                    f, h, uid = obtener_tiempo_peru()
+                    f_v = st.session_state.get('fecha_pendiente_cierre', f)
+                    for item in st.session_state.carrito:
+                        tabla_stock.update_item(Key={'TenantID': st.session_state.tenant, 'Producto': item['Producto']}, UpdateExpression="SET Stock = Stock - :s", ConditionExpression="Stock >= :s", ExpressionAttributeValues={':s': item['Cantidad']})
+                        tabla_ventas.put_item(Item={'TenantID': st.session_state.tenant, 'VentaID': f"V-{uid}-{item['Producto']}", 'Fecha': f_v, 'Hora': h, 'Producto': item['Producto'], 'Cantidad': item['Cantidad'], 'Metodo': st.session_state.metodo_pago, 'Usuario': st.session_state.usuario})
+                    st.success("✅ Venta Registrada")
+                    st.session_state.carrito = []; st.session_state.confirmar = False; st.rerun()
 
                           
         with tab_ingreso_emp:
