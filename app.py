@@ -756,8 +756,6 @@ with tabs[0]:
         st.warning(f"⚠️ Ayer {f_ayer_pantalla} no se cerró caja. Cierra cuando puedas.")
    # st.stop()
 
-
-else:
     # VERIFICAR CIERRE DE HOY
     res_cierre = tabla_cierres.query(
         KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant) & Key('Fecha').eq(f_ayer),
