@@ -770,14 +770,21 @@ if not cerrado_ayer:
 else:
     # VERIFICAR CIERRE DE HOY
     res_cierre = tabla_cierres.query(
+# VERIFICAR CIERRE DE HOY
+f_hoy = datetime.now(tz_peru).strftime('%Y-%m-%d')
+
+try:
+    res_cierre = tabla_cierres.query(
         KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant),
         FilterExpression=Attr('FechaISO').eq(f_hoy)
     )
-ya_cerro = False  # ← AGREGA ESTO PRIMERO
+except Exception as e:
+    res_cierre = {'Items': []}  # ← ESTO ARREGLA EL NameError
+
+ya_cerro = False
 hora_cierre = None
 
 if res_cierre.get('Items'):
-    # CAMBIO: Hora -> Fecha porque no tienes Hora en DynamoDB
     fechas = [c['Fecha'] for c in res_cierre['Items'] if 'Fecha' in c]
     if fechas:
         hora_cierre = max(fechas)
@@ -785,6 +792,9 @@ if res_cierre.get('Items'):
 
 if ya_cerro:
     st.warning(f"⚠️ YA CERRASTE CAJA HOY A LAS {hora_cierre}")
+    # ... tu código de reabrir
+else:
+    # ... tu código normal
     if st.button("🔓 REABRIR CAJA - SOLO ADMIN"):
         try:
             for c in res_cierre.get('Items', []):
