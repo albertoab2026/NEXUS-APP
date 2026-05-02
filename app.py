@@ -769,25 +769,26 @@ if not cerrado_ayer:
     st.info("Cierra caja de ayer antes de vender")
 else:
 # VERIFICAR CIERRE DE HOY
-    f_hoy = datetime.now(tz_peru).strftime('%Y-%m-%d')
-    
-    try:
-        res_cierre = tabla_cierres.query(
-            KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant),
-            FilterExpression=Attr('FechaISO').eq(f_hoy)
-        )  # ← ESTE ) CIERRA EL QUERY
-    except Exception as e:
-        res_cierre = {'Items': []}
-    
-    ya_cerro = False
-    hora_cierre = None
-    
-    if res_cierre.get('Items'):
-        fechas = [c['Fecha'] for c in res_cierre['Items'] if 'Fecha' in c]
-        if fechas:
-            hora_cierre = max(fechas)
-            ya_cerro = True
-    
+f_hoy = datetime.now(tz_peru).strftime('%Y-%m-%d')
+
+try:
+    res_cierre = tabla_cierres.query(
+        KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant),
+        FilterExpression=Attr('FechaISO').eq(f_hoy)
+    )
+except Exception as e:
+    res_cierre = {'Items': []}
+
+ya_cerro = False
+hora_cierre = None
+
+if res_cierre.get('Items'):
+    fechas = [c['Fecha'] for c in res_cierre['Items'] if 'Fecha' in c]
+    if fechas:
+        hora_cierre = max(fechas)
+        ya_cerro = True
+
+# AQUÍ VA EL IF QUE ESTÁ EN LÍNEA 791
 if ya_cerro:
     st.warning(f"⚠️ YA CERRASTE CAJA HOY A LAS {hora_cierre}")
     if st.button("🔒 REABRIR CAJA - SOLO ADMIN"):
