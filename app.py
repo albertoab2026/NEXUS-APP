@@ -33,6 +33,7 @@ st.set_page_config(
     }
 )
 tz_peru = pytz.timezone('America/Lima')
+ayer = datetime.now(tz_peru) - timedelta(days=1)  # ← BIEN: usas tz_peru
 
 # === CSS - PALETA ENTERPRISE ===
 st.markdown("""
