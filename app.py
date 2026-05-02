@@ -481,7 +481,7 @@ def registrar_cierre(total, u_turno, tipo, u_cierre, fecha=None):
     if fecha: f = fecha
     tabla_cierres.put_item(Item={
         'TenantID': st.session_state.tenant, 'CierreID': f"C-{uid}", 'Fecha': f, 'Hora': h,
-        'UsuarioTurno': u_turno, 'UsuarioCierre': u_cierre, 'Total': to_decimal(total), 'Tipo': tipo
+        'Usuario': u_turno, 'UsuarioCierre': u_cierre, 'Total': to_decimal(total), 'Tipo': tipo
     })
 
 def obtener_limites_tenant():
