@@ -707,7 +707,7 @@ with tabs[0]:
 
 fechas_p = sorted(list(set([v['Fecha'] for v in res_p.get('Items', [])])))
 
-if fechas_p and 'fecha_pendiente_cierre' not in st.session_state:
+if fechas_p:
     fp = fechas_p[0]
     rc = tabla_cierres.query(
         KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant),
@@ -718,7 +718,10 @@ if fechas_p and 'fecha_pendiente_cierre' not in st.session_state:
         if st.button(f"🚩 Iniciar Cierre Pendiente: {fp}", type="primary", key="btn_cierre_bloqueo"):
             st.session_state['fecha_pendiente_cierre'] = fp
             st.rerun()
-        st.stop()
+        if 'fecha_pendiente_cierre' not in st.session_state:
+                st.stop()
+        else:
+            fp = st.session_state['fecha_pendiente_cierre']
 
 st.success("✅ Todo al día. ¡Buenas ventas!")
 # --- FIN DEL BLOQUEO ---
