@@ -776,7 +776,7 @@ else:
     ya_cerro = len(res_cierre.get('Items', [])) > 0
     hora_cierre = None
     if res_cierre.get('Items'):
-        horas = [c['Hora'] for c in res_cierre['Items'] if 'Hora' in c]
+        horas = [c['Fecha'] for c in res_cierre['Items'] if 'Fecha' in c]
         if horas:
             hora_cierre = max(horas)
 
