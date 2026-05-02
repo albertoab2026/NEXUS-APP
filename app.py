@@ -738,14 +738,22 @@ with tabs[0]:
 
         st.stop()
 
-    # 🔒 BLOQUEAR SI AYER NO SE CERRÓ
-    ayer = hoy - timedelta(days=1)
-    ayer_iso = ayer.strftime('%Y-%m-%d')
+    # 🔒 BLOQUEAR SI AYER NO SE CERRÓ (Orden corregido)
+    ayer_dt = datetime.now(tz_peru) - timedelta(days=1)
+    ayer_iso = ayer_dt.strftime('%Y-%m-%d')
+    f_ayer_pantalla = ayer_dt.strftime('%d/%m/%Y')
 
+    # 1. CONSULTA: Primero creamos la variable res_ayer consultando DynamoDB
+    res_ayer = tabla_cierres.query(
+        KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant),
+        FilterExpression=Attr('FechaISO').eq(ayer_iso)
+    )
+
+    # 2. VALIDACIÓN: Ahora sí podemos usarla sin que salga el error rojo
     cerrado_ayer = any(i.get('Estado') == 'CERRADO' for i in res_ayer.get('Items', []))
-  #  st.write("debug:", res_ayer.get('Items', []))
-if not cerrado_ayer:
-    st.warning(f"⚠️ Ayer {ayer.strftime('%d/%m/%Y')} no se cerró caja. Cierra cuando puedas.")
+
+    if not cerrado_ayer:
+        st.warning(f"⚠️ Ayer {f_ayer_pantalla} no se cerró caja. Cierra cuando puedas.")
    # st.stop()
 
 
