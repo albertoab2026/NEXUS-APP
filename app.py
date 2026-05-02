@@ -777,9 +777,9 @@ with tabs[0]:
                 if col_ya.button("🟣 YAPE", use_container_width=True, key=f"btn_ya_{suffix}"): st.session_state.metodo_pago = "🟣 YAPE"; st.rerun()
                 if col_pl.button("🔵 PLIN", use_container_width=True, key=f"btn_pl_{suffix}"): st.session_state.metodo_pago = "🔵 PLIN"; st.rerun()
 
-    rebaja = st.number_input("💸 Descuento:", min_value=0.0, value=0.0, key=f"num_reb_{suffix}")
-    total = max(Decimal('0.00'), sum(i['Subtotal'] for i in st.session_state.carrito) - to_decimal(rebaja))
-    st.markdown(f"<h1 style='text-align:center;color:#3b82f6;'>S/ {float(total):.2f}</h1>", unsafe_allow_html=True)
+                rebaja = st.number_input("💸 Descuento:", min_value=0.0, value=0.0, key=f"num_reb_{suffix}")
+                total = max(Decimal('0.00'), sum(i['Subtotal'] for i in st.session_state.carrito) - to_decimal(rebaja))
+                st.markdown(f"<h1 style='text-align:center;color:#3b82f6;'>S/ {float(total):.2f}</h1>", unsafe_allow_html=True)
     
     if st.button("🚀 FINALIZAR VENTA", use_container_width=True, type="primary", key=f"btn_fin_{suffix}"): 
         st.session_state.confirmar = True
