@@ -672,7 +672,7 @@ def registrar_cierre(total, u_turno, tipo, u_cierre, fecha):
         Item={
             'TenantID': st.session_state.tenant,
             'Fecha': fecha,
-            'UsuarioTurno': u_turno,
+            'Usuario': u_turno,
             'UsuarioCierre': u_cierre,
             'Total': str(total),
             'Tipo': tipo,
@@ -695,8 +695,9 @@ def verificar_cierre_pendiente():
     fecha_ayer = (datetime.now(tz_peru) - timedelta(days=1)).strftime("%d/%m/%Y")
     res_cierre = tabla_cierres.query(
         KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant),
-        FilterExpression=Attr('Fecha').eq(fecha_ayer) & Attr('UsuarioTurno').eq(st.session_state.usuario)
+        FilterExpression=Attr('Fecha').eq(fecha_ayer) & Attr('Usuario').eq(st.session_state.usuario)
     )
+
     st.write("Consulta cierres devuelve:", res_cierre)
 
     if len(res_cierre.get('Items', [])) == 0:
@@ -719,7 +720,7 @@ def verificar_cierre_pendiente():
             total_pendiente = calcular_total_pendiente()
             st.write("Guardando cierre:", {
                 "Fecha": fecha_ayer,
-                "UsuarioTurno": st.session_state.usuario,
+                "Usuario": st.session_state.usuario,
                 "Total": total_pendiente
             })
 
