@@ -755,6 +755,7 @@ f_hoy, h_hoy, _ = obtener_tiempo_peru()
 res_cierre = tabla_cierres.query(
     KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant),
     FilterExpression=Attr('FechaISO').eq(f_hoy)
+)    
 ya_cerro = len(res_cierre.get('Items', [])) > 0
 hora_cierre = None
 if res_cierre.get('Items'):
