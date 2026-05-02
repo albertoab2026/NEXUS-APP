@@ -666,6 +666,20 @@ if not st.session_state.auth:
             st.caption("Soporte 24/7: +51 914 282 688")
     st.stop()
 
+# === FUNCION PARA REGISTRAR CIERRE ===
+def registrar_cierre(total, u_turno, tipo, u_cierre, fecha):
+    tabla_cierres.put_item(
+        Item={
+            'TenantID': st.session_state.tenant,
+            'Fecha': fecha,
+            'UsuarioTurno': u_turno,
+            'UsuarioCierre': u_cierre,
+            'Total': str(total),
+            'Tipo': tipo,
+            'Timestamp': datetime.now(tz_peru).strftime("%Y-%m-%d %H:%M:%S")
+        }
+    )
+
 # === FUNCIONES NUEVAS PARA CIERRE PENDIENTE ===
 def calcular_total_pendiente():
     fecha_ayer = (datetime.now(tz_peru) - timedelta(days=1)).strftime("%d/%m/%Y")
@@ -698,6 +712,7 @@ def verificar_cierre_pendiente():
         </div>
         """, unsafe_allow_html=True)
 
+        
         if st.button("🔒 CERRAR CAJA PENDIENTE", use_container_width=True, type="primary"):
             total_pendiente = calcular_total_pendiente()
             registrar_cierre(
