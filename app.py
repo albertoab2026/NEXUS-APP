@@ -773,12 +773,15 @@ else:
         KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant),
         FilterExpression=Attr('FechaISO').eq(f_hoy)
     )
-    ya_cerro = len(res_cierre.get('Items', [])) > 0
-    hora_cierre = None
-    if res_cierre.get('Items'):
-        horas = [c['Fecha'] for c in res_cierre['Items'] if 'Fecha' in c]
-        if horas:
-            hora_cierre = max(horas)
+ya_cerro = False  # ← AGREGA ESTO PRIMERO
+hora_cierre = None
+
+if res_cierre.get('Items'):
+    # CAMBIO: Hora -> Fecha porque no tienes Hora en DynamoDB
+    fechas = [c['Fecha'] for c in res_cierre['Items'] if 'Fecha' in c]
+    if fechas:
+        hora_cierre = max(fechas)
+        ya_cerro = True
 
 if ya_cerro:
     st.warning(f"⚠️ YA CERRASTE CAJA HOY A LAS {hora_cierre}")
