@@ -782,17 +782,17 @@ else:
     if ya_cerro:
         st.warning(f"⚠️ YA CERRASTE CAJA HOY A LAS {hora_cierre}")
         if st.button("🔓 REABRIR CAJA - SOLO ADMIN"):
-        try:
-            for c in res_cierre.get('Items', []):
-                tabla_cierres.delete_item(
-                    Key={'TenantID': st.session_state.tenant, 'CierreID': c['CierreID']}
-                )
-            st.success("✅ Caja reabierta correctamente")
-            time.sleep(1)  # Espera 1 segundo
-            st.rerun()
-        except Exception as e:
-            st.error(f"❌ Error al reabrir: {e}")
-  
+            try:
+                for c in res_cierre.get('Items', []):
+                    tabla_cierres.delete_item(
+                        Key={'TenantID': st.session_state.tenant, 'CierreID': c['CierreID']}
+                    )
+                st.success("✅ Caja reabierta correctamente")
+                time.sleep(1)  # Espera 1 segundo
+                st.rerun()
+            except Exception as e:
+                st.error(f"❌ Error al reabrir: {e}")
+else:
     if st.session_state.boleta:
         b = st.session_state.boleta
         st.success("✅ VENTA REALIZADA")
