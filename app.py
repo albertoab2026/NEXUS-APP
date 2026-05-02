@@ -32,7 +32,7 @@ st.set_page_config(
         'About': "NEXUS BALLARTA v3.0 - Sistema de Punto de Venta Empresarial"
     }
 )
-tz_peru = pytz.timezone('America/Lima')
+tz_peru = pytz.timezone(F'America/Lima')
 ayer = datetime.now(tz_peru) - timedelta(days=1)  # ← BIEN: usas tz_peru
 
 # === CSS - PALETA ENTERPRISE ===
@@ -748,20 +748,7 @@ if not cerrado_ayer:
     st.warning(f"⚠️ Ayer {ayer.strftime('%d/%m/%Y')} no se cerró caja. Cierra cuando puedas.")
    # st.stop()
 
-# VERIFICAR CIERRE DE AYER
-f_hoy, h_hoy, _ = obtener_tiempo_peru()
-ayer = datetime.now(tz_peru) - timedelta(days=1)
-f_ayer = ayer.strftime("%Y-%m-%d")
 
-res_ayer = tabla_cierres.query(
-    KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant) & Key('Fecha').eq(f_ayer),
-    FilterExpression=Attr('FechaISO').eq(f_ayer)
-)
-cerrado_ayer = any(i.get('Estado') == 'CERRADO' for i in res_ayer.get('Items', []))
-
-if not cerrado_ayer:
-    st.warning(f"⚠️ Ayer {f_ayer} no se cerró caja. Cierra cuando puedas.")
-    st.info("Cierra caja de ayer antes de vender.")
 else:
     # VERIFICAR CIERRE DE HOY
     res_cierre = tabla_cierres.query(
@@ -838,7 +825,20 @@ else:
         if tiene_whatsapp_habilitado():
             texto = f"*TICKET - {st.session_state.tenant}*\n{b['fecha']} {b['hora']}\n---\n" + "\n".join([f"{i['Cantidad']}x {i['Producto']} - S/{float(i['Subtotal']):.2f}" for i in b['items']]) + f"\n---\n*TOTAL: S/{float(b['t_neto']):.2f}*\nMetodo: {b['metodo']}"
             st.link_button("📲 WhatsApp", f"https://wa.me/?text={urllib.parse.quote(texto)}", use_container_width=True)
+# VERIFICAR CIERRE DE AYER
+f_hoy, h_hoy, _ = obtener_tiempo_peru()
+ayer = datetime.now(tz_peru) - timedelta(days=1)
+f_ayer = ayer.strftime("%Y-%m-%d")
 
+res_ayer = tabla_cierres.query(
+    KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant) & Key('Fecha').eq(f_ayer),
+    FilterExpression=Attr('FechaISO').eq(f_ayer)
+)
+cerrado_ayer = any(i.get('Estado') == 'CERRADO' for i in res_ayer.get('Items', []))
+
+if not cerrado_ayer:
+    st.warning(f"⚠️ Ayer {f_ayer} no se cerró caja. Cierra cuando puedas.")
+    st.info("Cierra caja de ayer antes de vender.")
 # NUEVA VENTA
 if st.button("⬅️ NUEVA VENTA", use_container_width=True, key="btn_nueva_venta"):
     st.session_state.boleta = None
