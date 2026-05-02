@@ -768,30 +768,21 @@ if not cerrado_ayer:
     st.warning(f"⚠️ Ayer {ayer.strftime('%d/%m/%Y')} no se cerró caja")
     st.info("Cierra caja de ayer antes de vender")
 else:
-# VERIFICAR CIERRE DE HOY
-    f_hoy = datetime.now(tz_peru).strftime('%Y-%m-%d')
-
-try:
+    # VERIFICAR CIERRE DE HOY
     res_cierre = tabla_cierres.query(
         KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant),
         FilterExpression=Attr('FechaISO').eq(f_hoy)
     )
-except Exception as e:
-    res_cierre = {'Items': []}
+    ya_cerro = len(res_cierre.get('Items', [])) > 0
+    hora_cierre = None
+    if res_cierre.get('Items'):
+        horas = [c['Hora'] for c in res_cierre['Items'] if 'Hora' in c]
+        if horas:
+            hora_cierre = max(horas)
 
-ya_cerro = False
-hora_cierre = None
-
-if res_cierre.get('Items'):
-    fechas = [c['Fecha'] for c in res_cierre['Items'] if 'Fecha' in c]
-    if fechas:
-        hora_cierre = max(fechas)
-        ya_cerro = True
-
-# AQUÍ VA EL IF QUE ESTÁ EN LÍNEA 791
 if ya_cerro:
     st.warning(f"⚠️ YA CERRASTE CAJA HOY A LAS {hora_cierre}")
-    if st.button("🔒 REABRIR CAJA - SOLO ADMIN"):
+    if st.button("🔓 REABRIR CAJA - SOLO ADMIN"):
         try:
             for c in res_cierre.get('Items', []):
                 tabla_cierres.delete_item(
@@ -803,16 +794,17 @@ if ya_cerro:
         except Exception as e:
             st.error(f"❌ Error al reabrir: {e}")
 else:
-    pass
     if st.session_state.boleta:
         b = st.session_state.boleta
         st.success("✅ VENTA REALIZADA")
-        st.markdown(f"""<div style="background:white;color:black;padding:20px">
-        <h2 style="text-align:center;">BOLETA DE VENTA</h2>
-        <p><strong>Cliente:</strong> {b['cliente']}</p>
-        <p><strong>Total:</strong> S/ {b['total']}</p>
-        <p><strong>Fecha:</strong> {b['fecha']}</p>
-        </div>""", unsafe_allow_html=True)
+        st.markdown(f"""<div style="background:white;color:black;padding:20px;border:2px solid #3b82f6;max-width:350px;margin:auto;font-family:monospace;border-radius:16px;box-shadow:0 10px 15px -3px rgba(59,130,246,0.3);">
+            <h3 style="text-align:center;margin:0;color:#3b82f6;">{st.session_state.tenant}</h3>
+            <p style="text-align:center;margin:0;">{b['fecha']} {b['hora']}</p><hr style="border-color:#3b82f6;">
+            {''.join([f'<div style="display:flex;justify-content:space-between;"><span>{i["Cantidad"]}x {i["Producto"]}</span><span>S/{float(i["Subtotal"]):.2f}</span></div>' for i in b['items']])}
+            <hr style="border-color:#3b82f6;"><div style="display:flex;justify-content:space-between;"><span>MÉTODO:</span><span>{b['metodo']}</span></div>
+            <div style="display:flex;justify-content:space-between;color:#ef4444;"><span>DESC:</span><span>- S/{float(b['rebaja']):.2f}</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:18px;color:#3b82f6;"><b>NETO:</b><b>S/{float(b['t_neto']):.2f}</b></div>""", unsafe_allow_html=True)
+
         pdf = FPDF(orientation='P', unit='mm', format=(80, 200))
         pdf.add_page()
         pdf.set_font('Courier', 'B', 12)
@@ -842,98 +834,37 @@ else:
         df_boleta['Descuento'] = float(b['rebaja'])
         df_boleta['Total_Neto'] = float(b['t_neto'])
         buf_excel = io.BytesIO()
- else:
-    # VERIFICAR CIERRE DE HOY
-    f_hoy = datetime.now(tz_peru).strftime('%Y-%m-%d')
+        with pd.ExcelWriter(buf_excel, engine='openpyxl') as w:
+            df_boleta[['Fecha', 'Hora', 'Producto', 'Cantidad', 'Precio', 'Subtotal', 'Metodo', 'Descuento', 'Total_Neto']].to_excel(w, index=False, sheet_name='Ticket')
 
-    try:
-        res_cierre = tabla_cierres.query(
-            KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant),
-            FilterExpression=Attr('FechaISO').eq(f_hoy)
-        )
-    except Exception as e:
-        res_cierre = {'Items': []}
+        col1, col2 = st.columns(2)
+        col1.download_button("📄 PDF 80mm", pdf_output, f"Ticket_{b['fecha'].replace('/','')}.pdf", "application/pdf", use_container_width=True, key="btn_pdf_boleta")
+        col2.download_button("📊 EXCEL", buf_excel.getvalue(), f"Ticket_{b['fecha'].replace('/','')}.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True, key="btn_excel_boleta")
 
-    ya_cerro = False
-    helse:
-    # VERIFICAR CIERRE DE HOY
-    f_hoy = datetime.now(tz_peru).strftime('%Y-%m-%d')
-
-    try:
-        res_cierre = tabla_cierres.query(
-            KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant),
-            FilterExpression=Attr('FechaISO').eq(f_hoy)
-        )
-    except Exception as e:
-        res_cierre = {'Items': []}
-
-    ya_cerro = False
-    hora_cierre = None
-
-    if res_cierre.get('Items'):
-        fechas = [c['Fecha'] for c in res_cierre['Items'] if 'Fecha' in c]
-        if fechas:
-            hora_cierre = max(fechas)
-            ya_cerro = True
-
-    if ya_cerro:
-        st.warning(f"⚠️ YA CERRASTE CAJA HOY A LAS {hora_cierre}")
-        if st.button("🔒 REABRIR CAJA - SOLO ADMIN"):
-            try:
-                for c in res_cierre.get('Items', []):
-                    tabla_cierres.delete_item(
-                        Key={'TenantID': st.session_state.tenant, 'CierreID': c['CierreID']}
-                    )
-                st.success("✅ Caja reabierta correctamente")
-                time.sleep(1)
-                st.rerun()
-            except Exception as e:
-                st.error(f"❌ Error al reabrir: {e}")
-        else:
-            pass
-    else:
-        if st.session_state.boleta:
-            b = st.session_state.boleta
-            st.success("✅ VENTA REALIZADA")
-            st.markdown(f"""<div style="background:white;color:black;padding:20px">
-                <h2 style="text-align:center;">BOLETA DE VENTA</h2>
-                <p><strong>Fecha:</strong> {b['Fecha']}</p>
-                <p><strong>Cliente:</strong> {b['Cliente']}</p>
-                <p><strong>Productos:</strong> {b['Productos']}</p>
-                <p><strong>Total:</strong> S/. {b['Total']}</p>
-            </div>""", unsafe_allow_html=True)
-            
-            with pd.ExcelWriter(buf_excel, engine='openpyxl') as w:
-                df_boleta[['Fecha', 'Hora', 'Producto', 'Cantidad', 'Precio', 'Subtotal', 'Metodo', 'Descuento', 'Total_Neto']].to_excel(w, index=False, sheet_name='Ticket')
-
-            col1, col2 = st.columns(2)
-            col1.download_button("📄 PDF 80mm", pdf_output, f"Ticket_{b['fecha'].replace('/','')}.pdf", "application/pdf", use_container_width=True, key="btn_pdf_boleta")
-            col2.download_button("📊 EXCEL", buf_excel.getvalue(), f"Ticket_{b['fecha'].replace('/','')}.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True, key="btn_excel_boleta")
-
-            if tiene_whatsapp_habilitado():
-                texto = f"*TICKET - {st.session_state.tenant}*\n{b['fecha']} {b['hora']}\n---\n" + "\n".join([f"{i['Cantidad']}x {i['Producto']} - S/{float(i['Subtotal']):.2f}" for i in b['items']]) + f"\n---\n*TOTAL: S/{float(b['t_neto']):.2f}*\nMetodo: {b['metodo']}"
-                st.link_button("📲 WhatsApp", f"https://wa.me/?text={urllib.parse.quote(texto)}", use_container_width=True)
-            
-            if st.button("⬅️ NUEVA VENTA", use_container_width=True, key="btn_nueva_venta"):
+if tiene_whatsapp_habilitado():
+            texto = f"*TICKET - {st.session_state.tenant}*\n{b['fecha']} {b['hora']}\n---\n" + "\n".join([f"{i['Cantidad']}x {i['Producto']} - S/{float(i['Subtotal']):.2f}" for i in b['items']]) + f"\n---\n*TOTAL: S/{float(b['t_neto']):.2f}*\nMetodo: {b['metodo']}"
+            st.link_button("📲 WhatsApp", f"https://wa.me/?text={urllib.parse.quote(texto)}", use_container_width=True)
+if st.button("⬅️ NUEVA VENTA", use_container_width=True, key="btn_nueva_venta"):
                 st.session_state.boleta = None
                 st.rerun()
-        else:
-            tab_vender, tab_ingreso_emp = st.tabs(["🛒 VENDER", "📦 INGRESAR MERCADERÍA"])
 
-            with tab_vender:
-                st.subheader("🛍️ Nueva Venta")
-                busq = st.text_input("🔍 Buscar:", key="bv", placeholder="Escribe nombre del producto...").upper()
-                ops = []
-                for _, f in df_inv.iterrows():
-                    if busq in str(f['Producto']):
-                        est = f"STOCK: {f['Stock']}" if f['Stock'] > 0 else "🚫 AGOTADO"
-                        ops.append(f"{f['Producto']} | S/ {f['Precio']:.2f} | {est}")
-                col1, col2 = st.columns([3, 1])
-                if ops:
-                    sel = col1.selectbox("Producto:", ops, key="sel_v", placeholder="Busca y selecciona producto")
-                    p_sel = sel.split(" | ")[0] if sel else None
-                else:
-                    st.info("No hay productos")
+else:       
+        tab_vender, tab_ingreso_emp = st.tabs(["🛒 VENDER", "📦 INGRESAR MERCADERÍA"])
+
+        with tab_vender:
+            st.subheader("🛍️ Nueva Venta")
+            busq = st.text_input("🔍 Buscar:", key="bv", placeholder="Escribe nombre del producto...").upper()
+            ops = []
+            for _, f in df_inv.iterrows():
+                if busq in str(f['Producto']):
+                    est = f"STOCK: {f['Stock']}" if f['Stock'] > 0 else "🚫 AGOTADO"
+                    ops.append(f"{f['Producto']} | S/ {f['Precio']:.2f} | {est}")
+            col1, col2 = st.columns([3, 1])
+            if ops:
+                sel = col1.selectbox("Producto:", ops, key="sel_v", placeholder="Busca y selecciona producto")
+                p_sel = sel.split(" | ")[0] if sel else None
+            else:
+                st.info("No hay productos")
                 sel = None
                 p_sel = None
             cant = col2.number_input("Cant:", min_value=1, value=1, key="cant_v")
