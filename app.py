@@ -748,37 +748,31 @@ with tabs[0]:
 
     cerrado_ayer = any(i.get('Estado') == 'CERRADO' for i in res_ayer.get('Items', []))
     st.write("debug:", res_ayer.get('Items', []))
-    if not cerrado_ayer:
-        st.warning(f"⚠️ Ayer {ayer.strftime('%d/%m/%Y')}")
- 
-    f_hoy, h_hoy, _ = obtener_tiempo_peru()
-    res_cierre = tabla_cierres.query(
+if not cerrado_ayer:
+    st.warning(f"⚠️ Ayer {ayer.strftime('%d/%m/%Y')} no se cerró caja. Cierra cuando puedas.")
+    st.stop()
+f_hoy, h_hoy, _ = obtener_tiempo_peru()
+res_cierre = tabla_cierres.query(
     KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant),
-    FilterExpression=Attr('Fecha').eq(f_hoy) & Attr('Tipo').eq('CIERRE_DIARIO'))
-    ya_cerro = len(res_cierre.get('Items', [])) > 0
-    hora_cierre = None
-    if res_cierre.get('Items'):
-        horas = [c['Hora'] for c in res_cierre['Items'] if 'Hora' in c]
-        if horas:
-            hora_cierre = max(horas)
-
+    FilterExpression=Attr('FechaISO').eq(f_hoy)
+ya_cerro = len(res_cierre.get('Items', [])) > 0
 hora_cierre = None
 if res_cierre.get('Items'):
     horas = [c['Hora'] for c in res_cierre['Items'] if 'Hora' in c]
     if horas:
         hora_cierre = max(horas)
-
 if ya_cerro:
     if hora_cierre:
         st.warning(f"⚠️ YA CERRASTE CAJA HOY A LAS {hora_cierre}")
     else:
         st.warning("⚠️ YA CERRASTE CAJA HOY")
-    st.info("Las ventas que hagas ahora son para la caja de mañana")
-    if st.button("🔒 REABRIR CAJA - SOLO DUENO"):
+    st.info("Las ventas que hagas ahora se guardarán para mañana")
+    if st.button("🔓 REABRIR CAJA - SOLO ADMIN"):
         for c in res_cierre.get('Items', []):
-            tabla_cierres.delete_item(Key={'TenantID': st.session_state.tenant, 'Fecha': c['Fecha']})
-        st.success("✅ Caja reabierta"); st.rerun()
-
+            tabla_cierres.delete_item(Key={'TenantID': st.session_state.tenant, 'CierreID': c['CierreID']})
+        st.success("✅ Caja reabierta")
+        st.rerun()
+  
     if st.session_state.boleta:
         b = st.session_state.boleta
         st.success("✅ VENTA REALIZADA")
