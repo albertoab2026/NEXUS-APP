@@ -751,24 +751,36 @@ with tabs[0]:
 if not cerrado_ayer:
     st.warning(f"⚠️ Ayer {ayer.strftime('%d/%m/%Y')} no se cerró caja. Cierra cuando puedas.")
    # st.stop()
+
+# VERIFICAR CIERRE DE AYER
 f_hoy, h_hoy, _ = obtener_tiempo_peru()
-res_cierre = tabla_cierres.query(
+ayer = datetime.now(ZoneInfo("America/Lima")) - timedelta(days=1)
+f_ayer = ayer.strftime("%Y-%m-%d")
+
+res_ayer = tabla_cierres.query(
     KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant),
-    FilterExpression=Attr('FechaISO').eq(f_hoy)
-)    
-ya_cerro = len(res_cierre.get('Items', [])) > 0
-hora_cierre = None
-if res_cierre.get('Items'):
-    horas = [c['Hora'] for c in res_cierre['Items'] if 'Hora' in c]
-    if horas:
-        hora_cierre = max(horas)
-if ya_cerro:
-    if hora_cierre:
+    FilterExpression=Attr('FechaISO').eq(f_ayer)
+cerrado_ayer = any(i.get('Estado') == 'CERRADO' for i in res_ayer.get('Items', []))
+
+if not cerrado_ayer:
+    st.warning(f"⚠️ Ayer {ayer.strftime('%d/%m/%Y')} no se cerró caja")
+    st.info("Cierra caja de ayer antes de vender")
+else:
+    # VERIFICAR CIERRE DE HOY
+    res_cierre = tabla_cierres.query(
+        KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant),
+        FilterExpression=Attr('FechaISO').eq(f_hoy)
+    )
+    ya_cerro = len(res_cierre.get('Items', [])) > 0
+    hora_cierre = None
+    if res_cierre.get('Items'):
+        horas = [c['Hora'] for c in res_cierre['Items'] if 'Hora' in c]
+        if horas:
+            hora_cierre = max(horas)
+    
+    if ya_cerro:
         st.warning(f"⚠️ YA CERRASTE CAJA HOY A LAS {hora_cierre}")
-    else:
-        st.warning("⚠️ YA CERRASTE CAJA HOY")
-    st.info("Las ventas que hagas ahora se guardarán para mañana")
-    if st.button("🔓 REABRIR CAJA - SOLO ADMIN"):
+        if st.button("🔓 REABRIR CAJA - SOLO ADMIN"):
         try:
             for c in res_cierre.get('Items', []):
                 tabla_cierres.delete_item(
