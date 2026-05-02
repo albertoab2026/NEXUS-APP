@@ -849,8 +849,7 @@ if st.button("⬅️ NUEVA VENTA", use_container_width=True, key="btn_nueva_vent
     st.session_state.boleta = None
     st.rerun()
 else:
-    tab_vender, tab_ingreso_emp = st.tabs(...)
-        tab_vender, tab_ingreso_emp = st.tabs(["🛒 VENDER", "📦 INGRESAR MERCADERÍA"])
+    tab_vender, tab_ingreso_emp = st.tabs(["🛒 VENDER", "📦 INGRESAR MERCADERÍA"])
 
         with tab_vender:
             st.subheader("🛍️ Nueva Venta")
