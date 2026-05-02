@@ -826,6 +826,52 @@ else:
         pdf.cell(40, 5, f"NETO:", 0, 0)
         pdf.cell(0, 5, f"S/{float(b['t_neto']):.2f}", 0, 1, 'R')
         pdf_output = pdf.output(dest='S').encode('latin-1')
+if ya_cerro:
+    st.warning(f"⚠️ YA CERRASTE CAJA HOY A LAS {hora_cierre}")
+    if st.button("🔓 REABRIR CAJA - SOLO ADMIN"):
+        try:
+            for c in res_cierre.get('Items', []):
+                tabla_cierres.delete_item(
+                    Key={'TenantID': st.session_state.tenant, 'CierreID': c['CierreID']}
+                )
+            st.success("✅ Caja reabierta correctamente")
+            time.sleep(1)
+            st.rerun()
+        except Exception as e:
+            st.error(f"❌ Error al reabrir: {e}")
+else:
+    if st.session_state.boleta:
+        b = st.session_state.boleta
+        st.success("✅ VENTA REALIZADA")
+        st.markdown(f"""<div style="background:white;color:black;padding:20px;border:2px solid #3b82f6;max-width:350px;margin:auto;font-family:monospace;border-radius:16px;box-shadow:0 10px 15px -3px rgba(59,130,246,0.3);">
+            <h3 style="text-align:center;margin:0;color:#3b82f6;">{st.session_state.tenant}</h3>
+            <p style="text-align:center;margin:0;">{b['fecha']} {b['hora']}</p><hr style="border-color:#3b82f6;">
+            {''.join([f'<div style="display:flex;justify-content:space-between;"><span>{i["Cantidad"]}x {i["Producto"]}</span><span>S/{float(i["Subtotal"]):.2f}</span></div>' for i in b['items']])}
+            <hr style="border-color:#3b82f6;"><div style="display:flex;justify-content:space-between;"><span>MÉTODO:</span><span>{b['metodo']}</span></div>
+            <div style="display:flex;justify-content:space-between;color:#ef4444;"><span>DESC:</span><span>- S/{float(b['rebaja']):.2f}</span></div>
+            <div style="display:flex;justify-content:space-between;font-size:18px;color:#3b82f6;"><b>NETO:</b><b>S/{float(b['t_neto']):.2f}</b></div>""", unsafe_allow_html=True)
+
+        pdf = FPDF(orientation='P', unit='mm', format=(80, 200))
+        pdf.add_page()
+        pdf.set_font('Courier', 'B', 12)
+        pdf.cell(0, 5, st.session_state.tenant, 0, 1, 'C')
+        pdf.set_font('Courier', '', 8)
+        pdf.cell(0, 4, f"{b['fecha']} {b['hora']}", 0, 1, 'C')
+        pdf.cell(0, 2, '-'*40, 0, 1, 'C')
+        for i in b['items']:
+            nombre = str(i['Producto'])[:15]
+            pdf.cell(40, 4, f"{i['Cantidad']}x {nombre}", 0, 0)
+            pdf.cell(0, 4, f"S/{float(i['Subtotal']):.2f}", 0, 1, 'R')
+        pdf.cell(0, 2, '-'*40, 0, 1, 'C')
+        metodo_pdf = str(b['metodo']).replace('🟣 ', '').replace('🔵 ', '').replace('💵 ', '')
+        pdf.cell(40, 4, f"METODO:", 0, 0)
+        pdf.cell(0, 4, metodo_pdf, 0, 1, 'R')
+        pdf.cell(40, 4, f"DESC:", 0, 0)
+        pdf.cell(0, 4, f"- S/{float(b['rebaja']):.2f}", 0, 1, 'R')
+        pdf.set_font('Courier', 'B', 10)
+        pdf.cell(40, 5, f"NETO:", 0, 0)
+        pdf.cell(0, 5, f"S/{float(b['t_neto']):.2f}", 0, 1, 'R')
+        pdf_output = pdf.output(dest='S').encode('latin-1')
 
         df_boleta = pd.DataFrame(b['items'])
         df_boleta['Fecha'] = b['fecha']
@@ -844,7 +890,10 @@ else:
         if tiene_whatsapp_habilitado():
             texto = f"*TICKET - {st.session_state.tenant}*\n{b['fecha']} {b['hora']}\n---\n" + "\n".join([f"{i['Cantidad']}x {i['Producto']} - S/{float(i['Subtotal']):.2f}" for i in b['items']]) + f"\n---\n*TOTAL: S/{float(b['t_neto']):.2f}*\nMetodo: {b['metodo']}"
             st.link_button("📲 WhatsApp", f"https://wa.me/?text={urllib.parse.quote(texto)}", use_container_width=True)
-        if st.button("⬅️ NUEVA VENTA", use_container_width=True, key="btn_nueva_venta"): st.session_state.boleta = None; st.rerun()
+        
+        if st.button("⬅️ NUEVA VENTA", use_container_width=True, key="btn_nueva_venta"):
+            st.session_state.boleta = None
+            st.rerun()
     else:
         tab_vender, tab_ingreso_emp = st.tabs(["🛒 VENDER", "📦 INGRESAR MERCADERÍA"])
 
@@ -861,7 +910,7 @@ else:
                 sel = col1.selectbox("Producto:", ops, key="sel_v", placeholder="Busca y selecciona producto")
                 p_sel = sel.split(" | ")[0] if sel else None
             else:
-                st.info("👆 Escribe arriba para buscar productos")
+                st.info("No hay productos")
                 sel = None
                 p_sel = None
             cant = col2.number_input("Cant:", min_value=1, value=1, key="cant_v")
