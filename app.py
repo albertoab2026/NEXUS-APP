@@ -715,6 +715,12 @@ def verificar_cierre_pendiente():
         
         if st.button("🔒 CERRAR CAJA PENDIENTE", use_container_width=True, type="primary"):
             total_pendiente = calcular_total_pendiente()
+            st.write("Guardando cierre:", {
+                "Fecha": fecha_ayer,
+                "UsuarioTurno": st.session_state.usuario,
+                "Total": total_pendiente
+            })
+
             registrar_cierre(
                 total=total_pendiente,
                 u_turno=st.session_state.usuario,
