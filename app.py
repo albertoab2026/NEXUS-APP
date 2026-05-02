@@ -752,21 +752,32 @@ with tabs[0]:
         st.warning(f"⚠️ Ayer {ayer.strftime('%d/%m/%Y')}")
  
     f_hoy, h_hoy, _ = obtener_tiempo_peru()
-    res_cierre = tabla_cierres.query(KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant), FilterExpression=Attr('Fecha').eq(f_hoy) & Attr('UsuarioTurno').eq(st.session_state.usuario))
+    res_cierre = tabla_cierres.query(
+    KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant),
+    FilterExpression=Attr('Fecha').eq(f_hoy) & Attr('Tipo').eq('CIERRE_DIARIO'))
     ya_cerro = len(res_cierre.get('Items', [])) > 0
     hora_cierre = None
+    if res_cierre.get('Items'):
+        horas = [c['Hora'] for c in res_cierre['Items'] if 'Hora' in c]
+        if horas:
+            hora_cierre = max(horas)
+
+hora_cierre = None
 if res_cierre.get('Items'):
     horas = [c['Hora'] for c in res_cierre['Items'] if 'Hora' in c]
     if horas:
         hora_cierre = max(horas)
 
-    if ya_cerro:
+if ya_cerro:
+    if hora_cierre:
         st.warning(f"⚠️ YA CERRASTE CAJA HOY A LAS {hora_cierre}")
-        st.info("Las ventas que hagas ahora son POST-CIERRE. Se sumarán al reporte de mañana.")
-        if st.button("🔓 REABRIR CAJA - SOLO DUEÑO", use_container_width=True, key="btn_reabrir_caja") and st.session_state.rol == "DUEÑO":
-            for c in res_cierre.get('Items', []):
-                tabla_cierres.delete_item(Key={'TenantID': st.session_state.tenant, 'CierreID': c['CierreID']})
-            st.success("✅ Caja reabierta"); time.sleep(1); st.rerun()
+    else:
+        st.warning("⚠️ YA CERRASTE CAJA HOY")
+    st.info("Las ventas que hagas ahora son para la caja de mañana")
+    if st.button("🔒 REABRIR CAJA - SOLO DUENO"):
+        for c in res_cierre.get('Items', []):
+            tabla_cierres.delete_item(Key={'TenantID': st.session_state.tenant, 'Fecha': c['Fecha']})
+        st.success("✅ Caja reabierta"); st.rerun()
 
     if st.session_state.boleta:
         b = st.session_state.boleta
