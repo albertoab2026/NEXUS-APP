@@ -670,6 +670,9 @@ if not st.session_state.auth:
 sistema_vencimiento_inteligente()
 MAX_PRODUCTOS_TOTALES, MAX_STOCK_POR_PRODUCTO, PLAN_ACTUAL, PRECIO_ACTUAL = obtener_limites_tenant()
 df_inv = obtener_datos()
+# 🚨 NUEVO BLOQUE: OBLIGAR A CERRAR CAJA PENDIENTE
+verificar_cierre_pendiente()
+
 with st.sidebar:
     st.markdown(f"### 👤 {st.session_state.usuario}")
     st.write(f"**Rol:** {st.session_state.rol}")
@@ -687,7 +690,8 @@ with st.sidebar:
         st.session_state.clear()
         st.rerun()
 # ----------------------
-if st.session_state.get('modo_lectura', False): st.warning(st.session_state.mensaje_lectura)
+if st.session_state.get('modo_lectura', False): 
+    st.warning(st.session_state.mensaje_lectura)
 
 # === TABS === EMPLEADO AHORA VE HISTORIAL
 tabs_list = ["🛒 VENTA", "📦 STOCK", "📊 REPORTES", "📋 HISTORIAL"]
