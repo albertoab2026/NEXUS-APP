@@ -746,10 +746,10 @@ with tabs[0]:
     f_hoy_iso = datetime.now(tz_peru).strftime('%Y-%m-%d')
 
     # 2. Consulta eficiente con Query
-        res_ayer = tabla_cierres.query(
-            KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant),
-            FilterExpression=Attr('Fecha').eq(f_ayer)
-        )
+    res_ayer = tabla_cierres.query(
+        KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant),
+        FilterExpression=Attr('Fecha').eq(f_ayer)
+    )
     
     # 3. Validación de cierre
     items_ayer = res_ayer.get('Items', [])
