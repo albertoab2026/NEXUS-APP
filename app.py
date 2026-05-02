@@ -765,7 +765,7 @@ with tabs[0]:
     )
     ya_cerro_hoy = len(res_hoy.get('Items', [])) > 0
 
-if ya_cerro:
+if ya_cerro_hoy:
     st.warning(f"⚠️ YA CERRASTE CAJA HOY A LAS {hora_cierre}")
     if st.button("🔓 REABRIR CAJA - SOLO ADMIN"):
         try:
