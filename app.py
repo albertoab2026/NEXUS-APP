@@ -788,12 +788,9 @@ else:
             hora_cierre = max(fechas)
             ya_cerro = True
     
-    if ya_cerro:
-        st.warning(f"⚠️ YA CERRASTE CAJA HOY A LAS {hora_cierre}")
-        # ... tu código de reabrir
-    else:
-    # ... tu código normal
-    if st.button("🔓 REABRIR CAJA - SOLO ADMIN"):
+if ya_cerro:
+    st.warning(f"⚠️ YA CERRASTE CAJA HOY A LAS {hora_cierre}")
+    if st.button("🔒 REABRIR CAJA - SOLO ADMIN"):
         try:
             for c in res_cierre.get('Items', []):
                 tabla_cierres.delete_item(
@@ -805,17 +802,16 @@ else:
         except Exception as e:
             st.error(f"❌ Error al reabrir: {e}")
 else:
+    pass
     if st.session_state.boleta:
         b = st.session_state.boleta
         st.success("✅ VENTA REALIZADA")
-        st.markdown(f"""<div style="background:white;color:black;padding:20px;border:2px solid #3b82f6;max-width:350px;margin:auto;font-family:monospace;border-radius:16px;box-shadow:0 10px 15px -3px rgba(59,130,246,0.3);">
-            <h3 style="text-align:center;margin:0;color:#3b82f6;">{st.session_state.tenant}</h3>
-            <p style="text-align:center;margin:0;">{b['fecha']} {b['hora']}</p><hr style="border-color:#3b82f6;">
-            {''.join([f'<div style="display:flex;justify-content:space-between;"><span>{i["Cantidad"]}x {i["Producto"]}</span><span>S/{float(i["Subtotal"]):.2f}</span></div>' for i in b['items']])}
-            <hr style="border-color:#3b82f6;"><div style="display:flex;justify-content:space-between;"><span>MÉTODO:</span><span>{b['metodo']}</span></div>
-            <div style="display:flex;justify-content:space-between;color:#ef4444;"><span>DESC:</span><span>- S/{float(b['rebaja']):.2f}</span></div>
-            <div style="display:flex;justify-content:space-between;font-size:18px;color:#3b82f6;"><b>NETO:</b><b>S/{float(b['t_neto']):.2f}</b></div>""", unsafe_allow_html=True)
-
+        st.markdown(f"""<div style="background:white;color:black;padding:20px">
+        <h2 style="text-align:center;">BOLETA DE VENTA</h2>
+        <p><strong>Cliente:</strong> {b['cliente']}</p>
+        <p><strong>Total:</strong> S/ {b['total']}</p>
+        <p><strong>Fecha:</strong> {b['fecha']}</p>
+        </div>""", unsafe_allow_html=True)
         pdf = FPDF(orientation='P', unit='mm', format=(80, 200))
         pdf.add_page()
         pdf.set_font('Courier', 'B', 12)
