@@ -845,11 +845,11 @@ else:
             st.link_button("📲 WhatsApp", f"https://wa.me/?text={urllib.parse.quote(texto)}", use_container_width=True)
 
         # NUEVA VENTA
-        if st.button("⬅️ NUEVA VENTA", use_container_width=True, key="btn_nueva_venta"):
-            st.session_state.boleta = None
-            st.rerun()
-
-else:       
+if st.button("⬅️ NUEVA VENTA", use_container_width=True, key="btn_nueva_venta"):
+    st.session_state.boleta = None
+    st.rerun()
+else:
+    tab_vender, tab_ingreso_emp = st.tabs(...)
         tab_vender, tab_ingreso_emp = st.tabs(["🛒 VENDER", "📦 INGRESAR MERCADERÍA"])
 
         with tab_vender:
