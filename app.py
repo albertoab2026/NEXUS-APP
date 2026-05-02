@@ -747,13 +747,10 @@ with tabs[0]:
     )
 
     cerrado_ayer = any(i.get('Estado') == 'CERRADO' for i in res_ayer.get('Items', []))
-
+    st.write("debug:", res_ayer.get('Items', []))
     if not cerrado_ayer:
-        st.error(f"❌ Debes cerrar la caja del {ayer.strftime('%d/%m/%Y')}")
-        st.stop()
-
-
-    
+        st.warning(f"⚠️ Ayer {ayer.strftime('%d/%m/%Y')}
+ 
     f_hoy, h_hoy, _ = obtener_tiempo_peru()
     res_cierre = tabla_cierres.query(KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant), FilterExpression=Attr('Fecha').eq(f_hoy) & Attr('UsuarioTurno').eq(st.session_state.usuario))
     ya_cerro = len(res_cierre.get('Items', [])) > 0
