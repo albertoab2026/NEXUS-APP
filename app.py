@@ -755,7 +755,7 @@ if not cerrado_ayer:
 
 # VERIFICAR CIERRE DE AYER
 f_hoy, h_hoy, _ = obtener_tiempo_peru()
-ayer = datetime.now(ZoneInfo("America/Lima")) - timedelta(days=1)
+ayer = datetime.now(tz_peru) - timedelta(days=1)
 f_ayer = ayer.strftime("%Y-%m-%d")
 
 res_ayer = tabla_cierres.query(
