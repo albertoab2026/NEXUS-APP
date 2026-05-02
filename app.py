@@ -739,29 +739,30 @@ with tabs[0]:
         st.stop()
 
     # 🔒 BLOQUEAR SI AYER NO SE CERRÓ (Orden corregido)
+    # 1. Definimos las fechas antes de la consulta
     ayer_dt = datetime.now(tz_peru) - timedelta(days=1)
-    ayer_iso = ayer_dt.strftime('%Y-%m-%d')
-    f_ayer_pantalla = ayer_dt.strftime('%d/%m/%Y')
+    f_ayer = ayer_dt.strftime('%d/%m/%Y') 
+    f_hoy = datetime.now(tz_peru).strftime('%d/%m/%Y')
+    f_hoy_iso = datetime.now(tz_peru).strftime('%Y-%m-%d')
 
-    # 1. CONSULTA: Primero creamos la variable res_ayer consultando DynamoDB
+    # 2. Consulta de caja de ayer
     res_ayer = tabla_cierres.query(
-        KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant),
-        FilterExpression=Attr('FechaISO').eq(ayer_iso)
+        KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant) & Key('Fecha').eq(f_ayer)
     )
-
-    # 2. VALIDACIÓN: Ahora sí podemos usarla sin que salga el error rojo
-    cerrado_ayer = any(i.get('Estado') == 'CERRADO' for i in res_ayer.get('Items', []))
+    
+    # 3. Validación de cierre
+    items_ayer = res_ayer.get('Items', [])
+    cerrado_ayer = any(i.get('Estado') == 'CERRADO' for i in items_ayer)
 
     if not cerrado_ayer:
-        st.warning(f"⚠️ Ayer {f_ayer_pantalla} no se cerró caja. Cierra cuando puedas.")
-   # st.stop()
+        st.warning(f"⚠️ Ayer {f_ayer} no se cerró caja. Cierra cuando puedas.")
 
-    # VERIFICAR CIERRE DE HOY
-    res_cierre = tabla_cierres.query(
-        KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant) & Key('Fecha').eq(f_ayer),
-        FilterExpression=Attr('FechaISO').eq(f_hoy)
+    # 4. Verificar si ya se cerró hoy para no duplicar
+    res_hoy = tabla_cierres.query(
+        KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant),
+        FilterExpression=Attr('FechaISO').eq(f_hoy_iso) & Attr('Estado').eq('CERRADO')
     )
-    ya_cerro = len(res_cierre.get('Items', [])) > 0
+    ya_cerro_hoy = len(res_hoy.get('Items', [])) > 0
 
 if ya_cerro:
     st.warning(f"⚠️ YA CERRASTE CAJA HOY A LAS {hora_cierre}")
