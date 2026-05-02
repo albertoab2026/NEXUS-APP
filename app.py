@@ -768,8 +768,6 @@ if not cerrado_ayer:
     st.warning(f"⚠️ Ayer {ayer.strftime('%d/%m/%Y')} no se cerró caja")
     st.info("Cierra caja de ayer antes de vender")
 else:
-    # VERIFICAR CIERRE DE HOY
-    res_cierre = tabla_cierres.query(
 # VERIFICAR CIERRE DE HOY
 f_hoy = datetime.now(tz_peru).strftime('%Y-%m-%d')
 
@@ -777,9 +775,9 @@ try:
     res_cierre = tabla_cierres.query(
         KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant),
         FilterExpression=Attr('FechaISO').eq(f_hoy)
-    )
+    )  # ← ESTE ) CIERRA EL QUERY
 except Exception as e:
-    res_cierre = {'Items': []}  # ← ESTO ARREGLA EL NameError
+    res_cierre = {'Items': []}
 
 ya_cerro = False
 hora_cierre = None
