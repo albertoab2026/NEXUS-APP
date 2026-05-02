@@ -756,6 +756,7 @@ f_ayer = ayer.strftime("%Y-%m-%d")
 res_ayer = tabla_cierres.query(
     KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant) & Key('Fecha').eq(f_ayer),
     FilterExpression=Attr('FechaISO').eq(f_ayer)
+)
 cerrado_ayer = any(i.get('Estado') == 'CERRADO' for i in res_ayer.get('Items', []))
 
 if not cerrado_ayer:
