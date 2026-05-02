@@ -754,7 +754,11 @@ with tabs[0]:
     f_hoy, h_hoy, _ = obtener_tiempo_peru()
     res_cierre = tabla_cierres.query(KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant), FilterExpression=Attr('Fecha').eq(f_hoy) & Attr('UsuarioTurno').eq(st.session_state.usuario))
     ya_cerro = len(res_cierre.get('Items', [])) > 0
-    hora_cierre = max([c['Hora'] for c in res_cierre.get('Items', [])]) if ya_cerro else none
+    hora_cierre = None
+if res_cierre.get('Items'):
+    horas = [c['Hora'] for c in res_cierre['Items'] if 'Hora' in c]
+    if horas:
+        hora_cierre = max(horas)
 
     if ya_cerro:
         st.warning(f"⚠️ YA CERRASTE CAJA HOY A LAS {hora_cierre}")
