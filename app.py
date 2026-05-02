@@ -735,7 +735,7 @@ def verificar_cierre_pendiente():
             st.rerun()
         
         # 👇 Aquí sí bloqueas todo si aún no se ha cerrado
-        st.stop()
+        # st.stop()
 # === POST LOGIN ===
 sistema_vencimiento_inteligente()
 MAX_PRODUCTOS_TOTALES, MAX_STOCK_POR_PRODUCTO, PLAN_ACTUAL, PRECIO_ACTUAL = obtener_limites_tenant()
