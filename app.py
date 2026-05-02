@@ -770,7 +770,7 @@ with tabs[0]:
                         else: st.error("❌ Sin stock")
                 
                 if st.session_state.carrito:
-            if st.button("🗑️ VACIAR", key=f"btn_vaciar_{suffix}"):
+                if st.button("🗑️ VACIAR", key=f"btn_vaciar_{suffix}"):
                 st.session_state.carrito = []; st.rerun()
 
             col_ef, col_ya, col_pl = st.columns(3)
