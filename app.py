@@ -710,6 +710,8 @@ def verificar_cierre_pendiente():
             st.success("✅ Caja pendiente cerrada. Ahora puedes continuar.")
             time.sleep(1)
             st.rerun()
+        
+        # 👇 Aquí sí bloqueas todo si aún no se ha cerrado
         st.stop()
 # === POST LOGIN ===
 sistema_vencimiento_inteligente()
