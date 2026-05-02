@@ -792,6 +792,7 @@ else:
                 st.rerun()
             except Exception as e:
                 st.error(f"❌ Error al reabrir: {e}")
+                
 else:
     if st.session_state.boleta:
         b = st.session_state.boleta
