@@ -754,26 +754,20 @@ ayer = datetime.now(tz_peru) - timedelta(days=1)
 f_ayer = ayer.strftime("%Y-%m-%d")
 
 res_ayer = tabla_cierres.query(
-    KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant),
+    KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant) & Key('Fecha').eq(f_ayer),
     FilterExpression=Attr('FechaISO').eq(f_ayer)
-)
 cerrado_ayer = any(i.get('Estado') == 'CERRADO' for i in res_ayer.get('Items', []))
 
 if not cerrado_ayer:
-    st.warning(f"⚠️ Ayer {ayer.strftime('%d/%m/%Y')} no se cerró caja")
-    st.info("Cierra caja de ayer antes de vender")
+    st.warning(f"⚠️ Ayer {f_ayer} no se cerró caja. Cierra cuando puedas.")
+    st.info("Cierra caja de ayer antes de vender.")
 else:
     # VERIFICAR CIERRE DE HOY
     res_cierre = tabla_cierres.query(
-        KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant) & Key('Fecha').eq(ayer),
+        KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant) & Key('Fecha').eq(f_ayer),
         FilterExpression=Attr('FechaISO').eq(f_hoy)
     )
     ya_cerro = len(res_cierre.get('Items', [])) > 0
-    hora_cierre = None
-    if res_cierre.get('Items'):
-        horas = [c['Hora'] for c in res_cierre['Items'] if 'Hora' in c]
-        if horas:
-            hora_cierre = max(horas)
 
 if ya_cerro:
     st.warning(f"⚠️ YA CERRASTE CAJA HOY A LAS {hora_cierre}")
