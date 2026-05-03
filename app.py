@@ -747,8 +747,8 @@ with tabs[0]:
 
     # 2. Consulta eficiente con Query
     res_ayer = tabla_cierres.query(
-        KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant),
-        FilterExpression=Attr('Fecha').eq(f_ayer)
+    KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant) & Key('Fecha').eq(f_ayer),
+    FilterExpression=Attr('FechaISO').eq(f_ayer)
     )
     
     # 3. Validación de cierre
