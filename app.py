@@ -14,6 +14,9 @@ st.set_page_config(page_title="NEXUS", page_icon="⚡", layout="wide")
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap');
+st.markdown("""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap');
 
 html, body, [class*="css"] {
     font-family: 'Outfit', sans-serif;
@@ -85,14 +88,13 @@ html, body, [class*="css"] {
     border: 1px solid rgba(255, 255, 255, 0.2);
     border-radius: 10px;
     color: white;
-    backdrop-filter: blur(10px);
 }
 
 .stTextInput > div > div > input::placeholder {
     color: rgba(255, 255, 255, 0.6);
 }
 
-/* CARDS VIDRIO */
+/* CARDS VIDRIO - SIN BLUR PARA MÓVIL */
 .card {
     background: rgba(255, 255, 255, 0.08);
     border: 1px solid rgba(255, 255, 255, 0.15);
