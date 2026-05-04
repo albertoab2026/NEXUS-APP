@@ -8,7 +8,7 @@ from datetime import datetime
 # ====== CONFIGURACIÓN INICIAL ======
 st.set_page_config(page_title="NEXUS", page_icon="⚡", layout="wide")
 
-# ====== 1. CSS FUTURISTA CORREGIDO ======
+# ====== 1. CSS FUTURISTA ======
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap');
@@ -74,30 +74,19 @@ html, body, [class*="css"] {
     box-shadow: 0 8px 25px rgba(99, 102, 241, 0.6);
 }
 
-/* CORREGIDO: SUBHEADER Y LABELS BLANCOS */
-.stSubheader, .stSubheader > div {
+/* FORZAR BLANCO EN TODO */
+.stTextInput > label,.stSelectbox > label,.stTextInput > div > div > input {
     color: white!important;
-}
-
-.stTextInput > label {
-    color: white!important;
-    font-weight: 600;
 }
 
 .stTextInput > div > div > input {
     background: rgba(255, 255, 255, 0.15);
     border: 1px solid rgba(255, 255, 255, 0.3);
     border-radius: 10px;
-    color: white!important;
 }
 
 .stTextInput > div > div > input::placeholder {
     color: rgba(255, 255, 255, 0.7)!important;
-}
-
-.stSelectbox > label {
-    color: white!important;
-    font-weight: 600;
 }
 
 #MainMenu {visibility: hidden;}
@@ -164,7 +153,9 @@ def mostrar_login():
 
     col1, col2, col3 = st.columns([1,2,1])
     with col2:
-        st.subheader("🔐 Iniciar Sesión")
+        # CAMBIO CLAVE: HTML PURO CON COLOR BLANCO
+        st.markdown('<h3 style="color: white; text-align: center; margin-bottom: 1.5rem;">🔐 Iniciar Sesión</h3>', unsafe_allow_html=True)
+
         usuario_id = st.text_input("ID de Usuario", placeholder="Ej: DUEÑO01, CAJA01")
         password = st.text_input("Contraseña", type="password")
 
