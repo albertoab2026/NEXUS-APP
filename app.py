@@ -14,9 +14,6 @@ st.set_page_config(page_title="NEXUS", page_icon="⚡", layout="wide")
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap');
-st.markdown("""
-<style>
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap');
 
 html, body, [class*="css"] {
     font-family: 'Outfit', sans-serif;
@@ -24,7 +21,7 @@ html, body, [class*="css"] {
 
 /* FONDO ANIMADO FUTURISTA - LIGERO */
 .stApp {
-    background: linear-gradient(-45deg, #0f172a, #1e293b, #334155, #1e293b);
+    background: linear-gradient(135deg, #0f172a, #1e293b, #334155, #1e293b);
     background-size: 400% 400%;
     animation: gradient 15s ease infinite;
 }
