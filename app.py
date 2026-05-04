@@ -4,13 +4,11 @@ import hashlib
 import uuid
 import pytz
 from datetime import datetime
-import plotly.express as px
-import pandas as pd
 
 # ====== CONFIGURACIÓN INICIAL ======
 st.set_page_config(page_title="NEXUS", page_icon="⚡", layout="wide")
 
-# ====== 1. CSS FUTURISTA ======
+# ====== 1. CSS FUTURISTA CORREGIDO ======
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap');
@@ -76,18 +74,29 @@ html, body, [class*="css"] {
     box-shadow: 0 8px 25px rgba(99, 102, 241, 0.6);
 }
 
+/* CORREGIDO: TEXTO BLANCO PARA INPUTS */
+.stTextInput > label {
+    color: white!important;
+    font-weight: 600;
+}
+
 .stTextInput > div > div > input {
-    background: rgba(255, 255, 255, 0.1);
-    border: 1px solid rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.3);
     border-radius: 10px;
-    color: white;
+    color: white!important;
 }
 
 .stTextInput > div > div > input::placeholder {
-    color: rgba(255, 255, 255, 0.6);
+    color: rgba(255, 255, 255, 0.7)!important;
 }
 
-/* SOLO OCULTAR ESTO, NO EL HEADER */
+/* CORREGIDO: TEXTO BLANCO PARA SELECTBOX */
+.stSelectbox > label {
+    color: white!important;
+    font-weight: 600;
+}
+
 #MainMenu {visibility: hidden;}
 footer {visibility: hidden;}
 </style>
@@ -115,35 +124,11 @@ def get_dynamodb_table(table_name):
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
-def crear_usuario(cliente_id, usuario_id, password, nombre, rol):
-    table = get_dynamodb_table('NEXUS_USUARIOS')
-    password_hash = hash_password(password)
-
-    try:
-        table.put_item(
-            Item={
-                'cliente_id': cliente_id,
-                'usuario_id': usuario_id,
-                'password_hash': password_hash,
-                'nombre': nombre,
-                'rol': rol,
-                'fecha_registro': datetime.now(pytz.timezone('America/Lima')).isoformat(),
-                'activo': True
-            },
-            ConditionExpression='attribute_not_exists(usuario_id)'
-        )
-        return True, "Usuario creado exitosamente"
-    except boto3.exceptions.botocore.exceptions.ClientError as e:
-        if e.response['Error']['Code'] == 'ConditionalCheckFailedException':
-            return False, "Este ID de usuario ya existe"
-        return False, f"Error: {e}"
-
 def login_usuario(usuario_id, password):
     table = get_dynamodb_table('NEXUS_USUARIOS')
     password_hash = hash_password(password)
 
     try:
-        # QUERY por usuario_id usando GSI
         response = table.query(
             IndexName='usuario_id-index',
             KeyConditionExpression=boto3.dynamodb.conditions.Key('usuario_id').eq(usuario_id)
@@ -165,7 +150,7 @@ if 'logged_in' not in st.session_state:
 if 'user_data' not in st.session_state:
     st.session_state.user_data = None
 
-# ====== 5. PANTALLA LOGIN SOLO ID ======
+# ====== 5. PANTALLA LOGIN ======
 def mostrar_login():
     st.markdown("""
     <div class="main-header">
@@ -193,7 +178,7 @@ def mostrar_login():
             else:
                 st.warning("Completa todos los campos")
 
-# ====== 6. DASHBOARD PRINCIPAL ======
+# ====== 6. DASHBOARD ======
 def mostrar_dashboard():
     user = st.session_state.user_data
 
@@ -204,27 +189,19 @@ def mostrar_dashboard():
     </div>
     """, unsafe_allow_html=True)
 
-    # NAVEGACIÓN SEGÚN ROL
     if user['rol'] == 'dueño':
         menu = st.selectbox("Menú", ["📊 Dashboard", "📦 Productos", "💰 Ventas", "👥 Usuarios"])
-    else: # empleado
+    else:
         menu = st.selectbox("Menú", ["📦 Productos", "💰 Ventas"])
 
-    if menu == "📊 Dashboard" and user['rol'] == 'dueño':
-        st.info("Aquí va el dashboard de ganancias")
-    elif menu == "📦 Productos":
-        st.info("Aquí va gestión de productos")
-    elif menu == "💰 Ventas":
-        st.info("Aquí va registro de ventas")
-    elif menu == "👥 Usuarios" and user['rol'] == 'dueño':
-        st.info("Aquí va gestión de usuarios")
+    st.info(f"Menú: {menu} - Aquí va el contenido")
 
     if st.button("🚪 Cerrar Sesión", use_container_width=True):
         st.session_state.logged_in = False
         st.session_state.user_data = None
         st.rerun()
 
-# ====== 7. ROUTER PRINCIPAL ======
+# ====== 7. ROUTER ======
 if not st.session_state.logged_in:
     mostrar_login()
 else:
