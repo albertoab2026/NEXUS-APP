@@ -1,49 +1,66 @@
 import streamlit as st
-from datetime import date
-import db
+import boto3
+import hashlib
+import time
+from datetime import datetime, timedelta
+from boto3.dynamodb.conditions import Key
+import pytz
 
-st.set_page_config(layout="wide", page_title="NEXUS V.4")
-tenant_id = "BALLARTA_DENTAL"
-hoy = date.today().isoformat()
+# ===== 1. CONFIGURACIÓN INICIAL =====
+st.set_page_config(
+    page_title="NEXUS POS V5", 
+    layout="wide", 
+    initial_sidebar_state="collapsed"
+)
 
-st.title("💰 NEXUS V.4")
-
-st.write("DEBUG: AWS Keys cargadas:", "aws_access_key_id" in st.secrets["aws"])
-col1, col2 = st.columns(2)
-
-with col1:
-    if st.button("🔒 ABRIR CIERRE", use_container_width=True):
-        if db.abrir_cierre(tenant_id, hoy):
-            st.success("✅ Cierre abierto. Listo para cerrar")
-            st.rerun()
-        else:
-            st.warning("⚠️ Ya hay un cierre abierto hoy")
-
-with col2:
-    if st.button("🔒 CERRAR CIERRE", use_container_width=True):
-        cierre = db.obtener_cierre(tenant_id, hoy)
-        if not cierre or cierre.get('Estado') != 'ABIERTO':
-            st.error("❌ No hay un cierre abierto hoy. Abre uno primero.")
-        else:
-            st.session_state.mostrar_cerrar = True
-
-if st.session_state.get('mostrar_cerrar', False):
-    with st.form("cerrar_cierre_form"):
-        st.subheader("Cerrar Cierre del Día")
-        efectivo = st.number_input("💵 Efectivo del día", min_value=0.0, step=0.01, format="%.2f")
-        yape = st.number_input("💜 Yape del día", min_value=0.0, step=0.01, format="%.2f")
-        plin = st.number_input("🔵 Plin del día", min_value=0.0, step=0.01, format="%.2f")
-        total = efectivo + yape + plin
-        st.metric("TOTAL DEL DÍA", f"S/ {total:.2f}")
-        
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.form_submit_button("✅ Confirmar cierre"):
-                db.cerrar_cierre(tenant_id, hoy, efectivo, yape, plin)
-                st.success("✅ Cierre cerrado. Total guardado.")
-                st.session_state.mostrar_cerrar = False
-                st.rerun()
-        with col2:
-            if st.form_submit_button("❌ Cancelar"):
-                st.session_state.mostrar_cerrar = False
-                st.rerun()
+# ===== 2. ESTÉTICA FUTURISTA SIN LAG =====
+st.markdown("""
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap');
+    
+    html, body, [class*="css"] {
+        font-family: 'Outfit', sans-serif;
+    }
+    
+    /* FONDO ANIMADO FUTURISTA - LIGERO */
+    .stApp {
+        background: linear-gradient(-45deg, #0f172a, #1e293b, #334155, #0f172a);
+        background-size: 400% 400%;
+        animation: gradient 15s ease infinite;
+    }
+    
+    @keyframes gradient {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+    }
+    
+    /* HEADER CON BRILLO */
+    .main-header {
+        background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 50%, #ec4899 100%);
+        padding: 2rem;
+        border-radius: 20px;
+        text-align: center;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+        margin-bottom: 2rem;
+        animation: glow 2s ease-in-out infinite alternate;
+    }
+    
+    @keyframes glow {
+        from { box-shadow: 0 25px 50px -12px rgba(139, 92, 246, 0.5); }
+        to { box-shadow: 0 25px 50px -12px rgba(236, 72, 153, 0.5); }
+    }
+    
+    /* GLASSMORPHISM LIGERO */
+    .glass-card {
+        background: rgba(255, 255, 255, 0.05);
+        backdrop-filter: blur(20px);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        border-radius: 20px;
+        padding: 2rem;
+        box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+        animation: fadeIn 0.6s ease-out;
+    }
+    
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(
