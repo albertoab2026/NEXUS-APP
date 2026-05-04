@@ -38,7 +38,6 @@ def abrir_cierre(tenant_id, fecha):
 def cerrar_cierre(tenant_id, fecha, efectivo, yape, plin):
     """Cierra el cierre del día"""
     tabla = get_dynamodb_table()
-    # Convierte a Decimal y valida que no sea None
     efectivo = Decimal(str(efectivo or 0))
     yape = Decimal(str(yape or 0))
     plin = Decimal(str(plin or 0))
@@ -58,10 +57,14 @@ def cerrar_cierre(tenant_id, fecha, efectivo, yape, plin):
 def obtener_cierre(tenant_id, fecha):
     """Obtiene el cierre de un día"""
     tabla = get_dynamodb_table()
-    response = tabla.get_item(
-        Key={'TenantID': tenant_id, 'FechaISO': fecha}
-    )
-    return response.get('Item')
+    try:
+        response = tabla.get_item(
+            Key={'TenantID': tenant_id, 'FechaISO': fecha}
+        )
+        return response.get('Item')  # <- Esto ya no crashea si no existe
+    except Exception as e:
+        st.error(f"Error al obtener cierre: {e}")
+        return None
 
 def obtener_historial(tenant_id, limite=10):
     """Obtiene los últimos cierres"""
