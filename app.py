@@ -91,21 +91,12 @@ html, body, [class*="css"] {
     color: rgba(255, 255, 255, 0.6);
 }
 
-/* CARDS VIDRIO - SIN BLUR PARA MÓVIL */
-.card {
-    background: rgba(255, 255, 255, 0.08);
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    border-radius: 16px;
-    padding: 1.5rem;
-    margin: 1rem 0;
-}
-
 /* OCULTAR ELEMENTOS STREAMLIT */
 #MainMenu {visibility: hidden;}
 footer {visibility: hidden;}
 header {visibility: hidden;}
 </style>
-""", unsafe_allow_html=True)  # <-- ESTE ES EL ARREGLO FINAL
+""", unsafe_allow_html=True)
 
 # ====== 2. CONFIGURACIÓN AWS ======
 def get_dynamodb_table():
@@ -188,7 +179,6 @@ def mostrar_login():
     tab1, tab2 = st.tabs(["🔐 Iniciar Sesión", "📝 Registrarse"])
     
     with tab1:
-        st.markdown('<div class="card">', unsafe_allow_html=True)
         email = st.text_input("Email", key="login_email")
         password = st.text_input("Contraseña", type="password", key="login_pass")
         
@@ -204,10 +194,8 @@ def mostrar_login():
                     st.error(result)
             else:
                 st.warning("Completa todos los campos")
-        st.markdown('</div>', unsafe_allow_html=True)
     
     with tab2:
-        st.markdown('<div class="card">', unsafe_allow_html=True)
         nombre = st.text_input("Nombre completo", key="reg_nombre")
         email = st.text_input("Email", key="reg_email")
         password = st.text_input("Contraseña", type="password", key="reg_pass")
@@ -226,7 +214,6 @@ def mostrar_login():
                     st.error("Las contraseñas no coinciden")
             else:
                 st.warning("Completa todos los campos")
-        st.markdown('</div>', unsafe_allow_html=True)
 
 # ====== 6. DASHBOARD PRINCIPAL ======
 def mostrar_dashboard():
@@ -242,19 +229,13 @@ def mostrar_dashboard():
     col1, col2, col3 = st.columns(3)
     
     with col1:
-        st.markdown('<div class="card">', unsafe_allow_html=True)
         st.metric("Ventas Hoy", "S/ 0.00", "0%")
-        st.markdown('</div>', unsafe_allow_html=True)
     
     with col2:
-        st.markdown('<div class="card">', unsafe_allow_html=True)
         st.metric("Productos", "0", "0")
-        st.markdown('</div>', unsafe_allow_html=True)
     
     with col3:
-        st.markdown('<div class="card">', unsafe_allow_html=True)
         st.metric("Clientes", "0", "0")
-        st.markdown('</div>', unsafe_allow_html=True)
     
     st.markdown("---")
     
