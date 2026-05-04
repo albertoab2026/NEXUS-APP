@@ -1,51 +1,75 @@
 import boto3
-from boto3.dynamodb.conditions import Key
-from datetime import datetime, timedelta
 import streamlit as st
+from decimal import Decimal
+from datetime import datetime
+import pytz
 
-dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
-tabla = dynamodb.Table('TABLA_CIERRE_V4')
+@st.cache_resource
+def get_dynamodb_table():
+    """Conecta a DynamoDB usando secrets"""
+    aws_config = st.secrets["aws"]
+    dynamodb = boto3.resource(
+        'dynamodb',
+        aws_access_key_id=aws_config['aws_access_key_id'],
+        aws_secret_access_key=aws_config['aws_secret_access_key'],
+        region_name=aws_config['region_name']
+    )
+    return dynamodb.Table(aws_config['dynamodb_table'])
 
 def abrir_cierre(tenant_id, fecha):
-    """Abre cierre. 1 por día por tenant. No duplicados."""
+    """Abre un cierre. Solo 1 por día"""
+    tabla = get_dynamodb_table()
     try:
         tabla.put_item(
             Item={
                 'TenantID': tenant_id,
                 'FechaISO': fecha,
                 'Estado': 'ABIERTO',
-                'TotalEfectivo': 0,
-                'TotalYape': 0,
-                'TotalPlin': 0,
-                'UsuarioTurno': st.session_state.usuario
+                'TotalEfectivo': Decimal('0'),
+                'TotalYape': Decimal('0'),
+                'TotalPlin': Decimal('0')
             },
             ConditionExpression='attribute_not_exists(TenantID)'
         )
         return True
-    except:
-        return False # Ya existe cierre hoy
+    except tabla.meta.client.exceptions.ConditionalCheckFailedException:
+        return False
 
 def cerrar_cierre(tenant_id, fecha, efectivo, yape, plin):
-    """Cierra el día. Solo 1 update."""
-    total = efectivo + yape + plin
-    tabla.update_item(
-        Key={'TenantID': tenant_id, 'FechaISO': fecha},
-        UpdateExpression='SET Estado = :e, TotalEfectivo = :ef, TotalYape = :y, TotalPlin = :p, Total = :t',
-        ExpressionAttributeValues={':e': 'CERRADO', ':ef': efectivo, ':y': yape, ':p': plin, ':t': total}
+    """Cierra el cierre del día"""
+    tabla = get_dynamodb_table()
+    tabla.put_item(
+        Item={
+            'TenantID': tenant_id,
+            'FechaISO': fecha,
+            'Estado': 'CERRADO',
+            'TotalEfectivo': Decimal(str(efectivo)),
+            'TotalYape': Decimal(str(yape)),
+            'TotalPlin': Decimal(str(plin))
+        }
     )
+    return True
 
 def obtener_cierre(tenant_id, fecha):
-    """Obtiene cierre de un día específico. Rápido, sin scan."""
-    res = tabla.query(
-        KeyConditionExpression=Key('TenantID').eq(tenant_id) & Key('FechaISO').eq(fecha)
+    """Obtiene el cierre de un día"""
+    tabla = get_dynamodb_table()
+    response = tabla.get_item(
+        Key={'TenantID': tenant_id, 'FechaISO': fecha}
     )
-    return res['Items'][0] if res['Items'] else None
+    return response.get('Item')
 
-def obtener_historial(tenant_id, dias=30):
-    """Historial de cierres. Rápido, sin scan."""
-    hoy = datetime.now()
-    fecha_inicio = (hoy - timedelta(days=dias)).strftime('%Y-%m-%d')
-    res = tabla.query(
-        KeyConditionExpression=Key('TenantID').eq(tenant_id) & Key('FechaISO').gte(fecha_inicio)
+def obtener_historial(tenant_id, limite=10):
+    """Obtiene los últimos cierres"""
+    tabla = get_dynamodb_table()
+    response = tabla.query(
+        KeyConditionExpression='TenantID = :tid',
+        ExpressionAttributeValues={':tid': tenant_id},
+        ScanIndexForward=False,
+        Limit=limite
     )
-    return res['Items']
+    return response.get('Items', [])
+
+def hay_cierre_abierto(tenant_id, fecha):
+    """Verifica si hay un cierre abierto hoy"""
+    cierre = obtener_cierre(tenant_id, fecha)
+    return cierre is not None and cierre.get('Estado') == 'ABIERTO'
