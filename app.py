@@ -7,7 +7,7 @@ tenant_id = "BALLARTA_DENTAL"
 hoy = date.today().isoformat()
 
 st.title("💰 NEXUS V.4")
-
+st.write("DEBUG: AWS Keys cargadas:", "aws_access_key_id" in st.secrets["aws"])
 col1, col2 = st.columns(2)
 
 with col1:
