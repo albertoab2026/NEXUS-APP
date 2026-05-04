@@ -74,7 +74,11 @@ html, body, [class*="css"] {
     box-shadow: 0 8px 25px rgba(99, 102, 241, 0.6);
 }
 
-/* CORREGIDO: TEXTO BLANCO PARA INPUTS */
+/* CORREGIDO: SUBHEADER Y LABELS BLANCOS */
+.stSubheader, .stSubheader > div {
+    color: white!important;
+}
+
 .stTextInput > label {
     color: white!important;
     font-weight: 600;
@@ -91,7 +95,6 @@ html, body, [class*="css"] {
     color: rgba(255, 255, 255, 0.7)!important;
 }
 
-/* CORREGIDO: TEXTO BLANCO PARA SELECTBOX */
 .stSelectbox > label {
     color: white!important;
     font-weight: 600;
