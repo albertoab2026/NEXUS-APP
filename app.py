@@ -4,8 +4,8 @@ import hashlib
 import uuid
 import pytz
 from datetime import datetime
-from decimal import Decimal
-import os
+import plotly.express as px
+import pandas as pd
 
 # ====== CONFIGURACIÓN INICIAL ======
 st.set_page_config(page_title="NEXUS", page_icon="⚡", layout="wide")
@@ -19,7 +19,6 @@ html, body, [class*="css"] {
     font-family: 'Outfit', sans-serif;
 }
 
-/* FONDO ANIMADO FUTURISTA - LIGERO */
 .stApp {
     background: linear-gradient(135deg, #0f172a, #1e293b, #334155, #1e293b);
     background-size: 400% 400%;
@@ -32,7 +31,6 @@ html, body, [class*="css"] {
     100% { background-position: 0% 50%; }
 }
 
-/* HEADER CON BRILLO */
 .main-header {
     background: linear-gradient(135deg, #3b82f6, #8b5cf6);
     padding: 2rem;
@@ -62,7 +60,6 @@ html, body, [class*="css"] {
     margin: 0.5rem 0 0 0;
 }
 
-/* BOTONES NEÓN */
 .stButton > button {
     background: linear-gradient(135deg, #6366f1, #8b5cf6);
     color: white;
@@ -79,7 +76,6 @@ html, body, [class*="css"] {
     box-shadow: 0 8px 25px rgba(99, 102, 241, 0.6);
 }
 
-/* INPUTS VIDRIO */
 .stTextInput > div > div > input {
     background: rgba(255, 255, 255, 0.1);
     border: 1px solid rgba(255, 255, 255, 0.2);
@@ -91,28 +87,26 @@ html, body, [class*="css"] {
     color: rgba(255, 255, 255, 0.6);
 }
 
-/* OCULTAR ELEMENTOS STREAMLIT */
+/* SOLO OCULTAR ESTO, NO EL HEADER */
 #MainMenu {visibility: hidden;}
 footer {visibility: hidden;}
-header {visibility: hidden;}
 </style>
 """, unsafe_allow_html=True)
 
 # ====== 2. CONFIGURACIÓN AWS ======
-def get_dynamodb_table():
-    """Conecta a DynamoDB usando secrets o credenciales"""
+def get_dynamodb_table(table_name):
     try:
         aws_access_key = st.secrets["AWS_ACCESS_KEY_ID"]
         aws_secret_key = st.secrets["AWS_SECRET_ACCESS_KEY"]
         region = st.secrets.get("AWS_DEFAULT_REGION", "us-east-1")
-        
+
         dynamodb = boto3.resource(
             'dynamodb',
             aws_access_key_id=aws_access_key,
             aws_secret_access_key=aws_secret_key,
             region_name=region
         )
-        return dynamodb.Table('NEXUS_USUARIOS')
+        return dynamodb.Table(table_name)
     except Exception as e:
         st.error(f"Error conectando a DynamoDB: {e}")
         st.stop()
@@ -121,39 +115,43 @@ def get_dynamodb_table():
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
-def crear_usuario(email, password, nombre):
-    table = get_dynamodb_table()
-    user_id = str(uuid.uuid4())
+def crear_usuario(cliente_id, usuario_id, password, nombre, rol):
+    table = get_dynamodb_table('NEXUS_USUARIOS')
     password_hash = hash_password(password)
-    
+
     try:
         table.put_item(
             Item={
-                'email': email,
+                'cliente_id': cliente_id,
+                'usuario_id': usuario_id,
                 'password_hash': password_hash,
                 'nombre': nombre,
-                'user_id': user_id,
+                'rol': rol,
                 'fecha_registro': datetime.now(pytz.timezone('America/Lima')).isoformat(),
                 'activo': True
             },
-            ConditionExpression='attribute_not_exists(email)'
+            ConditionExpression='attribute_not_exists(usuario_id)'
         )
         return True, "Usuario creado exitosamente"
     except boto3.exceptions.botocore.exceptions.ClientError as e:
         if e.response['Error']['Code'] == 'ConditionalCheckFailedException':
-            return False, "Este email ya está registrado"
+            return False, "Este ID de usuario ya existe"
         return False, f"Error: {e}"
 
-def login_usuario(email, password):
-    table = get_dynamodb_table()
+def login_usuario(usuario_id, password):
+    table = get_dynamodb_table('NEXUS_USUARIOS')
     password_hash = hash_password(password)
-    
+
     try:
-        response = table.get_item(Key={'email': email})
-        if 'Item' not in response:
-            return False, "Email no registrado"
-        
-        user = response['Item']
+        # QUERY por usuario_id usando GSI
+        response = table.query(
+            IndexName='usuario_id-index',
+            KeyConditionExpression=boto3.dynamodb.conditions.Key('usuario_id').eq(usuario_id)
+        )
+        if not response['Items']:
+            return False, "ID de usuario no existe"
+
+        user = response['Items'][0]
         if user['password_hash'] == password_hash and user.get('activo', True):
             return True, user
         else:
@@ -167,7 +165,7 @@ if 'logged_in' not in st.session_state:
 if 'user_data' not in st.session_state:
     st.session_state.user_data = None
 
-# ====== 5. PANTALLA LOGIN/REGISTRO ======
+# ====== 5. PANTALLA LOGIN SOLO ID ======
 def mostrar_login():
     st.markdown("""
     <div class="main-header">
@@ -175,16 +173,16 @@ def mostrar_login():
         <p>Sistema de Gestión Empresarial</p>
     </div>
     """, unsafe_allow_html=True)
-    
-    tab1, tab2 = st.tabs(["🔐 Iniciar Sesión", "📝 Registrarse"])
-    
-    with tab1:
-        email = st.text_input("Email", key="login_email")
-        password = st.text_input("Contraseña", type="password", key="login_pass")
-        
+
+    col1, col2, col3 = st.columns([1,2,1])
+    with col2:
+        st.subheader("🔐 Iniciar Sesión")
+        usuario_id = st.text_input("ID de Usuario", placeholder="Ej: DUEÑO01, CAJA01")
+        password = st.text_input("Contraseña", type="password")
+
         if st.button("Iniciar Sesión", use_container_width=True):
-            if email and password:
-                success, result = login_usuario(email, password)
+            if usuario_id and password:
+                success, result = login_usuario(usuario_id, password)
                 if success:
                     st.session_state.logged_in = True
                     st.session_state.user_data = result
@@ -194,51 +192,33 @@ def mostrar_login():
                     st.error(result)
             else:
                 st.warning("Completa todos los campos")
-    
-    with tab2:
-        nombre = st.text_input("Nombre completo", key="reg_nombre")
-        email = st.text_input("Email", key="reg_email")
-        password = st.text_input("Contraseña", type="password", key="reg_pass")
-        password2 = st.text_input("Confirmar contraseña", type="password", key="reg_pass2")
-        
-        if st.button("Crear Cuenta", use_container_width=True):
-            if nombre and email and password and password2:
-                if password == password2:
-                    success, msg = crear_usuario(email, password, nombre)
-                    if success:
-                        st.success(msg)
-                        st.info("Ahora inicia sesión")
-                    else:
-                        st.error(msg)
-                else:
-                    st.error("Las contraseñas no coinciden")
-            else:
-                st.warning("Completa todos los campos")
 
 # ====== 6. DASHBOARD PRINCIPAL ======
 def mostrar_dashboard():
     user = st.session_state.user_data
-    
+
     st.markdown(f"""
     <div class="main-header">
         <h1>Bienvenido, {user['nombre']}!</h1>
-        <p>Último acceso: {datetime.now(pytz.timezone('America/Lima')).strftime('%d/%m/%Y %H:%M')}</p>
+        <p>Rol: {user['rol'].upper()} | ID: {user['usuario_id']}</p>
     </div>
     """, unsafe_allow_html=True)
-    
-    col1, col2, col3 = st.columns(3)
-    
-    with col1:
-        st.metric("Ventas Hoy", "S/ 0.00", "0%")
-    
-    with col2:
-        st.metric("Productos", "0", "0")
-    
-    with col3:
-        st.metric("Clientes", "0", "0")
-    
-    st.markdown("---")
-    
+
+    # NAVEGACIÓN SEGÚN ROL
+    if user['rol'] == 'dueño':
+        menu = st.selectbox("Menú", ["📊 Dashboard", "📦 Productos", "💰 Ventas", "👥 Usuarios"])
+    else: # empleado
+        menu = st.selectbox("Menú", ["📦 Productos", "💰 Ventas"])
+
+    if menu == "📊 Dashboard" and user['rol'] == 'dueño':
+        st.info("Aquí va el dashboard de ganancias")
+    elif menu == "📦 Productos":
+        st.info("Aquí va gestión de productos")
+    elif menu == "💰 Ventas":
+        st.info("Aquí va registro de ventas")
+    elif menu == "👥 Usuarios" and user['rol'] == 'dueño':
+        st.info("Aquí va gestión de usuarios")
+
     if st.button("🚪 Cerrar Sesión", use_container_width=True):
         st.session_state.logged_in = False
         st.session_state.user_data = None
