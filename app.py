@@ -107,7 +107,7 @@ html, body, [class*="css"] {
 footer {visibility: hidden;}
 header {visibility: hidden;}
 </style>
-""")  # <-- ESTE CIERRE VA AQUÍ, AL FINAL DEL CSS
+""", unsafe_allow_html=True)  # <-- ESTE ES EL ARREGLO FINAL
 
 # ====== 2. CONFIGURACIÓN AWS ======
 def get_dynamodb_table():
