@@ -38,14 +38,19 @@ def abrir_cierre(tenant_id, fecha):
 def cerrar_cierre(tenant_id, fecha, efectivo, yape, plin):
     """Cierra el cierre del día"""
     tabla = get_dynamodb_table()
+    # Convierte a Decimal y valida que no sea None
+    efectivo = Decimal(str(efectivo or 0))
+    yape = Decimal(str(yape or 0))
+    plin = Decimal(str(plin or 0))
+    
     tabla.put_item(
         Item={
             'TenantID': tenant_id,
             'FechaISO': fecha,
             'Estado': 'CERRADO',
-            'TotalEfectivo': Decimal(str(efectivo)),
-            'TotalYape': Decimal(str(yape)),
-            'TotalPlin': Decimal(str(plin))
+            'TotalEfectivo': efectivo,
+            'TotalYape': yape,
+            'TotalPlin': plin
         }
     )
     return True
