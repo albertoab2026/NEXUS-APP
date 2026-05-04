@@ -6,8 +6,7 @@ st.set_page_config(layout="wide", page_title="Cierre V.4")
 tenant_id = "BALLARTA_DENTAL" # Esto viene del login, por ahora hardcodeado
 hoy = date.today().isoformat()
 
-st.title("💰 CIERRE FARMACIA V.4")
-st.caption("Solo 3 botones. Sin Excel. Sin parches.")
+st.title("💰 NEXUS V.4")
 
 if st.button("🔓 ABRIR CIERRE", use_container_width=True, type="primary"):
     if db.abrir_cierre(tenant_id, hoy):
