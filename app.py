@@ -198,20 +198,146 @@ def cambiar_clave_usuario(usuario_id, nueva_clave):
 
 def mostrar_panel_admin():
     st.markdown('<h3 style="color: white;">🔧 Panel Admin - Cambiar Claves</h3>', unsafe_allow_html=True)
-    
-    usuario_id = st.text_input("ID del Usuario", placeholder="DUENOCHA", key="admin_user")
-    nueva_clave = st.text_input("Nueva Clave Temporal", type="password", key="admin_pass")
-    
-    if st.button("Actualizar Clave", use_container_width=True, key="btn_admin"):
-        if usuario_id and nueva_clave:
-            success, msg = cambiar_clave_usuario(usuario_id, nueva_clave)
-            if success:
-                st.success(f"Listo. Dile al cliente: usuario `{usuario_id}` clave `{nueva_clave}`")
-                st.info("Que la cambie cuando entre")
+# ====== 3.5. FUNCIONES DE REGISTRO NEXUS 5.0 ======
+def generar_id_dueno():
+    table = get_dynamodb_table('NEXUS_CONTADORES')
+    response = table.update_item(
+        Key={'tipo': 'dueno'},
+        UpdateExpression='ADD contador :inc',
+        ExpressionAttributeValues={':inc': 1},
+        ReturnValues='UPDATED_NEW'
+    )
+    nuevo_contador = int(response['Attributes']['contador'])
+    return f"DUENO-{nuevo_contador:03d}"
+
+def generar_id_empleado():
+    table = get_dynamodb_table('NEXUS_CONTADORES')
+    response = table.update_item(
+        Key={'tipo': 'empleado'},
+        UpdateExpression='ADD contador :inc',
+        ExpressionAttributeValues={':inc': 1},
+        ReturnValues='UPDATED_NEW'
+    )
+    nuevo_contador = int(response['Attributes']['contador'])
+    return f"EMP-{nuevo_contador:03d}"
+
+def verificar_trial_usado(tipo, valor):
+    """Verifica si DNI, CEL o EMAIL ya usó trial"""
+    table = get_dynamodb_table('NEXUS_TRIAL_USADOS')
+    response = table.get_item(Key={'tipo_id': f'{tipo}-{valor}'})
+    return 'Item' in response
+
+def guardar_trial_usado(tipo, valor):
+    """Guarda DNI, CEL, EMAIL para bloquear futuros trials"""
+    table = get_dynamodb_table('NEXUS_TRIAL_USADOS')
+    table.put_item(Item={
+        'tipo_id': f'{tipo}-{valor}',
+        'fecha': datetime.now(pytz.timezone('America/Lima')).isoformat()
+    })
+
+def registrar_local(nombre_local, dni, celular, email, password):
+    table_usuarios = get_dynamodb_table('NEXUS_USUARIOS')
+    table_duenos = get_dynamodb_table('NEXUS_DUENOS')
+
+    # ANTI-VIVOS: Verificar triple
+    if verificar_trial_usado('DNI', dni):
+        raise Exception("Este DNI ya usó su prueba gratis")
+    if verificar_trial_usado('CEL', celular):
+        raise Exception("Este WhatsApp ya usó su prueba gratis")
+    if email and verificar_trial_usado('EMAIL', email):
+        raise Exception("Este Email ya usó su prueba gratis")
+
+    id_dueno = generar_id_dueno() # DUENO-001
+    id_empleado = generar_id_empleado() # EMP-001 - LO MANTENGO
+    usuario_id = f"DUENO{nombre_local[:3].upper()}{id_dueno[-3:]}"
+    hoy = datetime.now(pytz.timezone('America/Lima'))
+
+    table_usuarios.put_item(Item={
+        'usuario_id': usuario_id,
+        'nombre': nombre_local,
+        'rol': 'dueño',
+        'dni': dni, # NUEVO
+        'celular': celular, # NUEVO
+        'email': email or 'no-tiene',
+        'password_hash': hash_password(password),
+        'id_del_dueno': id_dueno,
+        'id_del_empleado': id_empleado, # LO MANTENGO
+        'plan': 'trial', # NUEVO
+        'fecha_registro': hoy.isoformat(), # CAMBIÉ NOMBRE
+        'fecha_trial_fin': (hoy + timedelta(days=7)).isoformat(), # NUEVO
+        'activo': True
+    })
+
+    table_duenos.put_item(Item={
+        'id_del_dueno': id_dueno,
+        'nombre_local': nombre_local
+    })
+
+    # Bloquear futuros trials
+    guardar_trial_usado('DNI', dni)
+    guardar_trial_usado('CEL', celular)
+    if email: guardar_trial_usado('EMAIL', email)
+
+    return usuario_id, id_dueno, id_empleado # REGRESO LOS 3 COMO ANTES
+
+def cambiar_clave_usuario(usuario_id, nueva_clave):
+    table = get_dynamodb_table('NEXUS_USUARIOS')
+    hash_nuevo = hash_password(nueva_clave)
+    try:
+        table.update_item(
+            Key={'usuario_id': usuario_id},
+            UpdateExpression='SET password_hash = :h',
+            ExpressionAttributeValues={':h': hash_nuevo}
+        )
+        return True, "Clave actualizada"
+    except Exception as e:
+        return False, f"Error: {e}"
+
+def mostrar_panel_admin():
+    st.markdown('<h3 style="color: white;">🔧 Panel Admin</h3>', unsafe_allow_html=True)
+
+    tab1, tab2 = st.tabs(["🔑 Cambiar Claves", "🔓 Activar Plan S/30"])
+
+    with tab1:
+        usuario_id = st.text_input("ID del Usuario", placeholder="DUENOCHA001", key="admin_user")
+        nueva_clave = st.text_input("Nueva Clave Temporal", type="password", key="admin_pass")
+
+        if st.button("Actualizar Clave", use_container_width=True, key="btn_admin"):
+            if usuario_id and nueva_clave:
+                success, msg = cambiar_clave_usuario(usuario_id, nueva_clave)
+                if success:
+                    st.success(f"Listo. Dile al cliente: usuario `{usuario_id}` clave `{nueva_clave}`")
+                    st.info("Que la cambie cuando entre")
+                else:
+                    st.error(msg)
             else:
-                st.error(msg)
-        else:
-            st.warning("Completa ambos campos")
+                st.warning("Completa ambos campos")
+
+    with tab2:
+        st.markdown("### Activar Plan S/30 por 30 días")
+        dni_activar = st.text_input("DNI del cliente que pagó S/30", max_chars=8, key="dni_act")
+        if st.button("Activar 30 días", use_container_width=True, key="btn_activar"):
+            if dni_activar:
+                from boto3.dynamodb.conditions import Attr
+                table = get_dynamodb_table('NEXUS_USUARIOS')
+                response = table.scan(FilterExpression=Attr('dni').eq(dni_activar))
+                if response['Items']:
+                    user = response['Items'][0]
+                    hoy = datetime.now(pytz.timezone('America/Lima'))
+                    table.update_item(
+                        Key={'usuario_id': user['usuario_id']},
+                        UpdateExpression='SET plan = :p, fecha_vencimiento = :f',
+                        ExpressionAttributeValues={
+                            ':p': 'premium',
+                            ':f': (hoy + timedelta(days=30)).isoformat()
+                        }
+                    )
+                    st.success(f"✅ Activado: {user['nombre']} - Usuario: {user['usuario_id']}")
+                    st.info("Ya tiene productos ilimitados por 30 días")
+                else:
+                    st.error("DNI no encontrado")
+            else:
+                st.warning("Ingresa el DNI")
 # ====== 4. MANEJO DE SESIÓN ======
 if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
