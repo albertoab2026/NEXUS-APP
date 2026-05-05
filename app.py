@@ -184,7 +184,35 @@ def registrar_local(nombre_local, email, password):
     })
     
     return usuario_id, id_dueno, id_empleado        
+def cambiar_clave_usuario(usuario_id, nueva_clave):
+    table = get_dynamodb_table('NEXUS_USUARIOS')
+    hash_nuevo = hash_password(nueva_clave)
+    try:
+        table.update_item(
+            Key={'usuario_id': usuario_id},
+            UpdateExpression='SET password_hash = :h',
+            ExpressionAttributeValues={':h': hash_nuevo}
+        )
+        return True, "Clave actualizada"
+    except Exception as e:
+        return False, f"Error: {e}"
 
+def mostrar_panel_admin():
+    st.markdown('<h3 style="color: white;">🔧 Panel Admin - Cambiar Claves</h3>', unsafe_allow_html=True)
+    
+    usuario_id = st.text_input("ID del Usuario", placeholder="DUENOCHA", key="admin_user")
+    nueva_clave = st.text_input("Nueva Clave Temporal", type="password", key="admin_pass")
+    
+    if st.button("Actualizar Clave", use_container_width=True, key="btn_admin"):
+        if usuario_id and nueva_clave:
+            success, msg = cambiar_clave_usuario(usuario_id, nueva_clave)
+            if success:
+                st.success(f"Listo. Dile al cliente: usuario `{usuario_id}` clave `{nueva_clave}`")
+                st.info("Que la cambie cuando entre")
+            else:
+                st.error(msg)
+        else:
+            st.warning("Completa ambos campos")
 # ====== 4. MANEJO DE SESIÓN ======
 if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
@@ -249,11 +277,16 @@ def mostrar_dashboard():
     """, unsafe_allow_html=True)
 
     if user['rol'] == 'dueño':
-        menu = st.selectbox("Menú", ["📊 Dashboard", "📦 Productos", "💰 Ventas", "👥 Usuarios"])
+        menu = st.selectbox("Menú", ["📊 Dashboard", "📦 Productos", "💰 Ventas", "👥 Usuarios", "🔧 Admin"])
+    elif user['rol'] == 'admin':  # ← ESTE ERES TÚ
+        menu = st.selectbox("Menú", ["🔧 Admin", "📊 Dashboard"])
     else:
         menu = st.selectbox("Menú", ["📦 Productos", "💰 Ventas"])
 
-    st.info(f"Menú: {menu} - Aquí va el contenido")
+    if menu == "🔧 Admin":
+        mostrar_panel_admin()
+    else:
+        st.info(f"Menú: {menu} - Aquí va el contenido")
 
     if st.button("🚪 Cerrar Sesión", use_container_width=True):
         st.session_state.logged_in = False
