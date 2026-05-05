@@ -135,6 +135,55 @@ def login_usuario(usuario_id, password):
             return False, "Contraseña incorrecta"
     except Exception as e:
         return False, f"Error: {e}"
+# ====== 3.5. FUNCIONES DE REGISTRO ======
+def generar_id_dueno():
+    table = get_dynamodb_table('NEXUS_CONTADORES')
+    response = table.update_item(
+        Key={'tipo': 'dueno'},
+        UpdateExpression='ADD contador :inc',
+        ExpressionAttributeValues={':inc': 1},
+        ReturnValues='UPDATED_NEW'
+    )
+    nuevo_contador = response['Attributes']['contador']
+    return f"DUENO-{nuevo_contador:03d}"
+
+def generar_id_empleado():
+    table = get_dynamodb_table('NEXUS_CONTADORES')
+    response = table.update_item(
+        Key={'tipo': 'empleado'},
+        UpdateExpression='ADD contador :inc',
+        ExpressionAttributeValues={':inc': 1},
+        ReturnValues='UPDATED_NEW'
+    )
+    nuevo_contador = response['Attributes']['contador']
+    return f"EMP-{nuevo_contador:03d}"
+
+def registrar_local(nombre_local, email, password):
+    table_usuarios = get_dynamodb_table('NEXUS_USUARIOS')
+    table_duenos = get_dynamodb_table('NEXUS_DUENOS')
+    
+    id_dueno = generar_id_dueno()      # DUENO-001
+    id_empleado = generar_id_empleado() # EMP-001
+    usuario_id = f"DUENO{nombre_local[:3].upper()}"
+    
+    table_usuarios.put_item(Item={
+        'usuario_id': usuario_id,
+        'nombre': nombre_local,
+        'rol': 'dueño',
+        'email': email,
+        'password_hash': hash_password(password),
+        'id_del_dueno': id_dueno,
+        'id_del_empleado': id_empleado,
+        'activo': True,
+        'fecha_creacion': datetime.now(pytz.timezone('America/Lima')).isoformat()
+    })
+    
+    table_duenos.put_item(Item={
+        'id_del_dueno': id_dueno,
+        'nombre_local': nombre_local
+    })
+    
+    return usuario_id, id_dueno, id_empleado        
 
 # ====== 4. MANEJO DE SESIÓN ======
 if 'logged_in' not in st.session_state:
@@ -153,25 +202,38 @@ def mostrar_login():
 
     col1, col2, col3 = st.columns([1,2,1])
     with col2:
-        # CAMBIO CLAVE: HTML PURO CON COLOR BLANCO
-        st.markdown('<h3 style="color: white; text-align: center; margin-bottom: 1.5rem;">🔐 Iniciar Sesión</h3>', unsafe_allow_html=True)
-
-        usuario_id = st.text_input("ID de Usuario", placeholder="Ej: DUEÑO01, CAJA01")
-        password = st.text_input("Contraseña", type="password")
-
-        if st.button("Iniciar Sesión", use_container_width=True):
-            if usuario_id and password:
-                success, result = login_usuario(usuario_id, password)
-                if success:
-                    st.session_state.logged_in = True
-                    st.session_state.user_data = result
-                    st.success("¡Bienvenido!")
-                    st.rerun()
+        tab1, tab2 = st.tabs(["🔐 Iniciar Sesión", "🆕 Registrar Local"])
+        
+        with tab1:
+            st.markdown('<h3 style="color: white; text-align: center; margin-bottom: 1.5rem;">Iniciar Sesión</h3>', unsafe_allow_html=True)
+            usuario_id = st.text_input("ID de Usuario", placeholder="Ej: DUENOCHA, EMPCHA", key="login_user")
+            password = st.text_input("Contraseña", type="password", key="login_pass")
+            if st.button("Iniciar Sesión", use_container_width=True, key="btn_login"):
+                if usuario_id and password:
+                    success, result = login_usuario(usuario_id, password)
+                    if success:
+                        st.session_state.logged_in = True
+                        st.session_state.user_data = result
+                        st.success("¡Bienvenido!")
+                        st.rerun()
+                    else:
+                        st.error(result)
                 else:
-                    st.error(result)
-            else:
-                st.warning("Completa todos los campos")
-
+                    st.warning("Completa todos los campos")
+        
+        with tab2:
+            st.markdown('<h3 style="color: white; text-align: center; margin-bottom: 1.5rem;">Registrar Nuevo Local</h3>', unsafe_allow_html=True)
+            nombre_local = st.text_input("Nombre del Local", placeholder="Ej: Tienda La Chamba", key="reg_local")
+            email = st.text_input("Email", placeholder="tu@correo.com", key="reg_email")
+            password = st.text_input("Contraseña", type="password", key="reg_pass")
+            if st.button("Registrar", use_container_width=True, key="btn_reg"):
+                if nombre_local and email and password:
+                    usuario_id, id_dueno, id_empleado = registrar_local(nombre_local, email, password)
+                    st.success(f"¡Listo! Tu usuario es: {usuario_id}")
+                    st.info(f"ID del local: {id_dueno} - El cliente no lo ve")
+                    st.info("Ahora ve a Iniciar Sesión")
+                else:
+                    st.warning("Completa todos los campos")
 # ====== 6. DASHBOARD ======
 def mostrar_dashboard():
     user = st.session_state.user_data
