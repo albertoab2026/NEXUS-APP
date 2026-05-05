@@ -228,10 +228,13 @@ def mostrar_login():
             password = st.text_input("Contraseña", type="password", key="reg_pass")
             if st.button("Registrar", use_container_width=True, key="btn_reg"):
                 if nombre_local and email and password:
-                    usuario_id, id_dueno, id_empleado = registrar_local(nombre_local, email, password)
-                    st.success(f"¡Listo! Tu usuario es: {usuario_id}")
-                    st.info(f"ID del local: {id_dueno} - El cliente no lo ve")
-                    st.info("Ahora ve a Iniciar Sesión")
+                    try:
+                        usuario_id, id_dueno, id_empleado = registrar_local(nombre_local, email, password)
+                        st.success(f"¡Listo! Tu usuario es: {usuario_id}")
+                        st.info(f"ID del local: {id_dueno} - El cliente no lo ve")
+                        st.info("Ahora ve a Iniciar Sesión")
+                    except Exception as e:
+                        st.error(f"Error: {e}")
                 else:
                     st.warning("Completa todos los campos")
 # ====== 6. DASHBOARD ======
