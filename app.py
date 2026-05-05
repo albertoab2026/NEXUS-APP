@@ -143,7 +143,7 @@ def generar_id_dueno():
         ExpressionAttributeValues={':inc': 1},
         ReturnValues='UPDATED_NEW'
     )
-    nuevo_contador = response['Attributes']['contador']
+    nuevo_contador = int(response['Attributes']['contador'])
     return f"DUENO-{nuevo_contador:03d}"
 
 def generar_id_empleado():
@@ -154,7 +154,7 @@ def generar_id_empleado():
         ExpressionAttributeValues={':inc': 1},
         ReturnValues='UPDATED_NEW'
     )
-    nuevo_contador = response['Attributes']['contador']
+    nuevo_contador = int(response['Attributes']['contador'])
     return f"EMP-{nuevo_contador:03d}"
 
 def registrar_local(nombre_local, email, password):
