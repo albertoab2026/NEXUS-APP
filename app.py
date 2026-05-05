@@ -121,14 +121,13 @@ def login_usuario(usuario_id, password):
     password_hash = hash_password(password)
 
     try:
-        response = table.query(
-            IndexName='usuario_id-index',
-            KeyConditionExpression=boto3.dynamodb.conditions.Key('usuario_id').eq(usuario_id)
+        response = table.get_item(
+            Key={'usuario_id': usuario_id}
         )
-        if not response['Items']:
+        if 'Item' not in response:
             return False, "ID de usuario no existe"
 
-        user = response['Items'][0]
+        user = response['Item']
         if user['password_hash'] == password_hash and user.get('activo', True):
             return True, user
         else:
