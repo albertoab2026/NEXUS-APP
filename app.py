@@ -9,6 +9,87 @@ from boto3.dynamodb.conditions import Key
 # ====== 1. CONFIGURACIÓN AWS ======
 st.set_page_config(page_title="NEXUS POS", page_icon="🏪", layout="wide")
 
+# ====== 1. CONFIGURACIÓN AWS ======
+st.set_page_config(page_title="NEXUS POS", page_icon="🏪", layout="wide")
+
+# ====== CSS FUTURISTA PRO ======  ← PEGA AQUÍ EN LA LÍNEA 11
+st.markdown("""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;900&family=Roboto:wght@300;400;700&display=swap');
+
+.stApp {
+    background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+    color: #ffffff;
+}
+
+h1, h2, h3 {
+    font-family: 'Orbitron', sans-serif !important;
+    color: #00f5ff !important;
+    text-shadow: 0 0 10px rgba(0, 245, 255, 0.5);
+}
+
+.stButton > button {
+    background: linear-gradient(90deg, #00f5ff 0%, #00d4ff 100%);
+    color: #0f0c29 !important;
+    border: none;
+    border-radius: 8px;
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 700;
+    padding: 12px 24px;
+    transition: all 0.3s;
+    box-shadow: 0 0 20px rgba(0, 245, 255, 0.4);
+}
+.stButton > button:hover {
+    transform: scale(1.05);
+    box-shadow: 0 0 30px rgba(0, 245, 255, 0.8);
+}
+
+.stTextInput > div > div > input, .stNumberInput > div > div > input {
+    background-color: rgba(0, 0, 0, 0.3) !important;
+    color: #00f5ff !important;
+    border: 1px solid #00f5ff !important;
+    border-radius: 8px;
+}
+
+.stSelectbox > div > div {
+    background-color: rgba(0, 0, 0, 0.3) !important;
+    border: 1px solid #00f5ff !important;
+    border-radius: 8px;
+}
+
+.stTabs [data-baseweb="tab-list"] {
+    gap: 8px;
+}
+.stTabs [data-baseweb="tab"] {
+    background-color: rgba(0, 245, 255, 0.1);
+    border-radius: 8px;
+    color: #00f5ff;
+    font-family: 'Orbitron', sans-serif;
+}
+.stTabs [aria-selected="true"] {
+    background: linear-gradient(90deg, #00f5ff 0%, #00d4ff 100%);
+    color: #0f0c29 !important;
+}
+
+div[data-testid="metric-container"] {
+    background: rgba(0, 245, 255, 0.1);
+    border: 1px solid #00f5ff;
+    border-radius: 10px;
+    padding: 15px;
+    box-shadow: 0 0 15px rgba(0, 245, 255, 0.2);
+}
+
+.main-header {
+    background: rgba(0, 245, 255, 0.1);
+    border: 2px solid #00f5ff;
+    border-radius: 15px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 0 25px rgba(0, 245, 255, 0.3);
+}
+</style>
+""", unsafe_allow_html=True)
+
 AWS_ACCESS_KEY_ID = st.secrets["AWS_ACCESS_KEY_ID"]
 AWS_SECRET_ACCESS_KEY = st.secrets["AWS_SECRET_ACCESS_KEY"]
 AWS_REGION = st.secrets["AWS_REGION"]
@@ -274,32 +355,40 @@ def mostrar_dashboard():
 
 # ====== 6. LOGIN Y REGISTRO ======
 def mostrar_login():
-    st.markdown("<h1 style='text-align: center;'>🏪 NEXUS POS</h1>", unsafe_allow_html=True)
-    st.markdown("<p style='text-align: center;'>Sistema para Bodegas del Perú</p>", unsafe_allow_html=True)
+    col1, col2, col3 = st.columns([1,2,1])
+    with col2:
+        st.markdown("""
+        <div style='text-align: center; margin-bottom: 30px;'>
+            <h1 style='font-size: 3.5rem; margin-bottom: 0px;'>🏪 NEXUS POS</h1>
+            <p style='color: #00f5ff; font-family: Roboto; font-size: 1.2rem;'>Sistema para Bodegas del Perú</p>
+            <p style='color: #888; font-size: 0.9rem;'>Tecnología Futurista para tu Negocio</p>
+        </div>
+        """, unsafe_allow_html=True)
 
-    tab1, tab2 = st.tabs(["Iniciar Sesión", "Registrarse 7 Días Gratis"])
+    tab1, tab2 = st.tabs(["🚀 INICIAR SESIÓN", "⚡ REGISTRARSE 7 DÍAS GRATIS"])
 
     with tab1:
-        dni = st.text_input("DNI", key="login_dni")
+        dni = st.text_input("DNI", placeholder="12345678", key="login_dni")
         password = st.text_input("Contraseña", type="password", key="login_pass")
-        if st.button("Ingresar", use_container_width=True):
+        if st.button("INGRESAR A NEXUS", use_container_width=True):
             user = login(dni, password)
             if user:
                 st.session_state.logged_in = True
                 st.session_state.user_data = user
                 st.rerun()
             else:
-                st.error("DNI o contraseña incorrectos")
+                st.error("❌ DNI o contraseña incorrectos")
 
     with tab2:
-        nombre = st.text_input("Nombre completo")
-        dni = st.text_input("DNI", key="reg_dni")
-        email = st.text_input("Email")
+        nombre = st.text_input("Nombre completo", placeholder="Juan Pérez")
+        dni = st.text_input("DNI", placeholder="12345678", key="reg_dni")
+        email = st.text_input("Email", placeholder="tu@email.com")
         password = st.text_input("Contraseña", type="password", key="reg_pass")
-        if st.button("Crear Cuenta Gratis", use_container_width=True):
+        if st.button("ACTIVAR 7 DÍAS GRATIS", use_container_width=True):
             if registrar_dueno(dni, nombre, email, password):
                 st.success("✅ Cuenta creada. 7 días gratis activados")
-                st.info("Ahora inicia sesión")
+                st.balloons()
+                st.info("Ahora inicia sesión arriba")
             else:
                 st.error("Error al registrar")
 
