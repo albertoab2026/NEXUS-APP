@@ -391,8 +391,8 @@ def mostrar_login():
 
 # ====== 7. MAIN APP ======
 if 'logged_in' not in st.session_state:
-    st.session_state.logged_inuser_data['nombre = False
-
+    st.session_state.logged_in = False
+    st.session_state.user_data = {}
 if not st.session_state.logged_in:
     mostrar_login()
 else:
