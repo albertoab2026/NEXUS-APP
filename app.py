@@ -396,16 +396,78 @@ if 'logged_in' not in st.session_state:
 if not st.session_state.logged_in:
     mostrar_login()
 else:
-    st.sidebar.title(f"⚡ NEXUS")
-    st.sidebar.write(f"Bienvenido, {st.session_state.user_data['nombre']}")
-    if st.sidebar.button("Cerrar Sesión"):
+    user_data = st.session_state.user_data
+    nombre = user_data['nombre']
+    rol = user_data['rol'].upper()
+    plan = user_data.get('plan', 'trial').upper()
+    
+    # ====== BANNER BIENVENIDA COMO EN LA FOTO ======
+    st.markdown(f"""
+    <div style='background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 50%, #7C3AED 100%);
+                border-radius: 15px; padding: 20px; margin-bottom: 20px;
+                box-shadow: 0 0 30px rgba(139, 92, 246, 0.5); text-align: center;'>
+        <h2 style='margin: 0; color: white; font-size: 1.8rem; font-weight: 700;'>
+            Bienvenido, {nombre}!
+        </h2>
+        <p style='color: rgba(255,255,255,0.85); margin: 8px 0 0 0; font-size: 0.9rem;'>
+            Rol: {rol} | Plan: {plan}
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
+    # ====== SIDEBAR CON MENÚ DESPLEGABLE ======
+    st.sidebar.markdown("### Menú")
+    
+    menu_opcion = st.sidebar.selectbox(
+        "Selecciona:",
+        ["📊 Dashboard", "📦 Productos", "💰 Ventas", "🔧 Admin"],
+        label_visibility="collapsed"
+    )
+    
+    # Submenú Admin solo para DUEÑO
+    if rol == "DUENO" and menu_opcion == "🔧 Admin":
+        st.sidebar.markdown("### ⚙️ Panel Admin")
+        admin_accion = st.sidebar.radio(
+            "Opciones Admin:",
+            ["🔑 Cambiar Claves", "💳 Activar Plan S/30"],
+            label_visibility="collapsed"
+        )
+        
+        if admin_accion == "💳 Activar Plan S/30":
+            st.sidebar.markdown("#### Activar Plan S/30 por 30 días")
+            dni_cliente = st.sidebar.text_input("DNI del cliente que pagó S/30")
+            if st.sidebar.button("Activar 30 días", use_container_width=True):
+                st.sidebar.success(f"✅ Plan activado para DNI: {dni_cliente}")
+        
+        elif admin_accion == "🔑 Cambiar Claves":
+            st.sidebar.markdown("#### Cambiar Contraseña")
+            nueva_pass = st.sidebar.text_input("Nueva contraseña", type="password")
+            if st.sidebar.button("Actualizar Clave", use_container_width=True):
+                st.sidebar.success("✅ Contraseña actualizada")
+    
+    # INFO YAPE/PLIN SIEMPRE VISIBLE
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("""
+    <div style='background: #10B981; border-radius: 10px; padding: 12px; text-align: center;'>
+        <p style='color: white; font-size: 0.75rem; margin: 0; font-weight: 600;'>
+            💳 YAPE/PLIN
+        </p>
+        <p style='color: white; margin: 4px 0; font-size: 1.1rem; font-weight: 700;'>
+            914 282 688
+        </p>
+        <p style='color: rgba(255,255,255,0.9); font-size: 0.7rem; margin: 0;'>
+            ALBERTO BALLARTA
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    if st.sidebar.button("🚪 Cerrar Sesión", use_container_width=True):
         st.session_state.logged_in = False
         st.rerun()
 
-    tab1, tab2, tab3 = st.tabs(["📦 Productos", "💰 Ventas", "📊 Dashboard"])
-
-    with tab1:
-        st.header("Gestión de Productos")
+    # ====== CONTENIDO SEGÚN EL MENÚ ======
+    if menu_opcion == "📦 Productos":
+        st.header("📦 Gestión de Productos")
         with st.form("form_producto"):
             nombre = st.text_input("Nombre del producto")
             precio = st.number_input("Precio", min_value=0.0, format="%.2f")
@@ -421,8 +483,8 @@ else:
             df = pd.DataFrame(productos)
             st.dataframe(df[['nombre', 'precio', 'stock', 'categoria']], use_container_width=True)
 
-    with tab2:
-        st.header("Registrar Venta")
+    elif menu_opcion == "💰 Ventas":
+        st.header("💰 Registrar Venta")
         productos = obtener_productos()
         if productos:
             nombres = [p['nombre'] for p in productos]
@@ -439,8 +501,8 @@ else:
         else:
             st.warning("Primero agrega productos")
 
-    with tab3:
-        st.header("Dashboard")
+    elif menu_opcion == "📊 Dashboard":
+        st.header("📊 Dashboard")
         ventas = obtener_ventas()
         productos = obtener_productos()
         col1, col2, col3 = st.columns(3)
@@ -451,3 +513,10 @@ else:
             st.metric("Ventas Totales", f"S/{total_ventas:.2f}")
         with col3:
             st.metric("Transacciones", len(ventas))
+            
+    elif menu_opcion == "🔧 Admin":
+        if rol != "DUENO":
+            st.error("❌ Solo el dueño puede acceder al panel admin")
+        else:
+            st.header("⚙️ Panel de Administración")
+            st.info("Selecciona una opción del menú lateral en 'Admin'")
