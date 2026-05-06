@@ -369,8 +369,26 @@ def mostrar_login():
                 st.success("✅ Cuenta creada. 7 días gratis activados")
                 st.balloons()
                 st.info("Ahora inicia sesión en la pestaña de arriba")
-            else:
-                st.error("Error al registrar")  
+                else:
+                    st.error("Error al registrar")
+    
+    # ====== INFO DE PAGO YAPE/PLIN - PÉGALO AQUÍ 👇 ======
+    st.markdown("---")
+    st.markdown("""
+    <div style='background: #1E293B; border: 2px solid #10B981; border-radius: 12px; 
+                padding: 16px; text-align: center; margin-top: 20px;'>
+        <p style='color: #10B981; font-size: 0.9rem; margin: 0; font-weight: 600;'>
+            💳 PAGOS YAPE/PLIN
+        </p>
+        <h3 style='color: white; margin: 8px 0; font-size: 1.4rem; letter-spacing: 1px;'>
+            914 282 688
+        </h3>
+        <p style='color: #94A3B8; font-size: 0.85rem; margin: 0;'>
+            ALBERTO BALLARTA
+        </p>
+    </div>
+    """, unsafe_allow_html=True)
+
 # ====== 7. MAIN APP ======
 if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
