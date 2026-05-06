@@ -21,17 +21,18 @@ def init_dynamodb():
     return dynamodb
 
 dynamodb = init_dynamodb()
-tabla_usuarios = dynamodb.Table('Usuarios')
-tabla_productos = dynamodb.Table('Productos')
-tabla_ventas = dynamodb.Table('Ventas')
+tabla_usuarios = dynamodb.Table('NEXUS_DUENOS')        # Login usa esta tabla
+tabla_productos = dynamodb.Table('NEXUS_PRODUCTOS')    
+tabla_ventas = dynamodb.Table('NEXUS_VENTAS')          
 
 # ====== FUNCIONES ======
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
-def verificar_usuario(usuario, password):
+def verificar_usuario(id_dueno, password):
     try:
-        response = tabla_usuarios.get_item(Key={'usuario': usuario})
+        # Tu clave de partición es 'id_del_dueno'
+        response = tabla_usuarios.get_item(Key={'id_del_dueno': id_dueno})
         if 'Item' in response:
             if response['Item']['password'] == hash_password(password):
                 return response['Item']
@@ -89,18 +90,18 @@ def mostrar_login():
     st.title("🏪 Login Mi Bodega")
     
     with st.form("login_form"):
-        usuario = st.text_input("Usuario")
+        id_dueno = st.text_input("ID Dueño")  # Usa el id_del_dueno de tu tabla
         password = st.text_input("Contraseña", type="password")
         submit = st.form_submit_button("Entrar")
         
         if submit:
-            user_data = verificar_usuario(usuario, password)
+            user_data = verificar_usuario(id_dueno, password)
             if user_data:
                 st.session_state.logged_in = True
                 st.session_state.user_data = user_data
                 st.rerun()
             else:
-                st.error("Usuario o contraseña incorrectos")
+                st.error("ID o contraseña incorrectos")
 
 # ====== 7. MAIN APP ======
 if 'logged_in' not in st.session_state:
@@ -110,7 +111,7 @@ if 'logged_in' not in st.session_state:
 if not st.session_state.logged_in:
     mostrar_login()
 else:
-    # === DEFINIR VARIABLES UNA SOLA VEZ ===
+    # === DEFINIR VARIABLES ===
     user_data = st.session_state.user_data
     nombre = user_data.get('nombre_local', user_data.get('nombre', 'Bodega'))
     plan = user_data.get('plan', 'TRIAL').upper()
@@ -129,7 +130,7 @@ else:
     </div>
     """, unsafe_allow_html=True)
     
-    # === SIDEBAR CON MENÚ DESPLEGABLE ===
+    # === SIDEBAR CON MENÚ ===
     with st.sidebar:
         st.markdown("### 📋 Menú")
         
