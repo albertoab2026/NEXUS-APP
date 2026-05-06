@@ -8,10 +8,10 @@ from boto3.dynamodb.conditions import Key
 
 # ====== 1. CONFIGURACIÓN AWS ======
 st.set_page_config(page_title="NEXUS", page_icon="⚡", layout="wide")
-# ====== CSS NEXUS PRO - ESTILO CORPORATIVO ======
+# ====== CSS NEXUS PRO - ESTILO FUTURISTA ======
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
 
 .stApp {
     background: #1a1d29;
@@ -25,31 +25,16 @@ h1, h2, h3 {
     color: #ffffff !important;
 }
 
-/* Header Bienvenido degradado azul-morado */
-.main-header {
-    background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
-    border-radius: 12px;
-    padding: 25px;
-    margin-bottom: 25px;
-    box-shadow: 0 4px 15px rgba(79, 70, 229, 0.3);
-}
-
-/* Botones morados */
 .stButton > button {
-    background: #7C3AED;
+    background: linear-gradient(135deg, #7C3AED 0%, #6366F1 100%);
     color: white !important;
     border: none;
     border-radius: 8px;
     font-weight: 600;
     padding: 10px 20px;
-    transition: all 0.2s;
-}
-.stButton > button:hover {
-    background: #6D28D9;
-    transform: translateY(-1px);
+    width: 100%;
 }
 
-/* Inputs oscuros */
 .stTextInput > div > div > input, .stNumberInput > div > div > input {
     background-color: #252836 !important;
     color: #ffffff !important;
@@ -57,38 +42,21 @@ h1, h2, h3 {
     border-radius: 8px;
 }
 
-/* Selectbox oscuro */
-.stSelectbox > div > div {
-    background-color: #252836 !important;
-    border: 1px solid #3F4354 !important;
-    border-radius: 8px;
-    color: white !important;
-}
-
-/* Tabs */
 .stTabs [data-baseweb="tab"] {
-    background-color: #252836;
-    border-radius: 8px;
+    background-color: transparent;
     color: #9CA3AF;
     font-weight: 600;
 }
 .stTabs [aria-selected="true"] {
-    background: #7C3AED;
-    color: white !important;
+    color: #F59E0B !important;
+    border-bottom: 2px solid #F59E0B !important;
 }
 
-/* Metrics */
 div[data-testid="metric-container"] {
     background: #252836;
     border: 1px solid #3F4354;
     border-radius: 12px;
     padding: 20px;
-}
-
-/* Avisos */
-.stAlert {
-    border-radius: 8px;
-    border: none;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -358,22 +326,91 @@ def mostrar_dashboard():
 
 # ====== 6. LOGIN Y REGISTRO ======
 def mostrar_login():
-    col1, col2, col3 = st.columns([1,2,1])
+    st.markdown("""
+    <div style='text-align: center; margin-bottom: 40px;'>
+        <div style='background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%); 
+                    border-radius: 15px; padding: 25px; margin-bottom: 30px;'>
+            <h1 style='font-size: 2.5rem; margin: 0; color: white;'>⚡ NEXUS</h1>
+            <p style='color: rgba(255,255,255,0.9); font-size: 1rem; margin-top: 8px;'>
+                El Sistema que Controla tu Negocio
+            </p>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("<h2 style='text-align: center; color: #60A5FA; margin-bottom: 30px; font-size: 1.5rem;'>¿Cansado de perder plata en tu negocio?</h2>", unsafe_allow_html=True)
+
+    col1, col2, col3, col4 = st.columns(4)
+    
+    with col1:
+        st.markdown("""
+        <div style='background: #252836; border: 1px solid #3F4354; border-radius: 12px; 
+                    padding: 20px; text-align: center; height: 180px;'>
+            <div style='font-size: 2.2rem; margin-bottom: 10px;'>📦</div>
+            <h3 style='font-size: 1rem; margin: 10px 0;'>Control Total</h3>
+            <p style='color: #9CA3AF; font-size: 0.8rem;'>
+                Sabes qué vendes y qué te falta. Adiós cuaderno.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+    
     with col2:
         st.markdown("""
-        <div style='text-align: center; margin-bottom: 30px;'>
-            <h1 style='font-size: 3.5rem; margin-bottom: 0px;'>🏪 NEXUS POS</h1>
-            <p style='color: #00f5ff; font-family: Roboto; font-size: 1.2rem;'>Sistema para Bodegas del Perú</p>
-            <p style='color: #888; font-size: 0.9rem;'>Tecnología Futurista para tu Negocio</p>
+        <div style='background: #252836; border: 1px solid #3F4354; border-radius: 12px; 
+                    padding: 20px; text-align: center; height: 180px;'>
+            <div style='font-size: 2.2rem; margin-bottom: 10px;'>💰</div>
+            <h3 style='font-size: 1rem; margin: 10px 0;'>Más Ganancia</h3>
+            <p style='color: #9CA3AF; font-size: 0.8rem;'>
+                Ve qué productos más plata te dejan. Gana más.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col3:
+        st.markdown("""
+        <div style='background: #252836; border: 1px solid #3F4354; border-radius: 12px; 
+                    padding: 20px; text-align: center; height: 180px;'>
+            <div style='font-size: 2.2rem; margin-bottom: 10px;'>📱</div>
+            <h3 style='font-size: 1rem; margin: 10px 0;'>Desde tu Celular</h3>
+            <p style='color: #9CA3AF; font-size: 0.8rem;'>
+                Sin computadoras. Gestiona desde donde estés.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+    
+    with col4:
+        st.markdown("""
+        <div style='background: #252836; border: 1px solid #3F4354; border-radius: 12px; 
+                    padding: 20px; text-align: center; height: 180px;'>
+            <div style='font-size: 2.2rem; margin-bottom: 10px;'>⚡</div>
+            <h3 style='font-size: 1rem; margin: 10px 0;'>Súper Barato</h3>
+            <p style='color: #9CA3AF; font-size: 0.8rem;'>
+                S/30 al mes. Otros cobran S/250.
+            </p>
         </div>
         """, unsafe_allow_html=True)
 
-    tab1, tab2 = st.tabs(["🚀 INICIAR SESIÓN", "⚡ REGISTRARSE 7 DÍAS GRATIS"])
+    st.markdown("<br>", unsafe_allow_html=True)
+    
+    col1, col2, col3 = st.columns([1,2,1])
+    with col2:
+        st.markdown("""
+        <div style='background: #10B981; border-radius: 12px; padding: 20px; 
+                    text-align: center; margin: 20px 0;'>
+            <h3 style='margin: 0; color: white; font-size: 1.1rem;'>🎁 Prueba 7 DÍAS GRATIS</h3>
+            <p style='color: rgba(255,255,255,0.9); margin: 8px 0 0 0; font-size: 0.85rem;'>
+                Sin tarjeta. Sin compromiso. Cancela cuando quieras.
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
+
+    tab1, tab2 = st.tabs(["🔑 Iniciar Sesión", "🚀 Prueba 7 días GRATIS"])
 
     with tab1:
-        dni = st.text_input("DNI", placeholder="12345678", key="login_dni")
-        password = st.text_input("Contraseña", type="password", key="login_pass")
-        if st.button("INGRESAR A NEXUS", use_container_width=True):
+        st.markdown("<h3 style='text-align: center;'>Iniciar Sesión</h3>", unsafe_allow_html=True)
+        dni = st.text_input("Usuario o DNI", placeholder="12345678")
+        password = st.text_input("Contraseña", type="password")
+        if st.button("Iniciar Sesión", use_container_width=True):
             user = login(dni, password)
             if user:
                 st.session_state.logged_in = True
@@ -383,15 +420,16 @@ def mostrar_login():
                 st.error("❌ DNI o contraseña incorrectos")
 
     with tab2:
-        nombre = st.text_input("Nombre completo", placeholder="Juan Pérez")
+        st.markdown("<h3 style='text-align: center;'>Crea tu cuenta GRATIS</h3>", unsafe_allow_html=True)
+        nombre = st.text_input("Nombre completo", placeholder="Juan Pérez", key="reg_nom")
         dni = st.text_input("DNI", placeholder="12345678", key="reg_dni")
-        email = st.text_input("Email", placeholder="tu@email.com")
+        email = st.text_input("Email", placeholder="tu@email.com", key="reg_email")
         password = st.text_input("Contraseña", type="password", key="reg_pass")
         if st.button("ACTIVAR 7 DÍAS GRATIS", use_container_width=True):
             if registrar_dueno(dni, nombre, email, password):
                 st.success("✅ Cuenta creada. 7 días gratis activados")
                 st.balloons()
-                st.info("Ahora inicia sesión arriba")
+                st.info("Ahora inicia sesión en la pestaña de arriba")
             else:
                 st.error("Error al registrar")
 
