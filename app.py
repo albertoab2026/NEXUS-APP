@@ -22,9 +22,9 @@ st.markdown("""
 }
 
 h1, h2, h3 {
-    font-family: 'Inter', sans-serif !important;
-    font-weight: 700 !important;
-    color: #ffffff !important;
+    font-family: 'Inter', sans-serif!important;
+    font-weight: 700!important;
+    color: #ffffff!important;
 }
 
 .main-header {
@@ -37,11 +37,11 @@ h1, h2, h3 {
 }
 
 @keyframes pulseGlow {
-    0%, 100% { 
+    0%, 100% {
         box-shadow: 0 0 40px rgba(139, 92, 246, 0.6), 0 0 80px rgba(99, 102, 241, 0.3);
         transform: scale(1);
     }
-    50% { 
+    50% {
         box-shadow: 0 0 60px rgba(139, 92, 246, 0.9), 0 0 100px rgba(99, 102, 241, 0.5);
         transform: scale(1.01);
     }
@@ -49,7 +49,7 @@ h1, h2, h3 {
 
 .stButton > button {
     background: linear-gradient(135deg, #7C3AED 0%, #6366F1 100%);
-    color: white !important;
+    color: white!important;
     border: none;
     border-radius: 8px;
     font-weight: 600;
@@ -63,19 +63,19 @@ h1, h2, h3 {
     box-shadow: 0 0 35px rgba(124, 58, 237, 0.8);
 }
 
-.stTextInput > div > div > input, .stNumberInput > div > div > input {
-    background-color: rgba(37, 40, 54, 0.8) !important;
-    color: #ffffff !important;
-    border: 1px solid #4F46E5 !important;
+.stTextInput > div > div > input,.stNumberInput > div > div > input {
+    background-color: rgba(37, 40, 54, 0.8)!important;
+    color: #ffffff!important;
+    border: 1px solid #4F46E5!important;
     border-radius: 8px;
     box-shadow: 0 0 10px rgba(79, 70, 229, 0.2);
 }
 
 .stSelectbox > div > div {
-    background-color: rgba(37, 40, 54, 0.8) !important;
-    border: 1px solid #4F46E5 !important;
+    background-color: rgba(37, 40, 54, 0.8)!important;
+    border: 1px solid #4F46E5!important;
     border-radius: 8px;
-    color: white !important;
+    color: white!important;
     box-shadow: 0 0 10px rgba(79, 70, 229, 0.2);
 }
 
@@ -85,8 +85,8 @@ h1, h2, h3 {
     font-weight: 600;
 }
 .stTabs [aria-selected="true"] {
-    color: #F59E0B !important;
-    border-bottom: 2px solid #F59E0B !important;
+    color: #F59E0B!important;
+    border-bottom: 2px solid #F59E0B!important;
     text-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
 }
 
@@ -99,6 +99,7 @@ div[data-testid="metric-container"] {
 }
 </style>
 """, unsafe_allow_html=True)
+
 AWS_ACCESS_KEY_ID = st.secrets["AWS_ACCESS_KEY_ID"]
 AWS_SECRET_ACCESS_KEY = st.secrets["AWS_SECRET_ACCESS_KEY"]
 AWS_REGION = st.secrets["AWS_REGION"]
@@ -115,23 +116,20 @@ def init_dynamodb():
     return dynamodb
 
 dynamodb = init_dynamodb()
-tabla_usuarios = dynamodb.Table('NEXUS_USUARIOS') # Tu tabla real
+tabla_usuarios = dynamodb.Table('NEXUS_USUARIOS')
 tabla_productos = dynamodb.Table('NEXUS_PRODUCTOS')
 tabla_ventas = dynamodb.Table('NEXUS_VENTAS')
-tabla_trial = dynamodb.Table('NEXUS_TRIAL_USADOS') # Para validar trial
+tabla_trial = dynamodb.Table('NEXUS_TRIAL_USADOS')
 
 # ====== 3. FUNCIONES DE USUARIOS ======
 def hash_password(password):
     return hashlib.sha256(password.encode()).hexdigest()
 
 def verificar_trial_usado(dni, email):
-    """Revisa si ya usó trial con DNI o EMAIL"""
     try:
-        # Revisa DNI
         resp_dni = tabla_trial.get_item(Key={'tipo_id': f'DNI-{dni}'})
         if 'Item' in resp_dni:
             return True
-        # Revisa EMAIL 
         resp_email = tabla_trial.get_item(Key={'tipo_id': f'EMAIL-{email}'})
         if 'Item' in resp_email:
             return True
@@ -141,27 +139,24 @@ def verificar_trial_usado(dni, email):
 
 def registrar_dueno(dni, nombre, email, password):
     try:
-        # 1. Validar si ya usó trial
         if verificar_trial_usado(dni, email):
             st.error("❌ Este DNI o Email ya usó los 7 días gratis")
             return False
-        
-        # 2. Generar IDs como tu estructura
+
         timestamp = str(int(datetime.now().timestamp()))[-5:]
         usuario_id = f"DUENO{timestamp}"
         cliente_id = f"DUENO-{timestamp[-3:]}"
-        
-        # 3. Crear usuario en NEXUS_USUARIOS
+
         tabla_usuarios.put_item(
             Item={
-                'usuario_id': usuario_id, # Clave primaria
+                'usuario_id': usuario_id,
                 'cliente_id': cliente_id,
                 'id_del_dueno': cliente_id,
                 'id_del_empleado': f"EMP-{timestamp[-3:]}",
                 'dni': dni,
                 'nombre': nombre,
                 'email': email,
-                'password_hash': hash_password(password), # Tu campo real
+                'password_hash': hash_password(password),
                 'rol': 'dueno',
                 'plan': 'trial',
                 'activo': True,
@@ -171,11 +166,10 @@ def registrar_dueno(dni, nombre, email, password):
                 'ventas_acumuladas': 0
             }
         )
-        
-        # 4. Marcar DNI y EMAIL como usados en NEXUS_TRIAL_USADOS
+
         tabla_trial.put_item(Item={'tipo_id': f'DNI-{dni}', 'fecha': datetime.now().isoformat()})
         tabla_trial.put_item(Item={'tipo_id': f'EMAIL-{email}', 'fecha': datetime.now().isoformat()})
-        
+
         return True
     except Exception as e:
         st.error(f"Error: {e}")
@@ -183,15 +177,12 @@ def registrar_dueno(dni, nombre, email, password):
 
 def login(usuario_o_dni, password):
     try:
-        # Busca por DNI o usuario_id
         response = tabla_usuarios.scan(
             FilterExpression=Key('dni').eq(usuario_o_dni) | Key('usuario_id').eq(usuario_o_dni)
         )
         if response['Items']:
             user = response['Items'][0]
-            # Valida con password_hash
             if user.get('password_hash') == hash_password(password):
-                # Valida que esté activo
                 if user.get('activo', False):
                     return user
                 else:
@@ -201,7 +192,6 @@ def login(usuario_o_dni, password):
     except Exception as e:
         st.error(f"Error login: {e}")
         return None
-
 # ====== 4. FUNCIONES DE PRODUCTOS ======
 def obtener_productos():
     try:
@@ -242,7 +232,6 @@ def registrar_venta(producto_id, cantidad, precio_unitario):
                 'fecha': datetime.now().isoformat()
             }
         )
-        # Actualizar stock
         response = tabla_productos.get_item(Key={'producto_id': producto_id})
         if 'Item' in response:
             stock_actual = response['Item']['stock']
@@ -262,7 +251,7 @@ def obtener_ventas():
     except:
         return []
 
-# ====== 6. UI LOGIN ======
+# ====== 6. UI LOGIN - TARJETAS ARREGLADAS ======
 def mostrar_login():
     st.markdown("""
     <div style='text-align: center; margin-bottom: 40px;'>
@@ -277,58 +266,104 @@ def mostrar_login():
 
     st.markdown("<h2 style='text-align: center; color: #60A5FA; margin-bottom: 30px; font-size: 1.5rem;'>¿Cansado de perder plata en tu negocio?</h2>", unsafe_allow_html=True)
 
+    col1, col2, col3, col4 = st.columns(4)
+
     with col1:
-        st.markdown(card_style + """
+        st.markdown("""
+        <div style='background: rgba(37, 40, 54, 0.9); border: 1px solid #4F46E5; border-radius: 12px;
+                    padding: 10px 8px; text-align: center; min-height: 250px; width: 100%;
+                    display: flex; flex-direction: column; justify-content: center; align-items: center;
+                    transition: all 0.3s ease; overflow: hidden; box-sizing: border-box;
+                    box-shadow: 0 0 20px rgba(124, 58, 237, 0.2);'
+             onmouseover="this.style.transform='translateY(-8px) scale(1.02)';
+                          this.style.boxShadow='0 12px 30px rgba(124, 58, 237, 0.6)';
+                          this.style.border='1px solid #7C3AED';"
+             onmouseout="this.style.transform='translateY(0) scale(1)';
+                         this.style.boxShadow='0 0 20px rgba(124, 58, 237, 0.2)';
+                         this.style.border='1px solid #4F46E5';">
             <div style='font-size: 1.6rem; margin-bottom: 4px;'>📦</div>
-            <h3 style='font-size: 0.8rem; margin: 4px 0; line-height: 1.1; word-wrap: break-word;'>Control Total</h3>
-            <p style='color: #9CA3AF; font-size: 0.6rem; line-height: 1.2; margin: 0; word-wrap: break-word;'>
+            <h3 style='font-size: 0.8rem; margin: 4px 0; line-height: 1.1;'>Control Total</h3>
+            <p style='color: #9CA3AF; font-size: 0.6rem; line-height: 1.2; margin: 0;'>
                 Qué vendes. Adiós cuaderno.
             </p>
         </div>
         """, unsafe_allow_html=True)
-    
+
     with col2:
-        st.markdown(card_style + """
+        st.markdown("""
+        <div style='background: rgba(37, 40, 54, 0.9); border: 1px solid #4F46E5; border-radius: 12px;
+                    padding: 10px 8px; text-align: center; min-height: 250px; width: 100%;
+                    display: flex; flex-direction: column; justify-content: center; align-items: center;
+                    transition: all 0.3s ease; overflow: hidden; box-sizing: border-box;
+                    box-shadow: 0 0 20px rgba(124, 58, 237, 0.2);'
+             onmouseover="this.style.transform='translateY(-8px) scale(1.02)';
+                          this.style.boxShadow='0 12px 30px rgba(124, 58, 237, 0.6)';
+                          this.style.border='1px solid #7C3AED';"
+             onmouseout="this.style.transform='translateY(0) scale(1)';
+                         this.style.boxShadow='0 0 20px rgba(124, 58, 237, 0.2)';
+                         this.style.border='1px solid #4F46E5';">
             <div style='font-size: 1.6rem; margin-bottom: 4px;'>💰</div>
-            <h3 style='font-size: 0.8rem; margin: 4px 0; line-height: 1.1; word-wrap: break-word;'>Más Ganancia</h3>
-            <p style='color: #9CA3AF; font-size: 0.6rem; line-height: 1.2; margin: 0; word-wrap: break-word;'>
+            <h3 style='font-size: 0.8rem; margin: 4px 0; line-height: 1.1;'>Más Ganancia</h3>
+            <p style='color: #9CA3AF; font-size: 0.6rem; line-height: 1.2; margin: 0;'>
                 Ve qué da más plata.
             </p>
         </div>
         """, unsafe_allow_html=True)
-    
+
     with col3:
-        st.markdown(card_style + """
+        st.markdown("""
+        <div style='background: rgba(37, 40, 54, 0.9); border: 1px solid #4F46E5; border-radius: 12px;
+                    padding: 10px 8px; text-align: center; min-height: 250px; width: 100%;
+                    display: flex; flex-direction: column; justify-content: center; align-items: center;
+                    transition: all 0.3s ease; overflow: hidden; box-sizing: border-box;
+                    box-shadow: 0 0 20px rgba(124, 58, 237, 0.2);'
+             onmouseover="this.style.transform='translateY(-8px) scale(1.02)';
+                          this.style.boxShadow='0 12px 30px rgba(124, 58, 237, 0.6)';
+                          this.style.border='1px solid #7C3AED';"
+             onmouseout="this.style.transform='translateY(0) scale(1)';
+                         this.style.boxShadow='0 0 20px rgba(124, 58, 237, 0.2)';
+                         this.style.border='1px solid #4F46E5';">
             <div style='font-size: 1.6rem; margin-bottom: 4px;'>📱</div>
-            <h3 style='font-size: 0.8rem; margin: 4px 0; line-height: 1.1; word-wrap: break-word;'>Desde tu Celular</h3>
-            <p style='color: #9CA3AF; font-size: 0.6rem; line-height: 1.2; margin: 0; word-wrap: break-word;'>
+            <h3 style='font-size: 0.8rem; margin: 4px 0; line-height: 1.1;'>Desde tu Celular</h3>
+            <p style='color: #9CA3AF; font-size: 0.6rem; line-height: 1.2; margin: 0;'>
                 Sin PC. Donde estés.
             </p>
         </div>
         """, unsafe_allow_html=True)
-    
+
     with col4:
-        st.markdown(card_style + """
+        st.markdown("""
+        <div style='background: rgba(37, 40, 54, 0.9); border: 1px solid #4F46E5; border-radius: 12px;
+                    padding: 10px 8px; text-align: center; min-height: 250px; width: 100%;
+                    display: flex; flex-direction: column; justify-content: center; align-items: center;
+                    transition: all 0.3s ease; overflow: hidden; box-sizing: border-box;
+                    box-shadow: 0 0 20px rgba(124, 58, 237, 0.2);'
+             onmouseover="this.style.transform='translateY(-8px) scale(1.02)';
+                          this.style.boxShadow='0 12px 30px rgba(124, 58, 237, 0.6)';
+                          this.style.border='1px solid #7C3AED';"
+             onmouseout="this.style.transform='translateY(0) scale(1)';
+                         this.style.boxShadow='0 0 20px rgba(124, 58, 237, 0.2)';
+                         this.style.border='1px solid #4F46E5';">
             <div style='font-size: 1.6rem; margin-bottom: 4px;'>⚡</div>
-            <h3 style='font-size: 0.8rem; margin: 4px 0; line-height: 1.1; word-wrap: break-word;'>Súper Barato</h3>
-            <p style='color: #9CA3AF; font-size: 0.6rem; line-height: 1.2; margin: 0; word-wrap: break-word;'>
+            <h3 style='font-size: 0.8rem; margin: 4px 0; line-height: 1.1;'>Súper Barato</h3>
+            <p style='color: #9CA3AF; font-size: 0.6rem; line-height: 1.2; margin: 0;'>
                 S/30 mes. Otros S/250.
             </p>
         </div>
         """, unsafe_allow_html=True)
 
     st.markdown("<br>", unsafe_allow_html=True)
-    
+
     col1, col2, col3 = st.columns([1,2,1])
     with col2:
         st.markdown("""
-        <div style='background: #10B981; border-radius: 12px; padding: 20px; 
+        <div style='background: #10B981; border-radius: 12px; padding: 20px;
                     text-align: center; margin: 20px 0; cursor: pointer;
                     transition: all 0.3s ease;
                     box-shadow: 0 0 20px rgba(16, 185, 129, 0.4);'
-             onmouseover="this.style.transform='scale(1.03)'; 
+             onmouseover="this.style.transform='scale(1.03)';
                           this.style.boxShadow='0 0 35px rgba(16, 185, 129, 0.8)';"
-             onmouseout="this.style.transform='scale(1)'; 
+             onmouseout="this.style.transform='scale(1)';
                          this.style.boxShadow='0 0 20px rgba(16, 185, 129, 0.4)';">
             <h3 style='margin: 0; color: white; font-size: 1.1rem;'>🎁 Prueba 7 DÍAS GRATIS</h3>
             <p style='color: rgba(255,255,255,0.9); margin: 8px 0 0 0; font-size: 0.85rem;'>
@@ -343,7 +378,7 @@ def mostrar_login():
         st.markdown("<h3 style='text-align: center;'>Iniciar Sesión</h3>", unsafe_allow_html=True)
         dni = st.text_input("Usuario o DNI", placeholder="12345678")
         password = st.text_input("Contraseña", type="password")
-        if st.button("Iniciar Sesión", use_container_width=True):  # <- AQUÍ ESTABA ROTO
+        if st.button("Iniciar Sesión", use_container_width=True):
             user = login(dni, password)
             if user:
                 st.session_state.logged_in = True
@@ -364,8 +399,7 @@ def mostrar_login():
                 st.balloons()
                 st.info("Ahora inicia sesión en la pestaña de arriba")
             else:
-                st.error("Error al registrar")
-
+                st.error("Error al registrar")  
 # ====== 7. MAIN APP ======
 if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
@@ -378,9 +412,9 @@ else:
     if st.sidebar.button("Cerrar Sesión"):
         st.session_state.logged_in = False
         st.rerun()
-    
+
     tab1, tab2, tab3 = st.tabs(["📦 Productos", "💰 Ventas", "📊 Dashboard"])
-    
+
     with tab1:
         st.header("Gestión de Productos")
         with st.form("form_producto"):
@@ -392,12 +426,12 @@ else:
                 if agregar_producto(nombre, precio, stock, categoria):
                     st.success("Producto agregado")
                     st.rerun()
-        
+
         productos = obtener_productos()
         if productos:
             df = pd.DataFrame(productos)
             st.dataframe(df[['nombre', 'precio', 'stock', 'categoria']], use_container_width=True)
-    
+
     with tab2:
         st.header("Registrar Venta")
         productos = obtener_productos()
@@ -415,7 +449,7 @@ else:
                         st.rerun()
         else:
             st.warning("Primero agrega productos")
-    
+
     with tab3:
         st.header("Dashboard")
         ventas = obtener_ventas()
