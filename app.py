@@ -364,13 +364,13 @@ def mostrar_login():
         dni = st.text_input("DNI", placeholder="12345678", key="reg_dni")
         email = st.text_input("Email", placeholder="tu@email.com", key="reg_email")
         password = st.text_input("Contraseña", type="password", key="reg_pass")
-        if st.button("ACTIVAR 7 DÍAS GRATIS", use_container_width=True):
+                if st.button("ACTIVAR 7 DÍAS GRATIS", use_container_width=True):
             if registrar_dueno(dni, nombre, email, password):
                 st.success("✅ Cuenta creada. 7 días gratis activados")
                 st.balloons()
                 st.info("Ahora inicia sesión en la pestaña de arriba")
-                else:
-                    st.error("Error al registrar")
+            else:
+                st.error("Error al registrar")
     
     # ====== INFO DE PAGO YAPE/PLIN - PÉGALO AQUÍ 👇 ======
     st.markdown("---")
