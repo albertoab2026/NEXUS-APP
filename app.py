@@ -359,12 +359,12 @@ def mostrar_login():
                 st.error("❌ DNI o contraseña incorrectos")
 
     with tab2:
-        st.markdown("<h3 style='text-align: center;'>Crea tu cuenta GRATIS</h3>", unsafe_allow_html=True)
-        nombre = st.text_input("Nombre completo", placeholder="Juan Pérez", key="reg_nom")
-        dni = st.text_input("DNI", placeholder="12345678", key="reg_dni")
-        email = st.text_input("Email", placeholder="tu@email.com", key="reg_email")
+        dni = st.text_input("DNI", key="reg_dni")
+        nombre = st.text_input("Nombre de tu Bodega", key="reg_nombre")
+        email = st.text_input("Email", key="reg_email")
         password = st.text_input("Contraseña", type="password", key="reg_pass")
-                if st.button("ACTIVAR 7 DÍAS GRATIS", use_container_width=True):
+        
+        if st.button("ACTIVAR 7 DÍAS GRATIS", use_container_width=True):
             if registrar_dueno(dni, nombre, email, password):
                 st.success("✅ Cuenta creada. 7 días gratis activados")
                 st.balloons()
