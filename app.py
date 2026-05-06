@@ -3,7 +3,8 @@ import boto3
 import hashlib
 import uuid
 import pytz
-from datetime import datetime
+from datetime import datetime, timedelta # AGREGUÉ timedelta
+from boto3.dynamodb.conditions import Attr, Key # AGREGUÉ ESTA LÍNEA
 
 # ====== CONFIGURACIÓN INICIAL ======
 st.set_page_config(page_title="NEXUS", page_icon="⚡", layout="wide")
@@ -121,84 +122,43 @@ def login_usuario(usuario_id, password):
     password_hash = hash_password(password)
 
     try:
-        response = table.get_item(
-            Key={'usuario_id': usuario_id}
-        )
+        response = table.get_item(Key={'usuario_id': usuario_id})
         if 'Item' not in response:
             return False, "ID de usuario no existe"
 
         user = response['Item']
-        if user['password_hash'] == password_hash and user.get('activo', True):
-            return True, user
-        else:
+        if user['password_hash']!= password_hash:
             return False, "Contraseña incorrecta"
-    except Exception as e:
-        return False, f"Error: {e}"
-# ====== 3.5. FUNCIONES DE REGISTRO ======
-def generar_id_dueno():
-    table = get_dynamodb_table('NEXUS_CONTADORES')
-    response = table.update_item(
-        Key={'tipo': 'dueno'},
-        UpdateExpression='ADD contador :inc',
-        ExpressionAttributeValues={':inc': 1},
-        ReturnValues='UPDATED_NEW'
-    )
-    nuevo_contador = int(response['Attributes']['contador'])
-    return f"DUENO-{nuevo_contador:03d}"
 
-def generar_id_empleado():
-    table = get_dynamodb_table('NEXUS_CONTADORES')
-    response = table.update_item(
-        Key={'tipo': 'empleado'},
-        UpdateExpression='ADD contador :inc',
-        ExpressionAttributeValues={':inc': 1},
-        ReturnValues='UPDATED_NEW'
-    )
-    nuevo_contador = int(response['Attributes']['contador'])
-    return f"EMP-{nuevo_contador:03d}"
+        # VERIFICAR TRIAL VENCIDO
+        if user.get('plan') == 'trial':
+            fecha_fin = datetime.fromisoformat(user['fecha_trial_fin'])
+            hoy = datetime.now(pytz.timezone('America/Lima'))
+            if hoy > fecha_fin:
+                codigo = f"ACT-{user['dni']}"
+                return False, f"TRIAL_VENCIDO|{codigo}"
 
-def registrar_local(nombre_local, email, password):
-    table_usuarios = get_dynamodb_table('NEXUS_USUARIOS')
-    table_duenos = get_dynamodb_table('NEXUS_DUENOS')
-    
-    id_dueno = generar_id_dueno()      # DUENO-001
-    id_empleado = generar_id_empleado() # EMP-001
-    usuario_id = f"DUENO{nombre_local[:3].upper()}"
-    
-    table_usuarios.put_item(Item={
-        'usuario_id': usuario_id,
-        'nombre': nombre_local,
-        'rol': 'dueño',
-        'email': email,
-        'password_hash': hash_password(password),
-        'id_del_dueno': id_dueno,
-        'id_del_empleado': id_empleado,
-        'activo': True,
-        'fecha_creacion': datetime.now(pytz.timezone('America/Lima')).isoformat()
-    })
-    
-    table_duenos.put_item(Item={
-        'id_del_dueno': id_dueno,
-        'nombre_local': nombre_local
-    })
-    
-    return usuario_id, id_dueno, id_empleado        
-def cambiar_clave_usuario(usuario_id, nueva_clave):
-    table = get_dynamodb_table('NEXUS_USUARIOS')
-    hash_nuevo = hash_password(nueva_clave)
-    try:
-        table.update_item(
-            Key={'usuario_id': usuario_id},
-            UpdateExpression='SET password_hash = :h',
-            ExpressionAttributeValues={':h': hash_nuevo}
-        )
-        return True, "Clave actualizada"
+        # VERIFICAR PREMIUM VENCIDO
+        if user.get('plan') == 'premium' and 'fecha_vencimiento' in user:
+            fecha_venc = datetime.fromisoformat(user['fecha_vencimiento'])
+            hoy = datetime.now(pytz.timezone('America/Lima'))
+            if hoy > fecha_venc:
+                table.update_item(
+                    Key={'usuario_id': usuario_id},
+                    UpdateExpression='SET plan = :p',
+                    ExpressionAttributeValues={':p': 'trial'}
+                )
+                codigo = f"ACT-{user['dni']}"
+                return False, f"TRIAL_VENCIDO|{codigo}"
+
+        if not user.get('activo', True):
+            return False, "Usuario desactivado"
+
+        return True, user
     except Exception as e:
         return False, f"Error: {e}"
 
-def mostrar_panel_admin():
-    st.markdown('<h3 style="color: white;">🔧 Panel Admin - Cambiar Claves</h3>', unsafe_allow_html=True)
-# ====== 3.5. FUNCIONES DE REGISTRO NEXUS 5.0 ======
+# ====== 3.5. FUNCIONES DE REGISTRO NEXUS 5.0 - ZERO SCAN ======
 def generar_id_dueno():
     table = get_dynamodb_table('NEXUS_CONTADORES')
     response = table.update_item(
@@ -222,13 +182,13 @@ def generar_id_empleado():
     return f"EMP-{nuevo_contador:03d}"
 
 def verificar_trial_usado(tipo, valor):
-    """Verifica si DNI, CEL o EMAIL ya usó trial"""
+    """ZERO SCAN: Verifica si DNI, CEL o EMAIL ya usó trial"""
     table = get_dynamodb_table('NEXUS_TRIAL_USADOS')
     response = table.get_item(Key={'tipo_id': f'{tipo}-{valor}'})
     return 'Item' in response
 
 def guardar_trial_usado(tipo, valor):
-    """Guarda DNI, CEL, EMAIL para bloquear futuros trials"""
+    """ZERO SCAN: Guarda DNI, CEL, EMAIL para bloquear futuros trials"""
     table = get_dynamodb_table('NEXUS_TRIAL_USADOS')
     table.put_item(Item={
         'tipo_id': f'{tipo}-{valor}',
@@ -239,7 +199,7 @@ def registrar_local(nombre_local, dni, celular, email, password):
     table_usuarios = get_dynamodb_table('NEXUS_USUARIOS')
     table_duenos = get_dynamodb_table('NEXUS_DUENOS')
 
-    # ANTI-VIVOS: Verificar triple
+    # ANTI-VIVOS ZERO SCAN: Verificar triple con get_item
     if verificar_trial_usado('DNI', dni):
         raise Exception("Este DNI ya usó su prueba gratis")
     if verificar_trial_usado('CEL', celular):
@@ -247,8 +207,8 @@ def registrar_local(nombre_local, dni, celular, email, password):
     if email and verificar_trial_usado('EMAIL', email):
         raise Exception("Este Email ya usó su prueba gratis")
 
-    id_dueno = generar_id_dueno() # DUENO-001
-    id_empleado = generar_id_empleado() # EMP-001 - LO MANTENGO
+    id_dueno = generar_id_dueno()
+    id_empleado = generar_id_empleado()
     usuario_id = f"DUENO{nombre_local[:3].upper()}{id_dueno[-3:]}"
     hoy = datetime.now(pytz.timezone('America/Lima'))
 
@@ -256,15 +216,16 @@ def registrar_local(nombre_local, dni, celular, email, password):
         'usuario_id': usuario_id,
         'nombre': nombre_local,
         'rol': 'dueño',
-        'dni': dni, # NUEVO
-        'celular': celular, # NUEVO
+        'dni': dni,
+        'celular': celular,
         'email': email or 'no-tiene',
         'password_hash': hash_password(password),
         'id_del_dueno': id_dueno,
-        'id_del_empleado': id_empleado, # LO MANTENGO
-        'plan': 'trial', # NUEVO
-        'fecha_registro': hoy.isoformat(), # CAMBIÉ NOMBRE
-        'fecha_trial_fin': (hoy + timedelta(days=7)).isoformat(), # NUEVO
+        'id_del_empleado': id_empleado,
+        'cliente_id': id_dueno, # FIX: Para tus tablas PRODUCTOS/VENTAS
+        'plan': 'trial',
+        'fecha_registro': hoy.isoformat(),
+        'fecha_trial_fin': (hoy + timedelta(days=7)).isoformat(),
         'activo': True
     })
 
@@ -273,12 +234,12 @@ def registrar_local(nombre_local, dni, celular, email, password):
         'nombre_local': nombre_local
     })
 
-    # Bloquear futuros trials
+    # Bloquear futuros trials - ZERO SCAN
     guardar_trial_usado('DNI', dni)
     guardar_trial_usado('CEL', celular)
     if email: guardar_trial_usado('EMAIL', email)
 
-    return usuario_id, id_dueno, id_empleado # REGRESO LOS 3 COMO ANTES
+    return usuario_id, id_dueno, id_empleado
 
 def cambiar_clave_usuario(usuario_id, nueva_clave):
     table = get_dynamodb_table('NEXUS_USUARIOS')
@@ -292,6 +253,31 @@ def cambiar_clave_usuario(usuario_id, nueva_clave):
         return True, "Clave actualizada"
     except Exception as e:
         return False, f"Error: {e}"
+
+def activar_plan_por_dni(dni):
+    """ZERO SCAN: Activa usando GSI dni-index"""
+    table = get_dynamodb_table('NEXUS_USUARIOS')
+    try:
+        response = table.query(
+            IndexName='dni-index',
+            KeyConditionExpression=Key('dni').eq(dni)
+        )
+        if not response['Items']:
+            return False, "DNI no encontrado"
+
+        user = response['Items'][0]
+        hoy = datetime.now(pytz.timezone('America/Lima'))
+        table.update_item(
+            Key={'usuario_id': user['usuario_id']},
+            UpdateExpression='SET plan = :p, fecha_vencimiento = :f',
+            ExpressionAttributeValues={
+                ':p': 'premium',
+                ':f': (hoy + timedelta(days=30)).isoformat()
+            }
+        )
+        return True, f"Activado: {user['nombre']} - {user['usuario_id']}"
+    except Exception as e:
+        return False, f"Error: {e}. ¿Creaste el GSI dni-index?"
 
 def mostrar_panel_admin():
     st.markdown('<h3 style="color: white;">🔧 Panel Admin</h3>', unsafe_allow_html=True)
@@ -307,61 +293,49 @@ def mostrar_panel_admin():
                 success, msg = cambiar_clave_usuario(usuario_id, nueva_clave)
                 if success:
                     st.success(f"Listo. Dile al cliente: usuario `{usuario_id}` clave `{nueva_clave}`")
-                    st.info("Que la cambie cuando entre")
                 else:
                     st.error(msg)
             else:
                 st.warning("Completa ambos campos")
 
     with tab2:
-        st.markdown("### Activar Plan S/30 por 30 días")
+        st.markdown("### Activar Plan S/30 por 30 días - ZERO SCAN")
         dni_activar = st.text_input("DNI del cliente que pagó S/30", max_chars=8, key="dni_act")
         if st.button("Activar 30 días", use_container_width=True, key="btn_activar"):
             if dni_activar:
-                from boto3.dynamodb.conditions import Attr
-                table = get_dynamodb_table('NEXUS_USUARIOS')
-                response = table.scan(FilterExpression=Attr('dni').eq(dni_activar))
-                if response['Items']:
-                    user = response['Items'][0]
-                    hoy = datetime.now(pytz.timezone('America/Lima'))
-                    table.update_item(
-                        Key={'usuario_id': user['usuario_id']},
-                        UpdateExpression='SET plan = :p, fecha_vencimiento = :f',
-                        ExpressionAttributeValues={
-                            ':p': 'premium',
-                            ':f': (hoy + timedelta(days=30)).isoformat()
-                        }
-                    )
-                    st.success(f"✅ Activado: {user['nombre']} - Usuario: {user['usuario_id']}")
+                success, msg = activar_plan_por_dni(dni_activar)
+                if success:
+                    st.success(f"✅ {msg}")
                     st.info("Ya tiene productos ilimitados por 30 días")
                 else:
-                    st.error("DNI no encontrado")
+                    st.error(msg)
             else:
                 st.warning("Ingresa el DNI")
+
 # ====== 4. MANEJO DE SESIÓN ======
 if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
 if 'user_data' not in st.session_state:
     st.session_state.user_data = None
 
-# ====== 5. PANTALLA LOGIN ======
+# ====== 5. PANTALLA LOGIN NEXUS 5.0 ======
 def mostrar_login():
     st.markdown("""
     <div class="main-header">
         <h1>⚡ NEXUS</h1>
-        <p>Sistema de Gestión Empresarial</p>
+        <p>Sistema de Gestión para Bodegas</p>
     </div>
     """, unsafe_allow_html=True)
 
     col1, col2, col3 = st.columns([1,2,1])
     with col2:
-        tab1, tab2 = st.tabs(["🔐 Iniciar Sesión", "🆕 Registrar Local"])
-        
+        tab1, tab2 = st.tabs(["🔐 Iniciar Sesión", "🆕 Prueba 7 días GRATIS"])
+
         with tab1:
-            st.markdown('<h3 style="color: white; text-align: center; margin-bottom: 1.5rem;">Iniciar Sesión</h3>', unsafe_allow_html=True)
-            usuario_id = st.text_input("ID de Usuario", placeholder="Ej: DUENOCHA, EMPCHA", key="login_user")
+            st.markdown('<h3 style="color: white; text-align: center;">Iniciar Sesión</h3>', unsafe_allow_html=True)
+            usuario_id = st.text_input("ID de Usuario", key="login_user")
             password = st.text_input("Contraseña", type="password", key="login_pass")
-            if st.button("Iniciar Sesión", use_container_width=True, key="btn_login"):
+            if st.button("Iniciar Sesión", use_container_width=True):
                 if usuario_id and password:
                     success, result = login_usuario(usuario_id, password)
                     if success:
@@ -370,40 +344,74 @@ def mostrar_login():
                         st.success("¡Bienvenido!")
                         st.rerun()
                     else:
-                        st.error(result)
+                        # BLOQUEO TRIAL VENCIDO
+                        if "TRIAL_VENCIDO" in str(result):
+                            codigo = result.split("|")[1]
+                            st.error("🔒 Tu prueba de 7 días terminó")
+                            st.markdown("### Activa Plan S/30 - 30 días ilimitado")
+                            st.code("Yapea S/30 al 924 848 001")
+                            st.warning(f"IMPORTANTE: Pon este código en mensaje de Yape:")
+                            st.code(codigo)
+                            st.info("Manda captura a WhatsApp: 924 848 001. Activamos en 12h")
+                        else:
+                            st.error(result)
                 else:
                     st.warning("Completa todos los campos")
-        
+
         with tab2:
-            st.markdown('<h3 style="color: white; text-align: center; margin-bottom: 1.5rem;">Registrar Nuevo Local</h3>', unsafe_allow_html=True)
-            nombre_local = st.text_input("Nombre del Local", placeholder="Ej: Tienda La Chamba", key="reg_local")
-            email = st.text_input("Email", placeholder="tu@correo.com", key="reg_email")
-            password = st.text_input("Contraseña", type="password", key="reg_pass")
-            if st.button("Registrar", use_container_width=True, key="btn_reg"):
-                if nombre_local and email and password:
+            st.markdown('<h3 style="color: white; text-align: center;">🎁 Prueba 7 días GRATIS</h3>', unsafe_allow_html=True)
+            st.caption("Luego S/30 al mes. Sin instalación. Productos ilimitados.")
+            nombre_local = st.text_input("Nombre de tu bodega", key="reg_local")
+            dni = st.text_input("DNI *1 prueba gratis por DNI*", max_chars=8, key="reg_dni")
+            celular = st.text_input("WhatsApp *Te avisamos antes que venza*", max_chars=9, key="reg_cel")
+            email = st.text_input("Email *Opcional*", key="reg_email")
+            password = st.text_input("Crea contraseña", type="password", key="reg_pass")
+
+            st.caption("✅ Límite trial: 30 productos + 50 ventas. Plan S/30 es ilimitado.")
+
+            if st.button("🚀 Empezar prueba GRATIS", use_container_width=True):
+                if nombre_local and dni and celular and password:
+                    if len(dni)!= 8:
+                        st.error("DNI debe tener 8 dígitos"); st.stop()
+                    if len(celular)!= 9:
+                        st.error("WhatsApp debe tener 9 dígitos"); st.stop()
                     try:
-                        usuario_id, id_dueno, id_empleado = registrar_local(nombre_local, email, password)
+                        usuario_id, id_dueno, id_empleado = registrar_local(nombre_local, dni, celular, email, password)
                         st.success(f"¡Listo! Tu usuario es: {usuario_id}")
-                        st.info(f"ID del local: {id_dueno} - El cliente no lo ve")
-                        st.info("Ahora ve a Iniciar Sesión")
+                        st.info("Guárdalo. Ahora inicia sesión")
+                        st.balloons()
                     except Exception as e:
                         st.error(f"Error: {e}")
                 else:
-                    st.warning("Completa todos los campos")
+                    st.warning("Completa DNI, WhatsApp, Nombre y Contraseña")
+
 # ====== 6. DASHBOARD ======
 def mostrar_dashboard():
     user = st.session_state.user_data
 
+    # AVISO TRIAL
+    if user.get('plan') == 'trial':
+        fecha_fin = datetime.fromisoformat(user['fecha_trial_fin'])
+        hoy = datetime.now(pytz.timezone('America/Lima'))
+        dias_restantes = (fecha_fin - hoy).days
+
+        if dias_restantes > 0:
+            st.warning(f"⏰ Te quedan {dias_restantes} días de prueba GRATIS")
+            st.info(f"Para continuar sin límites: Yapea S/30 al 924 848 001 con código ACT-{user['dni']}")
+        else:
+            st.error("🔒 Tu prueba terminó. Activa S/30 para seguir usando NEXUS")
+            st.stop()
+
     st.markdown(f"""
     <div class="main-header">
         <h1>Bienvenido, {user['nombre']}!</h1>
-        <p>Rol: {user['rol'].upper()} | ID: {user['usuario_id']}</p>
+        <p>Rol: {user['rol'].upper()} | Plan: {user.get('plan','').upper()}</p>
     </div>
     """, unsafe_allow_html=True)
 
     if user['rol'] == 'dueño':
         menu = st.selectbox("Menú", ["📊 Dashboard", "📦 Productos", "💰 Ventas", "👥 Usuarios", "🔧 Admin"])
-    elif user['rol'] == 'admin':  # ← ESTE ERES TÚ
+    elif user['rol'] == 'admin':
         menu = st.selectbox("Menú", ["🔧 Admin", "📊 Dashboard"])
     else:
         menu = st.selectbox("Menú", ["📦 Productos", "💰 Ventas"])
