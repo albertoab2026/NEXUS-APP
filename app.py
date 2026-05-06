@@ -15,7 +15,8 @@ st.markdown("""
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
 
 .stApp {
-    background: #1a1d29;
+    background: linear-gradient(135deg, #1e2139 0%, #2d1b69 50%, #1a1d29 100%);
+    background-attachment: fixed;
     color: #ffffff;
     font-family: 'Inter', sans-serif;
 }
@@ -27,18 +28,23 @@ h1, h2, h3 {
 }
 
 .main-header {
-    background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
+    background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 50%, #7C3AED 100%);
     border-radius: 15px;
     padding: 25px;
     margin-bottom: 30px;
-    box-shadow: 0 0 30px rgba(124, 58, 237, 0.5);
-    animation: pulse 2s infinite;
+    box-shadow: 0 0 40px rgba(139, 92, 246, 0.6), 0 0 80px rgba(99, 102, 241, 0.3);
+    animation: pulseGlow 3s ease-in-out infinite;
 }
 
-@keyframes pulse {
-    0% { box-shadow: 0 0 30px rgba(124, 58, 237, 0.5); }
-    50% { box-shadow: 0 0 45px rgba(124, 58, 237, 0.8); }
-    100% { box-shadow: 0 0 30px rgba(124, 58, 237, 0.5); }
+@keyframes pulseGlow {
+    0%, 100% { 
+        box-shadow: 0 0 40px rgba(139, 92, 246, 0.6), 0 0 80px rgba(99, 102, 241, 0.3);
+        transform: scale(1);
+    }
+    50% { 
+        box-shadow: 0 0 60px rgba(139, 92, 246, 0.9), 0 0 100px rgba(99, 102, 241, 0.5);
+        transform: scale(1.01);
+    }
 }
 
 .stButton > button {
@@ -50,25 +56,27 @@ h1, h2, h3 {
     padding: 10px 20px;
     width: 100%;
     transition: all 0.3s;
-    box-shadow: 0 0 15px rgba(124, 58, 237, 0.3);
+    box-shadow: 0 0 20px rgba(124, 58, 237, 0.4);
 }
 .stButton > button:hover {
-    transform: scale(1.02);
-    box-shadow: 0 0 25px rgba(124, 58, 237, 0.6);
+    transform: scale(1.03);
+    box-shadow: 0 0 35px rgba(124, 58, 237, 0.8);
 }
 
 .stTextInput > div > div > input, .stNumberInput > div > div > input {
-    background-color: #252836 !important;
+    background-color: rgba(37, 40, 54, 0.8) !important;
     color: #ffffff !important;
-    border: 1px solid #3F4354 !important;
+    border: 1px solid #4F46E5 !important;
     border-radius: 8px;
+    box-shadow: 0 0 10px rgba(79, 70, 229, 0.2);
 }
 
 .stSelectbox > div > div {
-    background-color: #252836 !important;
-    border: 1px solid #3F4354 !important;
+    background-color: rgba(37, 40, 54, 0.8) !important;
+    border: 1px solid #4F46E5 !important;
     border-radius: 8px;
     color: white !important;
+    box-shadow: 0 0 10px rgba(79, 70, 229, 0.2);
 }
 
 .stTabs [data-baseweb="tab"] {
@@ -79,17 +87,18 @@ h1, h2, h3 {
 .stTabs [aria-selected="true"] {
     color: #F59E0B !important;
     border-bottom: 2px solid #F59E0B !important;
+    text-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
 }
 
 div[data-testid="metric-container"] {
-    background: #252836;
-    border: 1px solid #3F4354;
+    background: rgba(37, 40, 54, 0.6);
+    border: 1px solid #4F46E5;
     border-radius: 12px;
     padding: 20px;
+    box-shadow: 0 0 15px rgba(79, 70, 229, 0.3);
 }
 </style>
 """, unsafe_allow_html=True)
-
 AWS_ACCESS_KEY_ID = st.secrets["AWS_ACCESS_KEY_ID"]
 AWS_SECRET_ACCESS_KEY = st.secrets["AWS_SECRET_ACCESS_KEY"]
 AWS_REGION = st.secrets["AWS_REGION"]
