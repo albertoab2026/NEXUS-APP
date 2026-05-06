@@ -192,6 +192,7 @@ def login(usuario_o_dni, password):
     except Exception as e:
         st.error(f"Error login: {e}")
         return None
+
 # ====== 4. FUNCIONES DE PRODUCTOS ======
 def obtener_productos():
     try:
@@ -251,12 +252,12 @@ def obtener_ventas():
     except:
         return []
 
-# ====== 6. UI LOGIN - SIN ERRORES DE INDENTACIÓN ======
+# ====== 6. UI LOGIN ======
 def mostrar_login():
     st.markdown("""
     <div style='text-align: center; margin-bottom: 45px;'>
         <div class='main-header'>
-            <h1 style='font-size: 3.2rem; margin: 0; color: #FFFFFF; font-weight: 800; 
+            <h1 style='font-size: 3.2rem; margin: 0; color: #FFFFFF; font-weight: 800;
                        text-shadow: 0 0 20px rgba(255, 255, 255, 0.5);'>
                 ⚡ NEXUS
             </h1>
@@ -273,9 +274,9 @@ def mostrar_login():
 
     with col1:
         st.markdown("""
-        <div style='background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%); 
+        <div style='background: linear-gradient(135deg, #1E293B 0%, #0F172A 100%);
                     border: 1px solid #334155; border-radius: 16px;
-                    padding: 24px 16px; text-align: center; 
+                    padding: 24px 16px; text-align: center;
                     box-shadow: 0 8px 20px rgba(0,0,0,0.3);'>
             <div style='font-size: 2.5rem; margin-bottom: 12px;'>📦</div>
             <h3 style='font-size: 1.1rem; margin: 0 0 10px 0; color: white; font-weight: 700;'>Control Total</h3>
@@ -287,9 +288,9 @@ def mostrar_login():
 
     with col2:
         st.markdown("""
-        <div style='background: linear-gradient(135deg, #2D1B3D 0%, #1E1B4B 100%); 
+        <div style='background: linear-gradient(135deg, #2D1B3D 0%, #1E1B4B 100%);
                     border: 1px solid #4C1D95; border-radius: 16px;
-                    padding: 24px 16px; text-align: center; 
+                    padding: 24px 16px; text-align: center;
                     box-shadow: 0 8px 20px rgba(0,0,0,0.3);'>
             <div style='font-size: 2.5rem; margin-bottom: 12px;'>💰</div>
             <h3 style='font-size: 1.1rem; margin: 0 0 10px 0; color: white; font-weight: 700;'>Más Ganancia</h3>
@@ -301,9 +302,9 @@ def mostrar_login():
 
     with col3:
         st.markdown("""
-        <div style='background: linear-gradient(135deg, #1E3A3A 0%, #0F2624 100%); 
+        <div style='background: linear-gradient(135deg, #1E3A3A 0%, #0F2624 100%);
                     border: 1px solid #134E4A; border-radius: 16px;
-                    padding: 24px 16px; text-align: center; 
+                    padding: 24px 16px; text-align: center;
                     box-shadow: 0 8px 20px rgba(0,0,0,0.3);'>
             <div style='font-size: 2.5rem; margin-bottom: 12px;'>📱</div>
             <h3 style='font-size: 1.1rem; margin: 0 0 10px 0; color: white; font-weight: 700;'>Desde tu Celular</h3>
@@ -315,9 +316,9 @@ def mostrar_login():
 
     with col4:
         st.markdown("""
-        <div style='background: linear-gradient(135deg, #3D2E1E 0%, #292016 100%); 
+        <div style='background: linear-gradient(135deg, #3D2E1E 0%, #292016 100%);
                     border: 1px solid #92400E; border-radius: 16px;
-                    padding: 24px 16px; text-align: center; 
+                    padding: 24px 16px; text-align: center;
                     box-shadow: 0 8px 20px rgba(0,0,0,0.3);'>
             <div style='font-size: 2.5rem; margin-bottom: 12px;'>⚡</div>
             <h3 style='font-size: 1.1rem; margin: 0 0 10px 0; color: white; font-weight: 700;'>Súper Barato</h3>
@@ -332,7 +333,7 @@ def mostrar_login():
     col1, col2, col3 = st.columns([1,2,1])
     with col2:
         st.markdown("""
-        <div style='background: linear-gradient(135deg, #10B981 0%, #059669 100%); 
+        <div style='background: linear-gradient(135deg, #10B981 0%, #059669 100%);
                     border-radius: 16px; padding: 24px;
                     text-align: center; margin: 20px 0;
                     box-shadow: 0 8px 25px rgba(16, 185, 129, 0.5);'>
@@ -370,24 +371,77 @@ def mostrar_login():
                 st.balloons()
                 st.info("Ahora inicia sesión en la pestaña de arriba")
             else:
-                st.error("Error al registrar")  
-# ====== 7. MAIN APP ======
+                st.error("Error al registrar")
+
+# ====== 7. MAIN APP CON SIDEBAR ESTILO FOTO ======
 if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
 
 if not st.session_state.logged_in:
     mostrar_login()
 else:
-    st.sidebar.title(f"⚡ NEXUS")
-    st.sidebar.write(f"Bienvenido, {st.session_state.user_data['nombre']}")
-    if st.sidebar.button("Cerrar Sesión"):
-        st.session_state.logged_in = False
-        st.rerun()
+    # === SIDEBAR CON DISEÑO DE LA FOTO ===
+    with st.sidebar:
+        user = st.session_state.user_data
+        st.markdown(f"""
+        <div style='background: linear-gradient(135deg, #7B2FF7 0%, #4A00E0 100%);
+                    padding: 20px; border-radius: 15px; text-align: center; color: white;
+                    box-shadow: 0 0 30px rgba(123, 47, 247, 0.6);'>
+            <h3 style='margin:0; font-size:1.3rem;'>Bienvenido, {user['nombre']}!</h3>
+            <p style='margin:5px 0 0 0; font-size:0.9rem;'>Rol: {user['rol'].upper()} | Plan: {user['plan'].upper()}</p>
+        </div>
+        """, unsafe_allow_html=True)
+                st.write("")
+        menu = st.selectbox("Menú", ["📦 Productos", "💰 Ventas", "📊 Dashboard", "🔧 Admin"])
 
-    tab1, tab2, tab3 = st.tabs(["📦 Productos", "💰 Ventas", "📊 Dashboard"])
+        if menu == "🔧 Admin":
+            st.subheader("🔧 Panel Admin")
 
-    with tab1:
-        st.header("Gestión de Productos")
+            with st.expander("🔑 Cambiar Claves"):
+                st.info("Función para cambiar tu clave")
+                nueva_clave = st.text_input("Nueva Clave", type="password", key="new_pass")
+                if st.button("Cambiar Clave"):
+                    try:
+                        tabla_usuarios.update_item(
+                            Key={'usuario_id': user['usuario_id']},
+                            UpdateExpression='SET password_hash = :val',
+                            ExpressionAttributeValues={':val': hash_password(nueva_clave)}
+                        )
+                        st.success("✅ Clave cambiada")
+                    except:
+                        st.error("Error al cambiar clave")
+
+            with st.expander("🔒 Activar Plan S/30"):
+                st.write("**Activar Plan S/30 por 30 días**")
+                dni_cliente = st.text_input("DNI del cliente que pagó S/30")
+                if st.button("Activar 30 días"):
+                    try:
+                        nueva_fecha = (datetime.now() + timedelta(days=30)).isoformat()
+                        response = tabla_usuarios.scan(FilterExpression=Key('dni').eq(dni_cliente))
+                        if response['Items']:
+                            uid = response['Items'][0]['usuario_id']
+                            tabla_usuarios.update_item(
+                                Key={'usuario_id': uid},
+                                UpdateExpression='SET plan = :p, fecha_trial_fin = :f',
+                                ExpressionAttributeValues={':p': 'premium', ':f': nueva_fecha}
+                            )
+                            st.success(f"✅ Plan PREMIUM activado para DNI {dni_cliente} por 30 días")
+                        else:
+                            st.error("DNI no encontrado")
+                    except Exception as e:
+                        st.error(f"Error: {e}")
+
+        st.write("")
+        st.write("**YAPE/PLIN**")
+        st.info("914 282 688\nALBERTO BALLARTA")
+
+        if st.button("🚪 Cerrar Sesión"):
+            st.session_state.logged_in = False
+            st.rerun()
+
+    # === CONTENIDO PRINCIPAL ===
+    if menu == "📦 Productos":
+        st.header("📦 Gestión de Productos")
         with st.form("form_producto"):
             nombre = st.text_input("Nombre del producto")
             precio = st.number_input("Precio", min_value=0.0, format="%.2f")
@@ -403,8 +457,8 @@ else:
             df = pd.DataFrame(productos)
             st.dataframe(df[['nombre', 'precio', 'stock', 'categoria']], use_container_width=True)
 
-    with tab2:
-        st.header("Registrar Venta")
+    elif menu == "💰 Ventas":
+        st.header("💰 Registrar Venta")
         productos = obtener_productos()
         if productos:
             nombres = [p['nombre'] for p in productos]
@@ -421,8 +475,8 @@ else:
         else:
             st.warning("Primero agrega productos")
 
-    with tab3:
-        st.header("Dashboard")
+    elif menu == "📊 Dashboard":
+        st.header("📊 Dashboard")
         ventas = obtener_ventas()
         productos = obtener_productos()
         col1, col2, col3 = st.columns(3)
