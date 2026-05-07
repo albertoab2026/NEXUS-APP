@@ -529,37 +529,44 @@ else:
                 except:
                     st.error("Error al cambiar clave")
 
-        with tab_plan:
-            st.subheader("Activar Plan S/30 por 30 días")
-            dni_cliente = st.text_input("DNI del cliente que pagó S/30")
-            if st.button("Activar 30 días"):
-                if not dni_cliente:
-                    st.error("Ingresa el DNI")
-                else:
-                    try:
-                        nueva_fecha = (datetime.now() + timedelta(days=30)).isoformat()
+with tab_plan:
+    # Agarra el rol directo de user_data
+    rol_usuario = st.session_state.user_data.get('rol', 'cliente')
+    
+    if rol_usuario == 'admin':
+        st.subheader("Activar Plan S/30 por 30 días")
+        dni_cliente = st.text_input("DNI del cliente que pagó S/30")
+        
+        if st.button("Activar 30 días"):
+            if not dni_cliente:
+                st.error("Ingresa el DNI")
+            else:
+                try:
+                    nueva_fecha = (datetime.now() + timedelta(days=30)).isoformat()
 
-                        response = tabla_usuarios.query(
-                            IndexName='dni-index',
-                            KeyConditionExpression=Key('dni').eq(dni_cliente)
+                    response = tabla_usuarios.query(
+                        IndexName='dni-index',
+                        KeyConditionExpression=Key('dni').eq(dni_cliente)
+                    )
+
+                    if response['Items']:
+                        uid = response['Items'][0]['usuario_id']
+
+                        tabla_usuarios.update_item(
+                            Key={'usuario_id': uid},
+                            UpdateExpression='SET #p = :p, fecha_trial_fin = :f, activo = :a',
+                            ExpressionAttributeNames={'#p': 'plan'},
+                            ExpressionAttributeValues={
+                                ':p': 'premium',
+                                ':f': nueva_fecha,
+                                ':a': True
+                            }
                         )
-
-                        if response['Items']:
-                            uid = response['Items'][0]['usuario_id']
-
-                            tabla_usuarios.update_item(
-                                Key={'usuario_id': uid},
-                                UpdateExpression='SET #p = :p, fecha_trial_fin = :f, activo = :a',
-                                ExpressionAttributeNames={'#p': 'plan'},
-                                ExpressionAttributeValues={
-                                    ':p': 'premium',
-                                    ':f': nueva_fecha,
-                                    ':a': True
-                                }
-                            )
-                            st.success(f"✅ Plan PREMIUM activado para DNI {dni_cliente} por 30 días")
-                            st.balloons()
-                        else:
-                            st.error("DNI no encontrado")
-                    except Exception as e:
-                        st.error(f"Error: {e}")
+                        st.success(f"✅ Plan PREMIUM activado para DNI {dni_cliente} por 30 días")
+                        st.balloons()
+                    else:
+                        st.error("DNI no encontrado")
+                except Exception as e:
+                    st.error(f"Error: {e}")
+    else:
+        st.error("🚫 No tienes permisos de administrador")
