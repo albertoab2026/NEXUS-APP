@@ -452,6 +452,7 @@ else:
         Alberto Ballarta
         ''' 
         
+        
         **📲 Paso 2: Envíanos por WhatsApp:**
         1. Captura del pago
         2. Tu DNI: **{dni_usuario}**
@@ -464,40 +465,25 @@ else:
         st.info("⚠️ Solo activamos pagos confirmados en Yape/Plin")
         st.stop()
     # ===== FIN PAYWALL =====
-
-# ===== ALERTA DE DÍAS RESTANTES - TRIAL Y PREMIUM =====
-if fecha_vencimiento:
-    try:
-        dias_restantes = (fecha_vencimiento - datetime.now()).days
-        
-        if dias_restantes <= 0:
-            st.error(f"🚫 Tu {nombre_plan} venció")
-        elif dias_restantes <= 3:
-            st.warning(f"⚠️ Te quedan {dias_restantes} días de {nombre_plan} - Renueva pronto")
-        else:
-            st.info(f"📅 Te quedan {dias_restantes} días de {nombre_plan}")
-    except:
-        pass
-# ===== FIN ALERTA =====
-        
-        # === ALERTA DE DÍAS RESTANTES ===
-        if user.get('plan') in ['trial', 'premium']:
-            fecha_fin = user.get('fecha_trial_fin')
-            if fecha_fin:
-                try:
-                    if isinstance(fecha_fin, str):
-                        fecha_fin = datetime.fromisoformat(fecha_fin.replace('Z', '+00:00'))
-                    
-                    dias_restantes = (fecha_fin - datetime.now()).days
-                    
-                    if dias_restantes <= 0:
-                        st.error("❌ **PLAN VENCIDO**\n\nYapea S/30 al 914282688")
-                    elif dias_restantes <= 5:
-                        st.warning(f"⚠️ **Te quedan {dias_restantes} días**\n\nYapea S/30 al 914282688")
-                    else:
-                        st.success(f"✅ **Plan activo**\n\n{dias_restantes} días restantes")
-                except:
-                    pass
+    
+    # ===== ALERTA DE DÍAS RESTANTES =====
+    # ESTO TAMBIÉN VA ADENTRO DEL ELSE
+    if fecha_vencimiento:
+        try:
+            dias_restantes = (fecha_vencimiento - datetime.now()).days
+            
+            if dias_restantes <= 0:
+                st.error(f"🚫 Tu {nombre_plan} venció")
+            elif dias_restantes <= 3:
+                st.warning(f"⚠️ Te quedan {dias_restantes} días de {nombre_plan} - Renueva pronto")
+            else:
+                st.info(f"📅 Te quedan {dias_restantes} días de {nombre_plan}")
+        except:
+            pass
+    
+    # ===== AQUÍ VA TU APP NORMAL =====
+    st.title("Dashboard Principal")
+    # ... resto de tu app
         
          # === CAJA DINÁMICA CON DATOS DEL CLIENTE ===
         nombre_negocio = user.get('nombre_negocio', 'SIN NOMBRE')
