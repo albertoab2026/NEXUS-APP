@@ -459,8 +459,7 @@ else:
             st.rerun()
 
     # === DESPLEGABLE AFUERA - SOLO DEBE HABER 1 VEZ EN TODO EL CÓDIGO ===
-    menu = st.selectbox("Menú", ["📦 Productos", "💰 Ventas", "📊 Dashboard", "🔧 Admin"], label_visibility="collapsed")
-
+    menu = st.selectbox("Menú", ["📦 Productos", "💰 Ventas", "📊 Dashboard", "ADMIN"], label_visibility="collapsed")
     st.write("")
 
     if menu == "📦 Productos":
@@ -511,7 +510,7 @@ else:
         with col3:
             st.metric("Transacciones", len(ventas))
 
-    elif menu == "⚙️ Admin":
+    elif menu == "ADMIN":
         st.header("⚙️ Panel Admin")
         tab_clave, tab_plan = st.tabs(["🔑 Cambiar Claves", "🔒 Activar Plan S/30"])
 
