@@ -378,7 +378,7 @@ def mostrar_login():
 
     tab1, tab2 = st.tabs(["🔑 Iniciar Sesión", "🚀 Prueba 7 días GRATIS"])
 
-    with tab1:
+    with tab1:  # ← 4 ESPACIOS
         st.markdown("<h3 style='text-align: center;'>Iniciar Sesión</h3>", unsafe_allow_html=True)
         dni = st.text_input("Usuario o DNI", placeholder="12345678")
         password = st.text_input("Contraseña", type="password")
@@ -391,21 +391,21 @@ def mostrar_login():
             else:
                 st.error("❌ DNI o contraseña incorrectos")
 
-with tab2:
-    st.markdown("<h3 style='text-align: center;'>Crea tu cuenta GRATIS</h3>", unsafe_allow_html=True)
-    nombre = st.text_input("Nombre completo", placeholder="Juan Pérez", key="reg_nom")
-    nombre_negocio = st.text_input("Nombre de tu Bodega/Local", placeholder="Bodega Don Juan", key="reg_negocio")
-    dni = st.text_input("DNI", placeholder="12345678", key="reg_dni")
-    email = st.text_input("Email", placeholder="tu@email.com", key="reg_email")
-    password = st.text_input("Contraseña", type="password", key="reg_pass")
-    if st.button("ACTIVAR 7 DÍAS GRATIS", use_container_width=True):
-        if nombre and nombre_negocio and dni and email and password:
-            if registrar_dueno(dni, nombre, nombre_negocio, email, password):
-                st.success("✅ Cuenta creada. 7 días gratis activados")
-                st.balloons()
-                st.info("Ahora inicia sesión en la pestaña de arriba")
-        else:
-            st.error("Completa todos los campos")
+    with tab2:  # ← 4 ESPACIOS
+        st.markdown("<h3 style='text-align: center;'>Crea tu cuenta GRATIS</h3>", unsafe_allow_html=True)
+        nombre = st.text_input("Nombre completo", placeholder="Juan Pérez", key="reg_nom")
+        nombre_negocio = st.text_input("Nombre de tu Bodega/Local", placeholder="Bodega Don Juan", key="reg_negocio")
+        dni = st.text_input("DNI", placeholder="12345678", key="reg_dni")
+        email = st.text_input("Email", placeholder="tu@email.com", key="reg_email")
+        password = st.text_input("Contraseña", type="password", key="reg_pass")
+        if st.button("ACTIVAR 7 DÍAS GRATIS", use_container_width=True):
+            if nombre and nombre_negocio and dni and email and password:
+                if registrar_dueno(dni, nombre, nombre_negocio, email, password):
+                    st.success("✅ Cuenta creada. 7 días gratis activados")
+                    st.balloons()
+                    st.info("Ahora inicia sesión en la pestaña de arriba")
+            else:
+                st.error("Completa todos los campos")
             
 # ====== 7. MAIN APP CON SIDEBAR ESTILO FOTO ======
 if 'logged_in' not in st.session_state:
