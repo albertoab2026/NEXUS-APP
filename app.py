@@ -480,6 +480,9 @@ else:
             fecha_venc_date = fecha_venc_lima.date()
             
             dias_restantes = (fecha_venc_date - hoy).days
+            st.error(f"DEBUG dias_restantes: {dias_restantes}")
+            st.error(f"DEBUG fecha_venc_date: {fecha_venc_date}")
+            st.error(f"DEBUG hoy: {hoy}")
             texto_dia = "día" if dias_restantes == 1 else "días"
             
             # 1. YA VENCIÓ - BLOQUEA
