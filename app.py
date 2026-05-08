@@ -468,25 +468,24 @@ else:
             
             lima = pytz.timezone('America/Lima')
             ahora = datetime.now(lima)
-            hoy = ahora.date()
             
             # CONVIERTE A DATETIME SI VIENE COMO STRING
             if isinstance(fecha_vencimiento, str):
                 fecha_vencimiento = datetime.fromisoformat(fecha_vencimiento.replace('Z', ''))
             
-            # Forzar que DynamoDB se lea como UTC antes de pasar a Lima
+            # Forzar UTC y pasar a Lima
             fecha_venc_utc = fecha_vencimiento.replace(tzinfo=pytz.utc)
             fecha_venc_lima = fecha_venc_utc.astimezone(lima)
-            fecha_venc_date = fecha_venc_lima.date()
             
-            dias_restantes = (fecha_venc_date - hoy).days
-            st.error(f"DEBUG dias_restantes: {dias_restantes}")
-            st.error(f"DEBUG fecha_venc_date: {fecha_venc_date}")
-            st.error(f"DEBUG hoy: {hoy}")
+            # Calcular diferencia en HORAS, no días
+            segundos_restantes = (fecha_venc_lima - ahora).total_seconds()
+            horas_restantes = segundos_restantes / 3600
+            dias_restantes = int(horas_restantes / 24)
+            
             texto_dia = "día" if dias_restantes == 1 else "días"
             
             # 1. YA VENCIÓ - BLOQUEA
-            if ahora >= fecha_venc_lima:
+            if segundos_restantes <= 0:
                 st.error(f"🚫 Tu {nombre_plan} venció")
                 st.markdown("### 💎 Renueva tu Plan Premium - S/30")
                 st.markdown(f"""
@@ -505,8 +504,8 @@ else:
                 st.info("⚠️ Solo activamos pagos confirmados en Yape/Plin")
                 st.stop()                                            
             
-            # 2. HOY VENCE
-            elif dias_restantes == 0:
+            # 2. HOY VENCE - Menos de 24 horas
+            elif horas_restantes < 24:
                 st.error(f"🚨 ¡HOY SE VENCE tu {nombre_plan}! Renueva ahora para no perder acceso")
             
             # 3. FALTAN 1-3 DÍAS
