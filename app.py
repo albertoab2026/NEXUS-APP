@@ -463,14 +463,16 @@ else:
     # ===== ALERTA + BLOQUEO =====
     if fecha_vencimiento:
         try:
-            ahora = datetime.now()
+            import pytz
+            lima = pytz.timezone('America/Lima')
+            ahora = datetime.now(lima)
             hoy = ahora.date()
-            fecha_venc_date = fecha_vencimiento.date()
+            fecha_venc_date = fecha_vencimiento.astimezone(lima).date()
             dias_restantes = (fecha_venc_date - hoy).days
             texto_dia = "día" if dias_restantes == 1 else "días"
             
             # 1. YA VENCIÓ - BLOQUEA
-            if ahora >= fecha_vencimiento:
+            if ahora >= fecha_vencimiento.astimezone(lima):
                 st.error(f"🚫 Tu {nombre_plan} venció")
                 
                 st.markdown("### 💎 Renueva tu Plan Premium - S/30")
