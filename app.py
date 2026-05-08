@@ -482,10 +482,7 @@ else:
             dias_restantes = int(horas_restantes / 24)
             
             texto_dia = "día" if dias_restantes == 1 else "días"
-           
-            st.error(f"TEMP: Vence: {fecha_venc_lima} | Ahora: {ahora}")
-            st.error(f"TEMP: Horas restantes: {horas_restantes}")
-           
+                     
             # 1. YA VENCIÓ - BLOQUEA
             if segundos_restantes <= 0:
                 st.error(f"🚫 Tu {nombre_plan} venció")
