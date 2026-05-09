@@ -593,31 +593,78 @@ else:
                     st.error("Completa el nombre y elige categoría válida")
 
         st.divider()
-
-        # ====== TABLA CON FILTRO ======
+        # ====== TABLA CON FILTRO + EDITAR/BORRAR ======
         st.subheader("Mis Productos")
         filtro = st.selectbox("Filtrar por categoría", ["Todas"] + categorias_base + categorias_custom, key="filtro_prod")
 
         productos = obtener_productos()
         if productos:
             df = pd.DataFrame(productos)
-            if filtro!= "Todas":
+            if filtro != "Todas":
                 df = df[df['categoria'] == filtro]
 
             if not df.empty:
-                st.dataframe(
-                    df[['nombre', 'precio', 'stock', 'categoria']],
-                    use_container_width=True,
-                    column_config={
-                        "precio": st.column_config.NumberColumn("Precio", format="S/ %.2f"),
-                        "stock": st.column_config.NumberColumn("Stock", format="%d und")
-                    }
-                )
+                # Tabla + botones de acción
+                for idx, row in df.iterrows():
+                    col1, col2, col3, col4, col5 = st.columns([3, 2, 2, 1, 1])
+                    with col1:
+                        st.write(f"**{row['nombre']}**")
+                        st.caption(row['categoria'])
+                    with col2:
+                        st.write(f"S/ {row['precio']:.2f}")
+                    with col3:
+                        st.write(f"{row['stock']} und")
+                    with col4:
+                        if st.button("✏️", key=f"edit_{row['producto_id']}"):
+                            st.session_state.editando_producto = row['producto_id']
+                            st.rerun()
+                    with col5:
+                        if st.button("🗑️", key=f"del_{row['producto_id']}"):
+                            tabla_productos.delete_item(Key={'producto_id': row['producto_id']})
+                            st.success("Producto borrado")
+                            st.rerun()
             else:
                 st.info(f"Sin productos en '{filtro}'")
         else:
             st.info("Aún no tienes productos. Agrega el primero arriba")
 
+        # ====== FORMULARIO DE EDICIÓN ======
+        if 'editando_producto' in st.session_state:
+            prod_id = st.session_state.editando_producto
+            prod = next((p for p in productos if p['producto_id'] == prod_id), None)
+            
+            if prod:
+                st.divider()
+                st.subheader(f"✏️ Editando: {prod['nombre']}")
+                
+                with st.form("form_editar"):
+                    nuevo_nombre = st.text_input("Nombre", value=prod['nombre'])
+                    nuevo_precio = st.number_input("Precio", value=float(prod['precio']), format="%.2f")
+                    nuevo_stock = st.number_input("Stock", value=int(prod['stock']), min_value=0)
+                    nueva_cat = st.selectbox("Categoría", categorias_base + categorias_custom, 
+                                           index=(categorias_base + categorias_custom).index(prod['categoria']) 
+                                           if prod['categoria'] in (categorias_base + categorias_custom) else 0)
+                    
+                    col1, col2 = st.columns(2)
+                    with col1:
+                        if st.form_submit_button("💾 Guardar Cambios"):
+                            tabla_productos.update_item(
+                                Key={'producto_id': prod_id},
+                                UpdateExpression='SET nombre = :n, precio = :p, stock = :s, categoria = :c',
+                                ExpressionAttributeValues={
+                                    ':n': nuevo_nombre,
+                                    ':p': float(nuevo_precio),
+                                    ':s': int(nuevo_stock),
+                                    ':c': nueva_cat
+                                }
+                            )
+                            del st.session_state.editando_producto
+                            st.success("Producto actualizado")
+                            st.rerun()
+                    with col2:
+                        if st.form_submit_button("❌ Cancelar"):
+                            del st.session_state.editando_producto
+                            st.rerun()
     elif menu == "💰 Ventas":
         st.header("💰 Registrar Venta")
         productos = obtener_productos()
