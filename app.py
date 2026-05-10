@@ -248,6 +248,7 @@ def agregar_producto(nombre, precio, stock, categoria):
         tabla_productos.put_item(
             Item={
                 'producto_id': producto_id,
+                'usuario_id': st.session_state.user_data['usuario_id'],  # ← LÍNEA CLAVE
                 'nombre': nombre,
                 'precio': float(precio),
                 'stock': int(stock),
@@ -256,7 +257,8 @@ def agregar_producto(nombre, precio, stock, categoria):
             }
         )
         return True
-    except:
+    except Exception as e:
+        st.error(f"Error: {e}")
         return False
 
 # ====== 5. FUNCIONES DE VENTAS ======
@@ -556,7 +558,7 @@ else:
 
         opciones_cat = categorias_base + categorias_custom + ["➕ Crear nueva categoría"]
 
-        col1, col2 = st.columns([3,1])
+        col1, col2, col3 = st.columns([3,1,1])
         with col1:
             categoria_seleccionada = st.selectbox("Categoría", opciones_cat, key="cat_select_prod")
 
@@ -577,7 +579,20 @@ else:
                     else:
                         st.error("Ya existe")
                 st.stop()
-
+                
+        with col3:  # ← VA AQUÍ, MISMA SANGRÍA QUE with col2:
+            if categoria_seleccionada in categorias_custom:
+                if st.button("🗑️ Borrar", key="del_cat"):
+                    categorias_custom.remove(categoria_seleccionada)
+                    tabla_usuarios.update_item(
+                        Key={'usuario_id': st.session_state.user_data['usuario_id']},
+                        UpdateExpression='SET categorias_custom = :c',
+                        ExpressionAttributeValues={':c': categorias_custom}
+                    )
+                    st.session_state.user_data['categorias_custom'] = categorias_custom
+                    st.success(f"Categoría '{categoria_seleccionada}' borrada")
+                    st.rerun()
+        
         # ====== FORM DE PRODUCTO ======
         with st.form("form_producto", clear_on_submit=True):
             nombre = st.text_input("Nombre del producto", placeholder="Ej: Paracetamol 500mg")
