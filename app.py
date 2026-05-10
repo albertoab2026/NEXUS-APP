@@ -698,9 +698,9 @@ if productos:
 else:
     st.info("Aún no tienes productos. Agrega el primero arriba")
 
-    elif menu == "💰 Ventas":
-        st.header("💰 Registrar Venta")
-        productos = obtener_productos()
+elif menu == "💰 Ventas":  # ← SIN ESPACIOS ADELANTE
+    st.header("💰 Registrar Venta")
+    productos = obtener_productos()
         if productos:
             nombres = [p['nombre'] for p in productos]
             producto_sel = st.selectbox("Producto", nombres)
