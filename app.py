@@ -613,10 +613,9 @@ else:
         st.subheader("Mis Productos")
         filtro = st.selectbox("Filtrar por categoría", ["Todas"] + categorias_base + categorias_custom, key="filtro_prod")
 
-# ---------- MIS PRODUCTOS CON PAGINACIÓN ----------
+# ---------- MIS PRODUCTOS ----------
 st.subheader("📦 Mis Productos")
 
-# FORM DE EDICIÓN - Va arriba de la lista
 if 'editando' in st.session_state and st.session_state.editando:
     prod_a_editar = next((p for p in obtener_productos() if p['producto_id'] == st.session_state.editando), None)
     if prod_a_editar:
@@ -624,7 +623,6 @@ if 'editando' in st.session_state and st.session_state.editando:
             st.write(f"**Editando: {prod_a_editar['nombre']}**")
             nuevo_precio = st.number_input("Precio", value=float(prod_a_editar['precio']), min_value=0.0, format="%.2f")
             nuevo_stock = st.number_input("Stock", value=int(prod_a_editar['stock']), min_value=0, step=1)
-            
             col1, col2 = st.columns(2)
             with col1:
                 if st.form_submit_button("💾 Guardar"):
@@ -637,11 +635,9 @@ if 'editando' in st.session_state and st.session_state.editando:
                     st.rerun()
         st.divider()
 
-# LISTA DE PRODUCTOS CON FILTROS Y PAGINACIÓN
 productos = obtener_productos()
 
 if productos:
-    # FILTROS
     col1, col2 = st.columns([2, 1])
     with col1:
         busqueda = st.text_input("🔍 Buscar producto", placeholder="Escribe el nombre...")
@@ -649,7 +645,6 @@ if productos:
         categorias = ["Todas"] + sorted(list(set([p.get('categoria', 'Sin categoría') for p in productos])))
         categoria_filtro = st.selectbox("Filtrar por categoría", categorias)
     
-    # APLICAR FILTROS
     productos_filtrados = productos
     if busqueda:
         productos_filtrados = [p for p in productos_filtrados if busqueda.lower() in p['nombre'].lower()]
@@ -658,13 +653,11 @@ if productos:
     
     st.write(f"**Mostrando {len(productos_filtrados)} de {len(productos)} productos**")
     
-    # PAGINACIÓN
     ITEMS_POR_PAGINA = 10
     total_paginas = (len(productos_filtrados) - 1) // ITEMS_POR_PAGINA + 1 if productos_filtrados else 1
     
     if 'pagina_actual' not in st.session_state:
         st.session_state.pagina_actual = 1
-    
     if st.session_state.pagina_actual > total_paginas:
         st.session_state.pagina_actual = 1
     
@@ -672,7 +665,6 @@ if productos:
     fin = inicio + ITEMS_POR_PAGINA
     productos_pagina = productos_filtrados[inicio:fin]
     
-    # MOSTRAR PRODUCTOS
     for prod in productos_pagina:
         col1, col2, col3, col4, col5 = st.columns([3, 2, 2, 1, 1])
         with col1:
@@ -692,7 +684,6 @@ if productos:
                 st.rerun()
         st.divider()
     
-    # CONTROLES DE PÁGINA
     if total_paginas > 1:
         col1, col2, col3 = st.columns([1, 2, 1])
         with col1:
@@ -709,7 +700,6 @@ if productos:
                     st.rerun()
 else:
     st.info("Aún no tienes productos. Agrega el primero arriba")
-
         # ====== FORMULARIO DE EDICIÓN ======
         if 'editando_producto' in st.session_state:
             prod_id = st.session_state.editando_producto
