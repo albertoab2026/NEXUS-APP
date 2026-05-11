@@ -232,7 +232,7 @@ def login(usuario_o_dni, password):
 # ====== 4. FUNCIONES DE PRODUCTOS ======
 def obtener_productos():
     try:
-        id_dueno = st.session_state.user_data['user_id']
+        id_dueno = st.session_state.user_data['usuario_id']
         response = tabla_productos.query(...)
         return response['Items']
     except Exception as e:
@@ -243,7 +243,7 @@ from decimal import Decimal
 
 def agregar_producto(nombre, precio, stock, producto_id):
     try:
-        id_dueno = st.session_state.user_data['user_id']
+        id_dueno = st.session_state.user_data['usuario_id']
         tabla_productos.put_item(
             Item={
                 'id_del_dueno': id_dueno,      # ← OBLIGATORIO
@@ -260,7 +260,7 @@ def agregar_producto(nombre, precio, stock, producto_id):
 
 def actualizar_producto(producto_id, nuevo_precio, nuevo_stock):
     try:
-        id_dueno = st.session_state.user_data['user_id']  
+        id_dueno = st.session_state.user_data['usuario_id']  
         
         tabla_productos.update_item(
             Key={
@@ -280,7 +280,7 @@ def actualizar_producto(producto_id, nuevo_precio, nuevo_stock):
 
 def eliminar_producto(producto_id):
     try:
-        id_dueno = st.session_state.user_data['user_id']  # ← O el campo que uses como id_del_dueno
+        id_dueno = st.session_state.user_data['usuario_id']  # ← O el campo que uses como id_del_dueno
         
         tabla_productos.delete_item(
             Key={
