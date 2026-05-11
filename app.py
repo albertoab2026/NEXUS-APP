@@ -231,32 +231,28 @@ def login(usuario_o_dni, password):
 
 # ====== 4. FUNCIONES DE PRODUCTOS ======
 def obtener_productos():
-    try:
-        user_id = st.session_state.user_data['usuario_id']
-        response = tabla_productos.query(
-            KeyConditionExpression=Key('id_del_dueno').eq(user_id)  # ← CAMBIO AQUÍ
-        )
-        return response.get('Items', [])
+    id_dueno = st.session_state.user_data['user_id']
+    response = tabla_productos.query(
+        KeyConditionExpression=Key('id_del_dueno').eq(id_dueno)  # ← USA QUERY, NO SCAN
+    )
+    return response['Items']
     except Exception as e:
         st.error(f"Error cargando productos: {e}")
         return []
         
 from decimal import Decimal        
 
-def agregar_producto(nombre, precio, stock, categoria):
-    try:
-        producto_id = str(uuid.uuid4())
-        tabla_productos.put_item(
-            Item={
-                'producto_id': producto_id,
-                'id_del_dueno': st.session_state.user_data['usuario_id'],
-                'nombre': nombre,
-                'precio': Decimal(str(precio)),
-                'stock': int(stock),
-                'categoria': categoria,
-                'fecha_creacion': datetime.now().isoformat()
-            }
-        )
+def agregar_producto(nombre, precio, stock, producto_id):
+    id_dueno = st.session_state.user_data['user_id']
+    tabla_productos.put_item(
+        Item={
+            'id_del_dueno': id_dueno,      # ← OBLIGATORIO
+            'producto_id': producto_id,    # ← OBLIGATORIO
+            'nombre': nombre,
+            'precio': Decimal(str(precio)),
+            'stock': int(stock)
+        }
+    )
         return True
     except Exception as e:
         st.error(f"Error: {e}")
@@ -264,9 +260,14 @@ def agregar_producto(nombre, precio, stock, categoria):
 
 def actualizar_producto(producto_id, nuevo_precio, nuevo_stock):
     try:
+        id_dueno = st.session_state.user_data['user_id']  # ← O el campo que uses como id_del_dueno
+        
         tabla_productos.update_item(
-            Key={'producto_id': producto_id},
-            UpdateExpression='SET precio = :p, stock = :s',
+            Key={
+                'id_del_dueno': id_dueno,      # ← CLAVE PARTITION
+                'producto_id': producto_id     # ← CLAVE SORT
+            },
+            UpdateExpression="SET precio = :p, stock = :s",
             ExpressionAttributeValues={
                 ':p': Decimal(str(nuevo_precio)),
                 ':s': int(nuevo_stock)
@@ -279,7 +280,14 @@ def actualizar_producto(producto_id, nuevo_precio, nuevo_stock):
 
 def eliminar_producto(producto_id):
     try:
-        tabla_productos.delete_item(Key={'producto_id': producto_id})
+        id_dueno = st.session_state.user_data['user_id']  # ← O el campo que uses como id_del_dueno
+        
+        tabla_productos.delete_item(
+            Key={
+                'id_del_dueno': id_dueno,      # ← CLAVE PARTITION
+                'producto_id': producto_id     # ← CLAVE SORT
+            }
+        )
         return True
     except Exception as e:
         st.error(f"Error eliminando: {e}")
