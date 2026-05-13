@@ -306,7 +306,7 @@ def registrar_venta(producto_id, cantidad, precio):
         tabla_ventas.put_item(
             Item={
                 'usuario_id': id_dueno,
-                'venta_id': str(uuid.uuid4()),
+                'Venta_id': str(uuid.uuid4()),
                 'producto_id': producto_id,
                 'cantidad': int(cantidad),
                 'precio': Decimal(str(precio)),
