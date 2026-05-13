@@ -761,19 +761,61 @@ elif menu == "Ventas":  # línea 760
     st.header("💰 Registrar Venta")
     productos = obtener_productos()
     if productos:
-        nombres = [p['nombre'] for p in productos]
-        producto_sel = st.selectbox("Producto", nombres)  # línea 765
-        cantidad = st.number_input("Cantidad", min_value=1, value=1)
-        producto = next((p for p in productos if p['nombre'] == producto_sel), None)
-        if producto:
-            st.write(f"Precio unitario: S/{producto['precio']:.2f}")
-            st.write(f"Total: S/{producto['precio'] * cantidad:.2f}")
-            if st.button("Registrar Venta"):  # línea 771
-                if registrar_venta(producto['producto_id'], cantidad, producto['precio']):
-                    st.success("Venta registrada")
-                    st.rerun()
-    else:
-        st.warning("Primero agrega productos")
+        if 'carrito' not in st.session_state:
+    st.session_state.carrito = []
+
+col1, col2 = st.columns([2, 1])
+
+with col1:
+    st.subheader("Agregar Productos")
+    nombres = [p['nombre'] for p in productos]
+    producto_sel = st.selectbox("Producto", nombres, key="prod_sel")
+    cantidad = st.number_input("Cantidad", min_value=1, value=1, key="cant_sel")
+    producto = next((p for p in productos if p['nombre'] == producto_sel), None)
+    
+    if producto:
+        st.write(f"Precio: S/{producto['precio']:.2f} | Stock: {producto['stock']}")
+        if st.button("➕ Agregar al Carrito", use_container_width=True):
+            if producto['stock'] >= cantidad:
+                st.session_state.carrito.append({
+                    'producto_id': producto['producto_id'],
+                    'nombre': producto['nombre'],
+                    'precio': producto['precio'],
+                    'cantidad': cantidad,
+                    'subtotal': producto['precio'] * cantidad
+                })
+                st.success(f"Agregado: {cantidad}x {producto['nombre']}")
+                st.rerun()
+            else:
+                st.error("Stock insuficiente")
+
+with col2:
+    st.subheader("🛒 Carrito")
+    if st.session_state.carrito:
+        total = 0
+        for i, item in enumerate(st.session_state.carrito):
+            st.write(f"{item['cantidad']}x {item['nombre']}")
+            st.write(f"S/{item['subtotal']:.2f}")
+            if st.button("🗑️", key=f"del_{i}"):
+                st.session_state.carrito.pop(i)
+                st.rerun()
+            total += item['subtotal']
+        
+        st.divider()
+        st.write(f"**Total: S/{total:.2f}**")
+        
+        if st.button("✅ Finalizar Venta", type="primary", use_container_width=True):
+            ok = True
+            for item in st.session_state.carrito:
+                if not registrar_venta(item['producto_id'], item['cantidad'], item['precio']):
+                    ok = False
+                    break
+            if ok:
+                st.success("Venta registrada correctamente")
+                st.session_state.carrito = []
+                st.rerun()
+            else:
+                st.error("Error al registrar venta")
 
 elif menu == "Dashboard": 
     st.header("📊 Dashboard")
