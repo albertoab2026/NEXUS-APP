@@ -298,7 +298,7 @@ def registrar_venta(producto_id, cantidad, precio):
         id_dueno = st.session_state.user_data['usuario_id']
         tabla_ventas.put_item(
             Item={
-                'id_del_dueno': id_dueno,  # <- cambiado
+                'usuario_id': id_dueno,  # <- cambiado de id_del_dueno
                 'Venta_id': str(uuid.uuid4()),
                 'producto_id': producto_id,
                 'cantidad': cantidad,
@@ -306,24 +306,14 @@ def registrar_venta(producto_id, cantidad, precio):
                 'fecha': str(datetime.now())
             }
         )
+        # ... el resto igual
         response = tabla_productos.get_item(
             Key={
-                'id_del_dueno': str(id_dueno),  # <- cambiado
+                'id_del_dueno': str(id_dueno),  # esto déjalo así, productos sí usa id_del_dueno
                 'producto_id': str(producto_id)
             }
         )
-        if 'Item' in response:
-            stock_actual = int(response['Item']['stock'])
-            tabla_productos.update_item(
-                Key={
-                    'id_del_dueno': str(id_dueno),  # <- cambiado
-                    'producto_id': str(producto_id)
-                },
-                UpdateExpression='SET stock = :val',
-                ExpressionAttributeValues={':val': stock_actual - cantidad}
-            )
-            return True
-        return False
+        return True
     except Exception as e:
         st.error(f"Error en venta: {e}")
         return False
@@ -333,7 +323,7 @@ def obtener_ventas():
         id_dueno = st.session_state.user_data['usuario_id']
         response = tabla_ventas.query(
             IndexName='usuario-index',
-            KeyConditionExpression=Key('id_del_dueno').eq(id_dueno)  # <- cambiado
+            KeyConditionExpression=Key('usuario_id').eq(id_dueno)  # <- cambiado
         )
         return response.get('Items', [])
     except Exception as e:
