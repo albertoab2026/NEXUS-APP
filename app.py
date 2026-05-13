@@ -795,53 +795,7 @@ elif menu == "Ventas":  # línea 760
                         st.success(f"Agregado: {cantidad}x {producto['nombre']}")
                         st.rerun()
                     else:
-                        st.error("Stock insuficiente")
-
-        col1, col2 = st.columns([2, 1], gap="large")
-
-        # Botón flotante solo visible en móvil
-        st.markdown("""
-        <style>
-        .floating-cart-btn {
-            position: fixed;
-            bottom: 20px;
-            right: 20px;
-            z-index: 999;
-        }
-        @media (min-width: 768px) {
-            .floating-cart-btn { display: none; }
-        }
-        </style>
-        """, unsafe_allow_html=True)
-
-        with col1:
-            st.subheader("Agregar Productos")
-            nombres = [p['nombre'] for p in productos]
-            producto_sel = st.selectbox("Producto", nombres, key="prod_sel")
-            cantidad = st.number_input("Cantidad", min_value=1, value=1, key="cant_sel")
-            producto = next((p for p in productos if p['nombre'] == producto_sel), None)
-            
-            if producto:
-                st.write(f"Precio: S/{producto['precio']:.2f} | Stock: {producto['stock']}")
-                if st.button("➕ Agregar al Carrito", use_container_width=True):
-                    if producto['stock'] >= cantidad:
-                        for item in st.session_state.carrito:
-                            if item['producto_id'] == producto['producto_id']:
-                                item['cantidad'] += cantidad
-                                item['subtotal'] = item['cantidad'] * item['precio']
-                                break
-                        else:
-                            st.session_state.carrito.append({
-                                'producto_id': producto['producto_id'],
-                                'nombre': producto['nombre'],
-                                'precio': producto['precio'],
-                                'cantidad': cantidad,
-                                'subtotal': producto['precio'] * cantidad
-                            })
-                        st.success(f"Agregado: {cantidad}x {producto['nombre']}")
-                        st.rerun()
-                    else:
-                        st.error("Stock insuficiente")
+                        st.error("Stock insuficiente")   
 
         with col2:
             st.subheader(f"🛒 Carrito ({len(st.session_state.carrito)})")
