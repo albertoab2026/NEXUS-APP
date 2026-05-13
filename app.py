@@ -5,6 +5,7 @@ import pandas as pd
 import uuid
 from datetime import datetime, timedelta, timezone
 import hashlib
+from decimal import Decimal
 
 # ====== RUBROS Y CATEGORÍAS BASE - NUEVO ======
 CATEGORIAS_POR_RUBRO = {
