@@ -805,19 +805,17 @@ elif menu == "Ventas":  # línea 760
                 st.write(f"**Total: S/{total:.2f}**")
                 
                 if st.button("✅ Finalizar Venta", type="primary", use_container_width=True):
-                   
-            ok = True
-            for item in st.session_state.carrito:
-                if not registrar_venta(item['producto_id'], item['cantidad'], item['precio']):
-                    ok = False
-                    break
-            if ok:
-                st.success("Venta registrada correctamente")
-                st.session_state.carrito = []
-                st.rerun()
-            else:
-                st.error("Error al registrar venta")
-
+                    ok = True  # <-- 4 espacios más que el if de arriba
+                    for item in st.session_state.carrito:
+                        if not registrar_venta(item['producto_id'], item['cantidad'], item['precio']):
+                            ok = False
+                            break
+                    if ok:
+                        st.success("Venta registrada correctamente")
+                        st.session_state.carrito = []
+                        st.rerun()
+                    else:
+                        st.error("Error al registrar venta")
 elif menu == "Dashboard": 
     st.header("📊 Dashboard")
     ventas = obtener_ventas()
