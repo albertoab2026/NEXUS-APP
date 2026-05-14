@@ -842,7 +842,7 @@ elif menu == "Registrar Venta":
     </style>
     """, unsafe_allow_html=True)
 st.subheader("Acciones")
-producto_nombres = [p['nombre'] for p in productos_filtrados]  # Este sí usa filtrados para editar cualquiera
+producto_nombres = [p['nombre'] for p in productos]
 prod_sel = st.selectbox("Selecciona producto para editar/eliminar", producto_nombres)
 producto_obj = next((p for p in productos_filtrados if p['nombre'] == prod_sel), None)
 
