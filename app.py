@@ -908,11 +908,11 @@ else:
                         else:
                             st.error("Error al registrar")
 
-                if st.button("❌ Cerrar", key="cerrar_exp", use_container_width=True):
-                    st.session_state.show_cart = False
-                    st.rerun()
-        else: # 8 espacios
-            st.info("Carrito vacío") # 12 espacios
+        if st.button("❌ Cerrar", key="cerrar_exp", use_container_width=True):
+            st.session_state.show_cart = False
+            st.rerun()
+    else:  # presiona espacio 8 veces
+        st.info("Carrito vacío")  # presiona espacio 12 veces
 
 elif menu == "Dashboard": # 0 espacios, pegado al borde
     st.header("📊 Dashboard")
@@ -1015,4 +1015,5 @@ elif menu == "ADMIN": # 0 espacios también
                     )
                     st.success("✅ Tu clave fue cambiada")
                 except Exception as e:
+                    st.error(f"Error: {e}")
                     st.error(f"Error: {e}")
