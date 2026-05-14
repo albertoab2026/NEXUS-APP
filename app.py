@@ -911,10 +911,10 @@ else:
         if st.button("❌ Cerrar", key="cerrar_exp", use_container_width=True):
             st.session_state.show_cart = False
             st.rerun()
-    else:  # presiona espacio 8 veces
-        st.info("Carrito vacío")  # presiona espacio 12 veces
+        else:  # 8 espacios
+        st.info("Carrito vacío")  # 12 espacios
 
-elif menu == "Dashboard": # 0 espacios, pegado al borde
+elif menu == "Dashboard":  # 0 espacios - sin nada adelante
     st.header("📊 Dashboard")
     ventas = obtener_ventas()
     productos = obtener_productos()
