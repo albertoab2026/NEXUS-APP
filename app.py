@@ -911,7 +911,7 @@ else:
                 if st.button("❌ Cerrar", key="cerrar_exp", use_container_width=True):
                     st.session_state.show_cart = False
                     st.rerun()
-            else:
+          else:
                 st.info("Carrito vacío")
         
 elif menu == "Dashboard": 
