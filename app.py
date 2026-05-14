@@ -732,7 +732,7 @@ if menu == "Productos":  # ← SIN EMOJI
     }
 )
 
-    elif menu == "Registrar Venta":
+elif menu == "Registrar Venta":
     # Inicializar carrito si no existe
     if 'carrito' not in st.session_state:
         st.session_state.carrito = []
