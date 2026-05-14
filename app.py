@@ -867,57 +867,63 @@ else:
     
         
 
-# Modal reemplazo con expander
-    if st.session_state.get('show_cart', False):
-        with st.expander(f"🛒 Carrito ({len(st.session_state.carrito)})", expanded=True):
-            if st.session_state.carrito:
-                total = 0
-                for i, item in enumerate(st.session_state.carrito):
-                    col_a, col_b = st.columns([4, 1])
-                    with col_a:
-                        st.write(f"**{item['cantidad']}x {item['nombre']}**")
-                        st.caption(f"S/{item['precio']:.2f} c/u")
-                    with col_b:
-                        if st.button("🗑️", key=f"del_exp_{i}", use_container_width=True):
-                            st.session_state.carrito.pop(i)
-                            st.rerun()
-                    total += item['subtotal']
-                    if i < len(st.session_state.carrito) - 1:
-                        st.divider()
+# --- SECCIÓN DEL CARRITO (Visualización) ---
+if st.session_state.get('show_cart', False):
+    with st.expander(f"🛒 Carrito ({len(st.session_state.carrito)})", expanded=True):
+        if st.session_state.carrito:
+            total = 0
+            # Enumeramos para tener llaves únicas en los botones
+            for i, item in enumerate(st.session_state.carrito):
+                col_a, col_b = st.columns([4, 1])
+                with col_a:
+                    st.write(f"**{item['cantidad']}x {item['nombre']}**")
+                    st.caption(f"S/{item['precio']:.2f} c/u")
+                with col_b:
+                    if st.button("🗑️", key=f"del_exp_{i}", use_container_width=True):
+                        st.session_state.carrito.pop(i)
+                        st.rerun()
+                
+                total += item['subtotal']
+                
+                if i < len(st.session_state.carrito) - 1:
+                    st.divider()
 
-                st.write(f"### Total: S/{total:.2f}")
+            st.write(f"### Total: S/{total:.2f}")
 
-                col_c, col_d = st.columns(2)
-                with col_c:
-                    if st.button("🗑️ Vaciar", key="vaciar_exp", use_container_width=True):
+            col_c, col_d = st.columns(2)
+            with col_c:
+                if st.button("🗑️ Vaciar", key="vaciar_exp", use_container_width=True):
+                    st.session_state.carrito = []
+                    st.session_state.show_cart = False
+                    st.rerun()
+            with col_d:
+                if st.button("✅ Finalizar", key="finalizar_exp", type="primary", use_container_width=True):
+                    ok = True
+                    for item in st.session_state.carrito:
+                        if not registrar_venta(item['producto_id'], item['cantidad'], item['precio']):
+                            ok = False
+                            break
+                    if ok:
+                        st.success("Venta registrada")
                         st.session_state.carrito = []
                         st.session_state.show_cart = False
                         st.rerun()
-                with col_d:
-                    if st.button("✅ Finalizar", key="finalizar_exp", type="primary", use_container_width=True):
-                        ok = True
-                        for item in st.session_state.carrito:
-                            if not registrar_venta(item['producto_id'], item['cantidad'], item['precio']):
-                                ok = False
-                                break
-                        if ok:
-                            st.success("Venta registrada")
-                            st.session_state.carrito = []
-                            st.session_state.show_cart = False
-                            st.rerun()
-                        else:
-                            st.error("Error al registrar")
+                    else:
+                        st.error("Error al registrar")
+        else:
+            st.info("El carrito está vacío")
 
+        # Botón para cerrar el expander manualmente
         if st.button("❌ Cerrar", key="cerrar_exp", use_container_width=True):
             st.session_state.show_cart = False
             st.rerun()
-        else:  # 8 espacios
-        st.info("Carrito vacío")  # 12 espacios
 
-elif menu == "Dashboard": # 0 espacios - pegado al borde
+# --- SECCIÓN DE NAVEGACIÓN (Dashboard / Admin) ---
+if menu == "Dashboard":
     st.header("📊 Dashboard")
     ventas = obtener_ventas()
     productos = obtener_productos()
+    
     col1, col2, col3 = st.columns(3)
     with col1:
         st.metric("Total Productos", len(productos))
@@ -927,18 +933,19 @@ elif menu == "Dashboard": # 0 espacios - pegado al borde
     with col3:
         st.metric("Transacciones", len(ventas))
 
-elif menu == "ADMIN": # 0 espacios también
+elif menu == "ADMIN":
     st.header("⚙️ Panel Admin")
     rol_usuario = st.session_state.user_data.get('rol', 'cliente')
 
     if rol_usuario == 'admin':
-        # SI ERES ADMIN: 2 PESTAÑAS
-        tab_clave_admin, tab_plan = st.tabs(["🔑 Cambiar Clave de Cliente", "🔒 Activar Plan S/30"])
+        # VISTA DE ADMINISTRADOR
+        tab_clave_admin, tab_plan = st.tabs(["🔑 Claves", "🔒 Activar Plan"])
 
         with tab_clave_admin:
             st.subheader("Cambiar Clave de Cualquier Usuario")
             dni_usuario = st.text_input("DNI del usuario")
-            nueva_clave_admin = st.text_input("Nueva Clave para el usuario", type="password", key="new_pass_admin")
+            nueva_clave_admin = st.text_input("Nueva Clave", type="password", key="new_pass_admin")
+            
             if st.button("Cambiar Clave del Usuario"):
                 if not dni_usuario or not nueva_clave_admin:
                     st.error("Completa DNI y nueva clave")
@@ -964,7 +971,8 @@ elif menu == "ADMIN": # 0 espacios también
 
         with tab_plan:
             st.subheader("Activar Plan S/30 por 30 días")
-            dni_cliente = st.text_input("DNI del cliente que pagó S/30", key="dni_plan")
+            dni_cliente = st.text_input("DNI del cliente", key="dni_plan")
+            
             if st.button("Activar 30 días"):
                 if not dni_cliente:
                     st.error("Ingresa el DNI")
@@ -973,6 +981,7 @@ elif menu == "ADMIN": # 0 espacios también
                         from boto3.dynamodb.conditions import Key
                         from datetime import datetime, timedelta
                         nueva_fecha = (datetime.now() + timedelta(days=30)).isoformat()
+                        
                         response = tabla_usuarios.query(
                             IndexName='dni-index',
                             KeyConditionExpression=Key('dni').eq(dni_cliente)
@@ -989,7 +998,7 @@ elif menu == "ADMIN": # 0 espacios también
                                     ':a': True
                                 }
                             )
-                            st.success(f"✅ Plan PREMIUM activado para DNI {dni_cliente} por 30 días")
+                            st.success(f"✅ Plan PREMIUM activado")
                             st.balloons()
                         else:
                             st.error("DNI no encontrado")
@@ -997,22 +1006,25 @@ elif menu == "ADMIN": # 0 espacios también
                         st.error(f"Error: {e}")
 
     else:
-        # SI ES CLIENTE: SOLO CAMBIAR SU PROPIA CLAVE
+        # VISTA DE CLIENTE (Solo puede cambiar su propia clave)
         st.subheader("🔑 Cambiar Mi Clave")
         nueva_clave = st.text_input("Nueva Clave", type="password", key="new_pass_cliente")
         confirmar_clave = st.text_input("Confirmar Nueva Clave", type="password", key="confirm_pass_cliente")
+        
         if st.button("Cambiar Mi Clave"):
-            if nueva_clave!= confirmar_clave:
+            if nueva_clave != confirmar_clave:
                 st.error("Las claves no coinciden")
             elif len(nueva_clave) < 6:
                 st.error("Mínimo 6 caracteres")
             else:
                 try:
+                    uid_propio = st.session_state.user_data.get('usuario_id')
                     tabla_usuarios.update_item(
-                        Key={'usuario_id': user['usuario_id']},
+                        Key={'usuario_id': uid_propio},
                         UpdateExpression='SET password_hash = :val',
                         ExpressionAttributeValues={':val': hash_password(nueva_clave)}
                     )
                     st.success("✅ Tu clave fue cambiada")
                 except Exception as e:
                     st.error(f"Error: {e}")
+
