@@ -729,12 +729,10 @@ if menu == "Productos":  # ← SIN EMOJI
                 "Estado": st.column_config.TextColumn(width="small"),
                 "Precio": st.column_config.TextColumn(width="small"),
                 "Stock": st.column_config.NumberColumn(width="small")
-            }
-        )
-        
-            )
+    }
+)
 
-elif menu == "Registrar Venta":
+    elif menu == "Registrar Venta":
     # Inicializar carrito si no existe
     if 'carrito' not in st.session_state:
         st.session_state.carrito = []
