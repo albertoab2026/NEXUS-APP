@@ -31,91 +31,55 @@ st.set_page_config(page_title="NEXUS", page_icon="⚡", layout="wide")
 # ====== CSS NEXUS - CON GLOW Y ANIMACIÓN ======
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
-
-.stApp {
-    background: linear-gradient(135deg, #1e2139 0%, #2d1b69 50%, #1a1d29 100%);
-    background-attachment: fixed;
-    color: #ffffff;
-    font-family: 'Inter', sans-serif;
-}
-
-h1, h2, h3 {
-    font-family: 'Inter', sans-serif!important;
-    font-weight: 700!important;
-    color: #ffffff!important;
-}
-
-.main-header {
-    background: linear-gradient(135deg, #6366F1 0%, #8B5CF6 50%, #7C3AED 100%);
-    border-radius: 15px;
-    padding: 25px;
-    margin-bottom: 30px;
-    box-shadow: 0 0 40px rgba(139, 92, 246, 0.6), 0 0 80px rgba(99, 102, 241, 0.3);
-    animation: pulseGlow 3s ease-in-out infinite;
-}
-
-@keyframes pulseGlow {
-    0%, 100% {
-        box-shadow: 0 0 40px rgba(139, 92, 246, 0.6), 0 0 80px rgba(99, 102, 241, 0.3);
-        transform: scale(1);
+    /* Fondo general morado oscuro */
+    .stApp {
+        background: linear-gradient(180deg, #1a0b2e 0%, #2d1b4e 100%);
+        color: white;
+        font-family: 'Inter', sans-serif;
     }
-    50% {
-        box-shadow: 0 0 60px rgba(139, 92, 246, 0.9), 0 0 100px rgba(99, 102, 241, 0.5);
-        transform: scale(1.01);
+    
+    /* Botones morados */
+    .stButton>button {
+        background: linear-gradient(90deg, #7c3aed 0%, #a855f7 100%);
+        border: none;
+        color: white;
+        border-radius: 12px;
+        font-weight: 600;
+        width: 100%;
+        padding: 10px 20px;
+        transition: all 0.3s;
     }
-}
-
-.stButton > button {
-    background: linear-gradient(135deg, #7C3AED 0%, #6366F1 100%);
-    color: white!important;
-    border: none;
-    border-radius: 8px;
-    font-weight: 600;
-    padding: 10px 20px;
-    width: 100%;
-    transition: all 0.3s;
-    box-shadow: 0 0 20px rgba(124, 58, 237, 0.4);
-}
-.stButton > button:hover {
-    transform: scale(1.03);
-    box-shadow: 0 0 35px rgba(124, 58, 237, 0.8);
-}
-
-.stTextInput > div > div > input,.stNumberInput > div > div > input {
-    background-color: rgba(37, 40, 54, 0.8)!important;
-    color: #ffffff!important;
-    border: 1px solid #4F46E5!important;
-    border-radius: 8px;
-    box-shadow: 0 0 10px rgba(79, 70, 229, 0.2);
-}
-
-.stSelectbox > div > div {
-    background-color: rgba(37, 40, 54, 0.8)!important;
-    border: 1px solid #4F46E5!important;
-    border-radius: 8px;
-    color: white!important;
-    box-shadow: 0 0 10px rgba(79, 70, 229, 0.2);
-}
-
-.stTabs [data-baseweb="tab"] {
-    background-color: transparent;
-    color: #9CA3AF;
-    font-weight: 600;
-}
-.stTabs [aria-selected="true"] {
-    color: #F59E0B!important;
-    border-bottom: 2px solid #F59E0B!important;
-    text-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
-}
-
-div[data-testid="metric-container"] {
-    background: rgba(37, 40, 54, 0.6);
-    border: 1px solid #4F46E5;
-    border-radius: 12px;
-    padding: 20px;
-    box-shadow: 0 0 15px rgba(79, 70, 229, 0.3);
-}
+    .stButton>button:hover {
+        background: linear-gradient(90deg, #6d28d9 0%, #9333ea 100%);
+        transform: scale(1.02);
+        box-shadow: 0 0 20px rgba(124, 58, 237, 0.5);
+    }
+    
+    /* Tablas y contenedores */
+    .stDataFrame, [data-testid="stContainer"] {
+        background: #1e1b2e;
+        border-radius: 12px;
+        padding: 10px;
+        border: 1px solid #3b3561;
+    }
+    
+    /* Inputs y selectbox */
+    .stTextInput>div>div>input, .stSelectbox>div>div>select, .stNumberInput>div>div>input {
+        background: #2d2940 !important;
+        color: white !important;
+        border: 1px solid #4c4773 !important;
+        border-radius: 8px !important;
+    }
+    
+    /* Texto y títulos */
+    h1, h2, h3, h4, h5, h6, p, label {
+        color: #f5f5f5 !important;
+    }
+    
+    /* Oculta el header feo de Streamlit */
+    #MainMenu, header, footer {
+        visibility: hidden;
+    }
 </style>
 """, unsafe_allow_html=True)
 
