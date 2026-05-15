@@ -830,24 +830,25 @@ elif menu == "Ventas":
         if producto:
             st.write(f"Precio: S/{producto['precio']:.2f} | Stock: {producto['stock']}")
             if st.button("➕ Agregar al Carrito", use_container_width=True):
-                if producto['stock'] >= cantidad:
-                    for item in st.session_state.carrito:
-                        if item['producto_id'] == producto['producto_id']:
-                            item['cantidad'] += cantidad
-                            item['subtotal'] = item['cantidad'] * item['precio']
-                            break
-                    else:
-                        st.session_state.carrito.append({
-                            'producto_id': producto['producto_id'],
-                            'nombre': producto['nombre'],
-                            'precio': producto['precio'],
-                            'cantidad': cantidad,
-                            'subtotal': producto['precio'] * cantidad
-                        })
-                    st.success(f"Agregado: {cantidad}x {producto['nombre']}")
-                    st.rerun()
-                else:
-                    st.error("Stock insuficiente")
+    if producto['stock'] >= cantidad:
+        for item in st.session_state.carrito:
+            if item['producto_id'] == producto['producto_id']:
+                item['cantidad'] += cantidad
+                item['subtotal'] = item['cantidad'] * item['precio']
+                break
+        else:
+            st.session_state.carrito.append({
+                'producto_id': producto['producto_id'],
+                'nombre': producto['nombre'],
+                'precio': producto['precio'],
+                'cantidad': cantidad,
+                'subtotal': producto['precio'] * cantidad
+            })
+        st.success(f"Agregado: {cantidad}x {producto['nombre']}")
+        st.session_state.show_cart = True  # <-- agrega esta línea
+        st.rerun()
+    else:
+        st.error("Stock insuficiente")
     else:
         st.info("No hay productos. Agrega el primero con el botón + Nuevo Producto")
 
