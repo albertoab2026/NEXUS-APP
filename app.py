@@ -28,58 +28,59 @@ if 'procesando_venta' not in st.session_state:
 # ====== 1. CONFIGURACIÓN AWS ======
 st.set_page_config(page_title="NEXUS", page_icon="⚡", layout="wide")
 
-# ====== CSS NEXUS - CON GLOW Y ANIMACIÓN ======
+# ====== CSS NEXUS - OPTIMIZADO SIN LAG ======
 st.markdown("""
 <style>
-    /* Fondo general morado oscuro */
-    .stApp {
-        background: linear-gradient(180deg, #1a0b2e 0%, #2d1b4e 100%);
-        color: white;
-        font-family: 'Inter', sans-serif;
-    }
-    
-    /* Botones morados */
-    .stButton>button {
-        background: linear-gradient(90deg, #7c3aed 0%, #a855f7 100%);
-        border: none;
-        color: white;
-        border-radius: 12px;
-        font-weight: 600;
-        width: 100%;
-        padding: 10px 20px;
-        transition: all 0.3s;
-    }
-    .stButton>button:hover {
-        background: linear-gradient(90deg, #6d28d9 0%, #9333ea 100%);
-        transform: scale(1.02);
-        box-shadow: 0 0 20px rgba(124, 58, 237, 0.5);
-    }
-    
-    /* Tablas y contenedores */
-    .stDataFrame, [data-testid="stContainer"] {
-        background: #1e1b2e;
-        border-radius: 12px;
-        padding: 10px;
-        border: 1px solid #3b3561;
-    }
-    
-    /* Inputs y selectbox */
-    .stTextInput>div>div>input, .stSelectbox>div>div>select, .stNumberInput>div>div>input {
-        background: #2d2940 !important;
-        color: white !important;
-        border: 1px solid #4c4773 !important;
-        border-radius: 8px !important;
-    }
-    
-    /* Texto y títulos */
-    h1, h2, h3, h4, h5, h6, p, label {
-        color: #f5f5f5 !important;
-    }
-    
-    /* Oculta el header feo de Streamlit */
-    #MainMenu, header, footer {
-        visibility: hidden;
-    }
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+
+html, body, [class*="css"] {
+    font-family: 'Inter', sans-serif;
+}
+
+/* Fondo general */
+.stApp {
+    background: #0F172A;
+    color: #E2E8F0;
+}
+
+/* Botones sin animación pesada */
+.stButton>button {
+    background: #6366F1;
+    border: none;
+    color: white;
+    border-radius: 8px;
+    font-weight: 500;
+    padding: 8px 16px;
+    transition: background 0.2s;
+}
+
+.stButton>button:hover {
+    background: #4F46E5;
+}
+
+/* Tablas y contenedores */
+.stDataFrame, [data-testid="stContainer"] {
+    background: #1E293B;
+    border-radius: 8px;
+    border: 1px solid #334155;
+}
+
+/* Inputs */
+.stTextInput>div>div>input {
+    background: #1E293B;
+    border: 1px solid #334155;
+    color: #E2E8F0;
+    border-radius: 6px;
+}
+
+/* Quita el scroll feo */
+::-webkit-scrollbar {
+    width: 6px;
+}
+::-webkit-scrollbar-thumb {
+    background: #334155;
+    border-radius: 3px;
+}
 </style>
 """, unsafe_allow_html=True)
 
