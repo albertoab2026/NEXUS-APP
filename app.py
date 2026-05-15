@@ -804,7 +804,7 @@ if menu == "Productos":
                 st.session_state.pop('mostrar_import', None)
                 st.rerun()
                 
-elif menu == "Registrar Venta":
+elif menu == "Ventas":
     # Inicializar carrito si no existe
     if 'carrito' not in st.session_state:
         st.session_state.carrito = []
