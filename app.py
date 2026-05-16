@@ -503,23 +503,28 @@ elif menu == "Reportes":
         else:
             st.info("Aún no se han registrado ventas el día de hoy.")
             
-        # Historial Colapsable Completo
+        # Historial Colapsable Completo (Corregido y Protegido)
         with st.expander("🗄️ Ver historial completo de auditoría"):
-            df_all = pd.DataFrame(ventas)
-            df_all['nombre_producto'] = df_all['producto_id'].map(productos_dict).fillna('Producto eliminado')
-            df_all['fecha_formato'] = pd.to_datetime(df_all['fecha']).dt.strftime('%d/%m %H:%M')
-            if 'metodo_pago' not in df_all.columns:
-                df_all['metodo_pago'] = 'Efectivo'
-            st.dataframe(
-                df_all[['fecha_formato', 'nombre_producto', 'cantidad', 'metodo_pago', 'total_venta', 'total_costo', 'ganancia']], 
-                use_container_width=True,
-                column_config={
-                    "fecha_formato": "Fecha/Hora", "nombre_producto": "Producto", "cantidad": "Cant",
-                    "metodo_pago": "Método",
-                    "total_venta": st.column_config.NumberColumn("Venta S/", format="S/%.2f"),
-                    "total_costo": st.column_config.NumberColumn("Costo S/", format="S/%.2f"),
-                    "ganancia": st.column_config.NumberColumn("Ganancia S/", format="S/%.2f")
-                }
-            )
-
-    
+            if ventas: # Solo muestra la tabla si hay datos históricos
+                df_all = pd.DataFrame(ventas)
+                df_all['nombre_producto'] = df_all['producto_id'].map(productos_dict).fillna('Producto eliminado')
+                df_all['fecha_formato'] = pd.to_datetime(df_all['fecha']).dt.strftime('%d/%m %H:%M')
+                
+                if 'metodo_pago' not in df_all.columns:
+                    df_all['metodo_pago'] = 'Efectivo'
+                
+                st.dataframe(
+                    df_all[['fecha_formato', 'nombre_producto', 'cantidad', 'metodo_pago', 'total_venta', 'total_costo', 'ganancia']], 
+                    use_container_width=True,
+                    column_config={
+                        "fecha_formato": "Fecha/Hora",  # <-- CORREGIDO: Ahora coincide exactamente con el nombre de arriba
+                        "nombre_producto": "Producto", 
+                        "cantidad": "Cant",
+                        "metodo_pago": "Método",
+                        "total_venta": st.column_config.NumberColumn("Venta S/", format="S/%.2f"),
+                        "total_costo": st.column_config.NumberColumn("Costo S/", format="S/%.2f"),
+                        "ganancia": st.column_config.NumberColumn("Ganancia S/", format="S/%.2f")
+                    }
+                )
+            else:
+                st.info("No hay historial de auditoría disponible.")
