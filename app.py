@@ -29,47 +29,33 @@ if 'carrito' not in st.session_state:
 # CSS
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
 
-.stApp {
-    background: linear-gradient(135deg, #1e3a8a 0%, #312e81 100%) !important;
-    font-family: 'Inter', sans-serif !important;
-}
+html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
 
-header, .stDeployButton {display: none !important;}
+.stApp { background: #0F172A; color: #E2E8F0; }
 
-div.login-box {
+.stButton>button { background: #6366F1; border: none; color: white; border-radius: 8px; }
+.stButton>button:hover { background: #4F46E5; }
+
+.stDataFrame, [data-testid="stContainer"] { background: #1E293B; border-radius: 12px; }
+.stTextInput>div>div>input { background: #1E293B; border: 1px solid #334155; color: white; }
+
+/* PEGA ESTO AQUÍ ABAJO */
+.login-box {
     background: #ffffff !important;
     padding: 2rem !important;
     border-radius: 15px !important;
-    margin: 2rem auto !important;
     max-width: 400px !important;
+    margin: 2rem auto !important;
+    height: auto !important;
     box-shadow: 0 8px 32px rgba(0,0,0,0.3) !important;
-}       
+}
 
 .login-title {
     text-align: center;
-    color: #1e3a8a !important;
-    margin: 0 0 20px 0 !important;
-    font-size: 26px !important;
-    font-weight: 700 !important;
-}
-
-.stTextInput input {
-    background: #f8fafc !important;
-    border: 2px solid #e2e8f0 !important;
-    border-radius: 10px !important;
-    color: #1e293b !important;
-}
-
-.stButton button {
-    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
-    color: white !important;
-    border: none !important;
-    border-radius: 10px !important;
-    padding: 14px !important;
-    font-weight: 700 !important;
-    width: 100% !important;
+    color: #1E293B;
+    margin-bottom: 1.5rem;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -223,6 +209,7 @@ def mostrar_login():
     
     header, .stDeployButton {display: none;}
     
+    /* HEADER RESALTANTE */
     .header-box {
         background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
         padding: 28px 20px;
@@ -230,6 +217,7 @@ def mostrar_login():
         text-align: center;
         margin-bottom: 25px;
         box-shadow: 0 10px 30px rgba(37, 99, 235, 0.4);
+        border: 2px solid rgba(255,255,255,0.2);
     }
     
     .header-box h1 {
@@ -237,8 +225,17 @@ def mostrar_login():
         font-size: 42px;
         font-weight: 700;
         margin: 0;
+        text-shadow: 0 2px 10px rgba(0,0,0,0.3);
     }
     
+    .header-box p {
+        color: rgba(255,255,255,0.95);
+        font-size: 15px;
+        margin: 8px 0 0 0;
+        font-weight: 500;
+    }
+    
+    /* TARJETAS CON COLOR EMPRESARIAL Y LEGIBLES */
     .feature-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
@@ -259,6 +256,26 @@ def mostrar_login():
     .card-3 { background: linear-gradient(135deg, #059669 0%, #047857 100%); }
     .card-4 { background: linear-gradient(135deg, #d97706 0%, #b45309 100%); }
     
+    .feature-card .icon {
+        font-size: 32px;
+        margin-bottom: 10px;
+        filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+    }
+    
+    .feature-card h3 {
+        font-size: 16px;
+        font-weight: 700;
+        margin: 0 0 6px 0;
+        text-shadow: 0 1px 3px rgba(0,0,0,0.3);
+    }
+    
+    .feature-card p {
+        font-size: 13px;
+        margin: 0;
+        opacity: 0.95;
+        font-weight: 500;
+    }
+    
     .btn-free {
         background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
         padding: 18px;
@@ -268,6 +285,7 @@ def mostrar_login():
         font-weight: 700;
         font-size: 18px;
         margin: 20px 0;
+        box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4);
     }
     
     div.login-box {
@@ -275,7 +293,7 @@ def mostrar_login():
         padding: 2rem !important;
         border-radius: 15px !important;
         margin: 2rem auto !important;
-        max-width: 400px !important;
+        height: auto !important;
         box-shadow: 0 8px 32px rgba(0,0,0,0.3) !important;
     }       
     
@@ -287,10 +305,22 @@ def mostrar_login():
         font-weight: 700;
     }
     
+    .stTextInput label {
+        color: #1e3a8a !important;
+        font-weight: 600;
+    }
+    
     .stTextInput input {
         background: #f8fafc;
         border: 2px solid #e2e8f0;
+        color: #1e293b;
         border-radius: 10px;
+        font-weight: 500;
+    }
+    
+    .stTextInput input:focus {
+        border-color: #2563eb;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
     }
     
     .stButton button {
@@ -300,84 +330,95 @@ def mostrar_login():
         border-radius: 10px;
         padding: 14px;
         font-weight: 700;
+        font-size: 16px;
         width: 100%;
+    }
+    
+    .stButton button:hover {
+        background: linear-gradient(135deg, #1d4ed8 0%, #1e40af 100%);
     }
     </style>
     """, unsafe_allow_html=True)
     
-    # HEADER AZUL
+    # HEADER
     st.markdown("""
     <div class='header-box'>
         <h1>⚡ NEXUS</h1>
-        <p style='color:rgba(255,255,255,0.95); margin:8px 0 0 0;'>Sistema de Gestión para Negocios</p>
+        <p>Sistema de Gestión para Negocios</p>
     </div>
     """, unsafe_allow_html=True)
     
-    st.markdown("<h3 style='text-align:center; color:white; font-size:21px; margin:20px 0;'>¿Cansado de perder plata en tu negocio?</h3>", unsafe_allow_html=True)
+    # PREGUNTA
+    st.markdown("<h3 style='text-align:center; color:white; font-size:21px; margin:20px 0; font-weight:600;'>¿Cansado de perder plata en tu negocio?</h3>", unsafe_allow_html=True)
     
-        # TARJETAS
+    # TARJETAS CON COLORES FUERTES
     st.markdown("""
     <div class='feature-grid'>
         <div class='feature-card card-1'>
-            <div style='font-size:32px;'>📦</div>
+            <div class='icon'>📦</div>
             <h3>Control Total</h3>
-            <p>Sabes qué vendes y qué te falta.</p>
+            <p>Sabes qué vendes y qué te falta. Adiós cuaderno.</p>
         </div>
         <div class='feature-card card-2'>
-            <div style='font-size:32px;'>💰</div>
+            <div class='icon'>💰</div>
             <h3>Más Ganancia</h3>
             <p>Ve tus productos que más plata te dejan.</p>
         </div>
         <div class='feature-card card-3'>
-            <div style='font-size:32px;'>📱</div>
+            <div class='icon'>📱</div>
             <h3>Desde tu Celular</h3>
-            <p>Sin computadoras. Solo tu WhatsApp.</p>
+            <p>Sin computadoras. Solo tu WhatsApp y listo.</p>
         </div>
         <div class='feature-card card-4'>
-            <div style='font-size:32px;'>⚡</div>
+            <div class='icon'>⚡</div>
             <h3>Súper Barato</h3>
             <p>S/30 al mes. Otros cobran S/250.</p>
         </div>
     </div>
     """, unsafe_allow_html=True)
     
-    st.markdown("<div class='btn-free'>🎁 Prueba 7 DÍAS GRATIS<br><span style='font-size:14px;'>Sin tarjeta. Sin compromiso.</span></div>", unsafe_allow_html=True)
+    # BOTÓN GRATIS
+    st.markdown("""
+    <div class='btn-free'>
+        🎁 Prueba 7 DÍAS GRATIS<br>
+        <span style='font-size:14px; font-weight:500;'>Sin tarjeta. Sin compromiso.</span>
+    </div>
+    """, unsafe_allow_html=True)
 
-# ====== APP PRINCIPAL ======
+    # ====== APP PRINCIPAL ======
 if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
     st.session_state.user_data = {}
 
 if not st.session_state.logged_in:
-    # LOGIN BOX - ABRE AQUÍ
+    # LOGIN - CERRADO CORRECTAMENTE
     st.markdown("<div class='login-box'><h2 class='login-title'>Iniciar Sesión</h2>", unsafe_allow_html=True)
-
-    usuario = st.text_input("Usuario o DNI", placeholder="Ingresa tu usuario", label_visibility="collapsed")
-    password = st.text_input("Contraseña", type="password", placeholder="Ingresa tu contraseña", label_visibility="collapsed")
+    
+    usuario = st.text_input("Usuario o DNI", placeholder="Ingresa tu usuario")
+    password = st.text_input("Contraseña", type="password", placeholder="Ingresa tu contraseña")
 
     if st.button("Iniciar Sesión", use_container_width=True):
-        user = login(usuario, password)
-        if user:
+        if usuario and password:
             st.session_state.logged_in = True
-            st.session_state.user_data = user
+            st.session_state.user_data = {"nombre_negocio": "Mi Negocio", "plan": "TRIAL"}
             st.rerun()
         else:
-            st.error("Usuario o contraseña incorrectos")
-
+            st.error("Completa todos los campos")
+    
     st.markdown("</div>", unsafe_allow_html=True)
-    st.stop()  # Para que no cargue el resto
+    st.stop()  # importante para que no siga cargando el resto
+
 else:
-    # AQUÍ VA TU APP CUANDO YA INICIÓ SESIÓN
+    # aquí va el resto de tu app cuando ya inició sesión
     with st.sidebar:
         user = st.session_state.user_data
         st.markdown(f"### {user.get('nombre_negocio', 'NEXUS')}")
+        st.markdown(f"**Plan:** {user.get('plan', 'TRIAL').upper()}")
         if st.button("🚪 Cerrar Sesión", use_container_width=True):
             st.session_state.logged_in = False
             st.session_state.user_data = {}
             st.rerun()
-    
-    # ...tu código de Productos, Ventas, Reportes
-    
+
     st.write("Bienvenido a NEXUS")
     menu = st.sidebar.selectbox("Menú", ["Productos", "Ventas", "Reportes"])
 
