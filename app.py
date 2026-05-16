@@ -327,20 +327,22 @@ def mostrar_login():
         <span style='font-size:14px; font-weight:400;'>Sin tarjeta. Sin compromiso. Cancela cuando quieras.</span>
     </div>
     """, unsafe_allow_html=True)
-        # LOGIN
+
+
+# LOGIN
 st.markdown("<h2 style='text-align:center; color:white; margin:25px 0 15px 0; font-size:28px;'>Iniciar Sesión</h2>", unsafe_allow_html=True)
 
 st.markdown("<div class='login-box'>", unsafe_allow_html=True)
-usuario = st.text_input("Usuario o DNI", placeholder="Ingresa tu usuario")
-password = st.text_input("Contraseña", type="password", placeholder="Ingresa tu contraseña")
-    
-    if st.button("Iniciar Sesión", use_container_width=True):
-        if usuario and password:
-            st.session_state.logged_in = True
-            st.session_state.user_data = {"nombre_negocio": "Mi Negocio", "plan": "TRIAL"}
-            st.rerun()
-        else:
-            st.error("Completa todos los campos")
+usuario = st.text_input("Usuario o DNI", placeholder="Ingresa tu usuario")  # 4 espacios
+password = st.text_input("Contraseña", type="password", placeholder="Ingresa tu contraseña")  # 4 espacios
+
+if st.button("Iniciar Sesión", use_container_width=True):  # 4 espacios, igual que las 2 líneas de arriba
+    if usuario and password:  # 8 espacios
+        st.session_state.logged_in = True  # 12 espacios
+        st.session_state.user_data = {"nombre_negocio": "Mi Negocio", "plan": "TRIAL"}  # 12 espacios
+        st.rerun()  # 12 espacios
+    else:  # 8 espacios
+        st.error("Completa todos los campos")  # 12 espacios
     
     st.markdown("</div>", unsafe_allow_html=True)
 # <- AQUÍ TERMINA def mostrar_login()
