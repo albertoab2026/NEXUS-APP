@@ -179,104 +179,112 @@ def actualizar_producto(producto_id, nuevo_precio, nuevo_stock):
 def mostrar_login():
     st.markdown("""
     <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+    
     .stApp {
-        background: linear-gradient(180deg, #1a0b2e 0%, #0f0f1e 100%);
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        font-family: 'Inter', sans-serif;
     }
     
     .header-box {
-        background: linear-gradient(135deg, #8b5cf6 0%, #3b82f6 100%);
-        padding: 50px 20px;
-        border-radius: 20px;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 25px;
+        border-radius: 15px;
         text-align: center;
-        margin-bottom: 30px;
-        box-shadow: 0 10px 40px rgba(139, 92, 246, 0.3);
+        margin-bottom: 25px;
+        box-shadow: 0 8px 25px rgba(0,0,0,0.3);
     }
     
     .header-box h1 {
         color: white;
-        font-size: 52px;
+        font-size: 42px;
+        font-weight: 700;
         margin: 0;
-        font-weight: 800;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        gap: 15px;
+        text-shadow: 2px 2px 8px rgba(0,0,0,0.3);
     }
     
     .header-box p {
         color: rgba(255,255,255,0.9);
-        font-size: 19px;
-        margin: 12px 0 0 0;
-        font-weight: 500;
+        font-size: 16px;
+        margin: 8px 0 0 0;
     }
     
     .feature-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
-        gap: 15px;
-        margin: 30px 0;
+        gap: 12px;
+        margin: 20px 0;
     }
     
     .feature-card {
-        padding: 20px;
-        border-radius: 15px;
+        padding: 18px 12px;
+        border-radius: 12px;
         text-align: center;
+        color: white;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.2);
     }
     
-    .card-1 { background: #1e293b; }
-    .card-2 { background: #581c87; }
-    .card-3 { background: #064e3b; }
-    .card-4 { background: #7c2d12; }
+    .card-1 { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+    .card-2 { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+    .card-3 { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+    .card-4 { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }
     
-    .feature-card .icon { font-size: 32px; margin-bottom: 10px; }
-    .feature-card h3 { color: white; margin: 5px 0; font-size: 16px; font-weight: 600; }
-    .feature-card p { color: #cbd5e1; font-size: 12px; margin: 0; }
+    .feature-card .icon {
+        font-size: 32px;
+        margin-bottom: 8px;
+    }
+    
+    .feature-card h3 {
+        font-size: 16px;
+        font-weight: 600;
+        margin: 0 0 5px 0;
+    }
+    
+    .feature-card p {
+        font-size: 12px;
+        margin: 0;
+        opacity: 0.9;
+    }
     
     .btn-free {
-        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-        color: white;
-        padding: 18px;
-        border-radius: 15px;
+        background: linear-gradient(135deg, #00f2fe 0%, #4facfe 100%);
+        padding: 16px;
+        border-radius: 12px;
         text-align: center;
+        color: white;
         font-weight: 700;
         font-size: 18px;
         margin: 20px 0;
-        box-shadow: 0 8px 20px rgba(16, 185, 129, 0.3);
+        box-shadow: 0 6px 20px rgba(79,172,254,0.4);
     }
     
     .login-box {
-        background: rgba(30, 35, 41, 0.8);
-        border: 1px solid #2d333b;
+        background: rgba(0,0,0,0.3);
+        padding: 25px;
         border-radius: 15px;
-        padding: 20px 25px 25px 25px;
-        margin-top: 0px;
+        backdrop-filter: blur(10px);
     }
-    
-    .login-box label { color: #cbd5e1 !important; margin-bottom: 5px !important; }
     
     .stTextInput input {
-        background: #0f172a !important;
-        border: 1px solid #334155 !important;
-        color: white !important;
-        border-radius: 10px !important;
-        padding: 12px !important;
+        background: rgba(255,255,255,0.1);
+        border: 1px solid rgba(255,255,255,0.3);
+        color: white;
+        border-radius: 8px;
     }
     
-    div[data-testid="stButton"] button {
-        background: #0f172a;
+    .stButton button {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
         border: none;
-        border-radius: 10px;
+        border-radius: 8px;
         padding: 12px;
         font-weight: 600;
         width: 100%;
-        margin-top: 10px;
     }
-    
-    .login-box > div:first-child { margin-top: 0 !important; padding-top: 0 !important; }
     </style>
     """, unsafe_allow_html=True)
     
+    # HEADER ARRIBA
     st.markdown("""
     <div class='header-box'>
         <h1>⚡ NEXUS</h1>
@@ -284,50 +292,63 @@ def mostrar_login():
     </div>
     """, unsafe_allow_html=True)
     
+    # PREGUNTA
     st.markdown("<h3 style='text-align:center; color:white; font-size:22px; margin:20px 0;'>¿Cansado de perder plata en tu negocio?</h3>", unsafe_allow_html=True)
-
-st.markdown("""
-<div class='feature-grid'>
-    <div class='feature-card card-1'>
-        <div class='icon'>📦</div>
-        <h3>Control Total</h3>
-        <p>Sabes qué vendes y qué te falta. Adiós cuaderno.</p>
+        # TARJETAS
+    st.markdown("""
+    <div class='feature-grid'>
+        <div class='feature-card card-1'>
+            <div class='icon'>📦</div>
+            <h3>Control Total</h3>
+            <p>Sabes qué vendes y qué te falta. Adiós cuaderno.</p>
+        </div>
+        <div class='feature-card card-2'>
+            <div class='icon'>💰</div>
+            <h3>Más Ganancia</h3>
+            <p>Ve tus productos que más plata te dejan. Gana más.</p>
+        </div>
+        <div class='feature-card card-3'>
+            <div class='icon'>📱</div>
+            <h3>Desde tu Celular</h3>
+            <p>Sin computadoras. Solo tu WhatsApp y listo.</p>
+        </div>
+        <div class='feature-card card-4'>
+            <div class='icon'>⚡</div>
+            <h3>Súper Barato</h3>
+            <p>S/30 al mes. Otros cobran S/250.</p>
+        </div>
     </div>
-    <div class='feature-card card-2'>
-        <div class='icon'>💰</div>
-        <h3>Más Ganancia</h3>
-        <p>Ve tus productos que más plata te dejan. Gana más.</p>
+    """, unsafe_allow_html=True)
+    
+    # BOTÓN GRATIS
+    st.markdown("""
+    <div class='btn-free'>
+        🎁 Prueba 7 DÍAS GRATIS<br>
+        <span style='font-size:14px; font-weight:400;'>Sin tarjeta. Sin compromiso. Cancela cuando quieras.</span>
     </div>
-    <div class='feature-card card-3'>
-        <div class='icon'>📱</div>
-        <h3>Desde tu Celular</h3>
-        <p>Sin computadoras. Solo tu WhatsApp y listo.</p>
-    </div>
-    <div class='feature-card card-4'>
-        <div class='icon'>⚡</div>
-        <h3>Súper Barato</h3>
-        <p>S/30 al mes. Otros cobran S/250.</p>
-    </div>
-</div>
-""", unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
+        # LOGIN
+    st.markdown("<h2 style='text-align:center; color:white; margin:25px 0 15px 0; font-size:28px;'>Iniciar Sesión</h2>", unsafe_allow_html=True)
+    
+    st.markdown("<div class='login-box'>", unsafe_allow_html=True)
+    usuario = st.text_input("Usuario o DNI", placeholder="Ingresa tu usuario")
+    password = st.text_input("Contraseña", type="password", placeholder="Ingresa tu contraseña")
+    
+    if st.button("Iniciar Sesión", use_container_width=True):
+        if usuario and password:
+            st.session_state.logged_in = True
+            st.session_state.user_data = {"nombre_negocio": "Mi Negocio", "plan": "TRIAL"}
+            st.rerun()
+        else:
+            st.error("Completa todos los campos")
+    
+    st.markdown("</div>", unsafe_allow_html=True)
+# <- AQUÍ TERMINA def mostrar_login()
 
-st.markdown("""
-<div class='btn-free'>
-    🎁 Prueba 7 DÍAS GRATIS<br>
-    <span style='font-size:14px; font-weight:400;'>Sin tarjeta. Sin compromiso. Cancela cuando quieras.</span>
-</div>
-""", unsafe_allow_html=True)
-
-st.markdown("<h2 style='text-align:center; color:white; margin:25px 0 15px 0; font-size:28px;'>Iniciar Sesión</h2>", unsafe_allow_html=True)
-
-st.markdown("<div class='login-box'>", unsafe_allow_html=True)
-# <- Aquí termina def mostrar_login()
-
-# ======= 5. APP PRINCIPAL =======
+# ====== APP PRINCIPAL ======
 if not st.session_state.logged_in:
     mostrar_login()
     st.stop()
-
 else:
     # Sidebar
     with st.sidebar:
@@ -338,10 +359,10 @@ else:
             st.session_state.logged_in = False
             st.session_state.user_data = {}
             st.rerun()
-            
-    st.write("Bienvenido a NEXUS")          
-
-    # Router
+    
+    st.write("Bienvenido a NEXUS")
+    
+    # Router y el resto de tu app
     menu = st.sidebar.selectbox("Menú", ["Productos", "Ventas", "Reportes"])
 
     # Página Productos
