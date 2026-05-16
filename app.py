@@ -267,13 +267,15 @@ def mostrar_login():
         box-shadow: 0 6px 20px rgba(245, 158, 11, 0.4);
     }
     
-    /* LOGIN SIN CUADRADO FANTASMA */
     .login-box {
-        background: rgba(255,255,255,0.95);
-        padding: 25px;
-        border-radius: 16px;
-        box-shadow: 0 8px 25px rgba(0,0,0,0.2);
-    }
+        background: rgba(255, 255, 255, 0.95);
+        padding: 2rem;
+        border-radius: 15px;
+        max-width: 400px;
+        margin: 2rem auto;
+        height: auto;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+   }
     
     .login-title {
         text-align: center;
