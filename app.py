@@ -29,13 +29,48 @@ if 'carrito' not in st.session_state:
 # CSS
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
-html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
-.stApp { background: #0F172A; color: #E2E8F0; }
-.stButton>button { background: #6366F1; border: none; color: white; border-radius: 8px; font-weight: 500; }
-.stButton>button:hover { background: #4F46E5; }
-.stDataFrame, [data-testid="stContainer"] { background: #1E293B; border-radius: 8px; border: 1px solid #334155; }
-.stTextInput>div>div>input { background: #1E293B; border: 1px solid #334155; color: #E2E8F0; border-radius: 6px; }
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap');
+
+.stApp {
+    background: linear-gradient(135deg, #1e3a8a 0%, #312e81 100%) !important;
+    font-family: 'Inter', sans-serif !important;
+}
+
+header, .stDeployButton {display: none !important;}
+
+div.login-box {
+    background: #ffffff !important;
+    padding: 2rem !important;
+    border-radius: 15px !important;
+    margin: 2rem auto !important;
+    max-width: 400px !important;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.3) !important;
+}       
+
+.login-title {
+    text-align: center;
+    color: #1e3a8a !important;
+    margin: 0 0 20px 0 !important;
+    font-size: 26px !important;
+    font-weight: 700 !important;
+}
+
+.stTextInput input {
+    background: #f8fafc !important;
+    border: 2px solid #e2e8f0 !important;
+    border-radius: 10px !important;
+    color: #1e293b !important;
+}
+
+.stButton button {
+    background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
+    color: white !important;
+    border: none !important;
+    border-radius: 10px !important;
+    padding: 14px !important;
+    font-weight: 700 !important;
+    width: 100% !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
