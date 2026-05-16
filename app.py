@@ -268,14 +268,14 @@ def mostrar_login():
     }
     
     .login-box {
-        background: rgba(255, 255, 255, 0.95);
-        padding: 2rem;
-        border-radius: 15px;
-        max-width: 400px;
-        margin: 2rem auto;
-        height: auto;
-        box-shadow: 0 8px 32px rgba(0,0,0,0.3);
-   }
+        background: rgba(255, 255, 255, 0.95) !important;
+        padding: 2rem !important;
+        border-radius: 15px !important;
+        max-width: 400px !important;
+        margin: 2rem auto !important;
+        height: auto !important;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.3) !important;
+    }       
     
     .login-title {
         text-align: center;
@@ -382,7 +382,7 @@ if st.button("Iniciar Sesión", use_container_width=True):
     else:
         st.error("Completa todos los campos")
 
-st.markdown("</div>", unsafe_allow_html=True)  # <-- este va AQUÍ, al final
+st.markdown("</div>", unsafe_allow_html=True)
     
 # ====== APP PRINCIPAL ======
 if 'logged_in' not in st.session_state:
