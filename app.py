@@ -260,7 +260,7 @@ else:
             st.info("No hay productos. Agrega el primero.")
 
             # Página Ventas
-        elif menu == "Ventas":
+    elif menu == "Ventas":
         st.title("🛒 Ventas")
         
         productos = obtener_productos()
