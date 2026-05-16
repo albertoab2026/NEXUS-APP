@@ -382,6 +382,7 @@ with st.container():
             st.error("Completa todos los campos")
     
     st.markdown("</div>", unsafe_allow_html=True)
+    
 # ====== APP PRINCIPAL ======
 if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
