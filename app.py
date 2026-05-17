@@ -297,33 +297,32 @@ if menu == "Productos":
             st.success("¡Producto guardado!")
             st.rerun()
 
-# --- BLOQUE BLINDADO DE PRODUCTOS ---
-if productos:
-    # 🔍 BUSCADOR EN TIEMPO REAL
-    busqueda_p = st.text_input("🔍 Buscar producto por nombre:", key="buscar_inventario")
-    
-    # Filtramos la lista original según lo que escriba el usuario
-    productos_filtrados = [
-        p for p in productos 
-        if busqueda_p.lower() in p.get('nombre', '').lower()
-    ]
-
-    productos_limpios = []
-    for p in productos_filtrados:
-        p_limpio = {
-            'producto_id': p.get('producto_id', 'S/I'),
-            'nombre': p.get('nombre', 'Producto sin nombre'),
-            'precio_compra': float(p.get('precio_compra', 0.0)),
-            'precio_venta': float(p.get('precio_venta', 0.0)),
-            'stock': int(p.get('stock', 0)),
-            'categoria': p.get('categoria', 'General')
-        }
-        productos_limpios.append(p_limpio)
-
+    # --- BLOQUE BLINDADO DE PRODUCTOS ---
+    if productos:
+        # 🔍 BUSCADOR EN TIEMPO REAL
+        busqueda_p = st.text_input("🔍 Buscar producto por nombre:", key="buscar_inventario")
         
+        # Filtramos la lista original según lo que escriba el usuario
+        productos_filtrados = [
+            p for p in productos 
+            if busqueda_p.lower() in p.get('nombre', '').lower()
+        ]
+
+        productos_limpios = []
+        for p in productos_filtrados:
+            p_limpio = {
+                'producto_id': p.get('producto_id', 'S/I'),
+                'nombre': p.get('nombre', 'Producto sin nombre'),
+                'precio_compra': float(p.get('precio_compra', 0.0)),
+                'precio_venta': float(p.get('precio_venta', 0.0)),
+                'stock': int(p.get('stock', 0)),
+                'categoria': p.get('categoria', 'General')
+            }
+            productos_limpios.append(p_limpio)
+
         df_prod = pd.DataFrame(productos_limpios)
         st.dataframe(
-            df_prod[['nombre', 'precio_venta', 'stock', 'categoria']], 
+            df_prod[['nombre', 'precio_venta', 'stock', 'categoria']],
             use_container_width=True,
             column_config={
                 "nombre": "Producto",
@@ -332,6 +331,7 @@ if productos:
                 "categoria": "Categoría"
             }
         )
+
     else:
         st.info("No hay productos. Agrega el primero.")
 
