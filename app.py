@@ -288,44 +288,43 @@ if menu == "Productos":
         precio_compra = st.number_input("Precio Compra S/", min_value=0.0, step=0.1)
         precio_venta = st.number_input("Precio Venta S/", min_value=0.0, step=0.1)
         stock = st.number_input("Stock", min_value=0, step=1)
-
+        
         rubro_usuario = user.get('rubro', 'Otro')
         categorias_disponibles = CATEGORIAS_POR_RUBRO.get(rubro_usuario, ['General'])
         categoria = st.selectbox("Categoría", categorias_disponibles)
-
+        
         if st.button("Guardar"):
             if nombre and agregar_producto(nombre, precio_venta, precio_compra, stock, categoria):
                 st.success("¡Producto guardado!")
                 st.rerun()
 
-if productos:
     # --- BLOQUE BLINDADO DE PRODUCTOS ---
-    productos_limpios = []
-    for p in productos:
-        p_limpio = {
-            'producto_id': p.get('producto_id', 'S/I'),
-            'nombre': p.get('nombre', 'Producto sin nombre'),
-            'precio_compra': float(p.get('precio_compra', 0.0)),
-            'precio_venta': float(p.get('precio_venta', 0.0)),
-            'stock': int(p.get('stock', 0)),
-            'categoria': p.get('categoria', 'General')
-        }
-        productos_limpios.append(p_limpio)
-    
-    df_prod = pd.DataFrame(productos_limpios)
-    st.dataframe(
-        df_prod[['nombre', 'precio_venta', 'stock', 'categoria']], 
-        use_container_width=True,
-        column_config={
-            "nombre": "Producto",
-            "precio_venta": st.column_config.NumberColumn("Precio Venta", format="S/%.2f"),
-            "stock": "Stock disponible",
-            "categoria": "Categoría"
-        }
-    )
-else:
-    st.info("No hay productos. Agrega el primero.")
-
+    if productos:
+        productos_limpios = []
+        for p in productos:
+            p_limpio = {
+                'producto_id': p.get('producto_id', 'S/I'),
+                'nombre': p.get('nombre', 'Producto sin nombre'),
+                'precio_compra': float(p.get('precio_compra', 0.0)),
+                'precio_venta': float(p.get('precio_venta', 0.0)),
+                'stock': int(p.get('stock', 0)),
+                'categoria': p.get('categoria', 'General')
+            }
+            productos_limpios.append(p_limpio)
+        
+        df_prod = pd.DataFrame(productos_limpios)
+        st.dataframe(
+            df_prod[['nombre', 'precio_venta', 'stock', 'categoria']], 
+            use_container_width=True,
+            column_config={
+                "nombre": "Producto",
+                "precio_venta": st.column_config.NumberColumn("Precio Venta", format="S/%.2f"),
+                "stock": "Stock disponible",
+                "categoria": "Categoría"
+            }
+        )
+    else:
+        st.info("No hay productos. Agrega el primero.")
 
 # --- PÁGINA VENTAS ---
 elif menu == "Ventas":
@@ -379,17 +378,34 @@ elif menu == "Ventas":
                 st.markdown(f"### Total Venta: S/{total_venta:.2f}")
                 st.markdown(f"### Ganancia: S/{total_venta - total_costo:.2f}")
                 
-                if st.button("Finalizar Venta", type="primary", use_container_width=True):
-                    ok = True
-                    for item in st.session_state.carrito:
-                        if not registrar_venta(item['producto_id'], item['cantidad'], item['precio_venta'], item['precio_compra']):
-                            ok = False
-                            break
-                    if ok:
-                        st.session_state.carrito = []
-                        st.success("✅ Venta registrada")
-                        st.balloons()
-                        st.rerun()
+        # Método para que elijan cómo te pagaron antes de cerrar la venta
+        metodo_pago = st.radio("Forma de Pago:", ["Efectivo", "Yape", "Plin"], horizontal=True)
+
+        if st.button("Finalizar Venta", type="primary", use_container_width=True):
+            ok = True
+            for item in st.session_state.carrito:
+                # 1. Calculamos los montos y los redondeamos a 2 decimales
+                total_v = round(float(item['precio_venta']) * int(item['cantidad']), 2)
+                total_c = round(float(item['precio_compra']) * int(item['cantidad']), 2)
+                ganancia_v = round(total_v - total_c, 2)
+                
+                # 2. Mandamos a registrar usando la función con todos sus datos comerciales
+                if not registrar_venta(
+                    producto_id=item['producto_id'], 
+                    cantidad=int(item['cantidad']), 
+                    total_venta=total_v, 
+                    total_costo=total_c, 
+                    ganancia=ganancia_v, 
+                    metodo_pago=metodo_pago
+                ):
+                    ok = False
+                    break
+            
+            if ok:
+                st.session_state.carrito = []
+                st.success("✅ Venta registrada con éxito")
+                st.balloons()
+                st.rerun()
                 
                 if st.button("Vaciar Carrito", use_container_width=True):
                     st.session_state.carrito = []
