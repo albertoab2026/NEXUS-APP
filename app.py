@@ -393,7 +393,8 @@ elif menu == "Ventas":
                         if p_stock > 0:
                             col_a, col_b, col_c = st.columns([2.5, 1.2, 1.3])
                             with col_a:
-                                st.write(f"**{p_nombre}**\nS/{p_precio_venta:.2f}")
+                                # 🟢 MEJORA: Ahora muestra el stock disponible aquí mismo en tiempo real
+                                st.write(f"**{p_nombre}**\nS/{p_precio_venta:.2f} | 🟢 Stock: {p_stock}")
                             with col_b:
                                 qty = st.number_input("Cant", min_value=0, max_value=p_stock, key=f"qty_{p_id}", label_visibility="collapsed")
                             with col_c:
@@ -411,7 +412,8 @@ elif menu == "Ventas":
                                                 'nombre': p_nombre,
                                                 'precio_venta': p_precio_venta,
                                                 'precio_compra': p_precio_compra,
-                                                'cantidad': qty
+                                                'cantidad': qty,
+                                                'stock_max': p_stock  # Guardamos el límite real para la verificación
                                             })
                                         st.rerun()
 
@@ -421,7 +423,6 @@ elif menu == "Ventas":
                 total_venta_bruto = 0
                 total_costo = 0
                 
-                # 📦 CONTENEDOR CON SCROLL INTERNO FIJO: Ideal para listas escolares o pedidos gigantes
                 with st.container(height=300):
                     for index, item in enumerate(st.session_state.carrito):
                         subtotal_venta = float(item['precio_venta']) * int(item['cantidad'])
@@ -437,7 +438,6 @@ elif menu == "Ventas":
                                 st.session_state.carrito.pop(index)
                                 st.rerun()
 
-                # Todo este bloque financiero se queda estático abajo, sin moverse
                 st.markdown("---")
                 
                 descuento = st.number_input("🎁 Aplicar Descuento (S/):", min_value=0.0, max_value=total_venta_bruto, value=0.0, step=0.10, key="descuento_venta")
@@ -450,7 +450,6 @@ elif menu == "Ventas":
                     st.caption(f"*(Precio original: S/{total_venta_bruto:.2f} | Ahorro: S/{descuento:.2f})*")
                 st.markdown(f"### Ganancia: S/{ganancia_neta:.2f}")
 
-                # 🎨 MÉTODOS DE PAGO: Con círculos de color corporativo (Yape Morado / Plin Celeste)
                 metodo_pago = st.radio(
                     "Forma de Pago:", 
                     ["💵 Efectivo", "🟣 Yape", "🔵 Plin"], 
@@ -458,34 +457,50 @@ elif menu == "Ventas":
                 )
 
                 if st.button("Finalizar Venta", type="primary", use_container_width=True):
-                    ok = True
-                    factor_descuento = (total_venta_neto / total_venta_bruto) if total_venta_bruto > 0 else 1.0
-
+                    # 🛡️ MEJORA: Validar que la suma total en el carrito no supere el stock real de DynamoDB
+                    conteo_cantidades = {}
+                    limites_stock = {}
+                    
                     for item in st.session_state.carrito:
-                        sub_v_bruto = float(item['precio_venta']) * int(item['cantidad'])
-                        total_v_item = round(sub_v_bruto * factor_descuento, 2)
-                        total_c_item = round(float(item['precio_compra']) * int(item['cantidad']), 2)
-                        ganancia_v_item = round(total_v_item - total_c_item, 2)
+                        p_id = item['producto_id']
+                        conteo_cantidades[p_id] = conteo_cantidades.get(p_id, 0) + int(item['cantidad'])
+                        limites_stock[p_id] = (item['nombre'], int(item.get('stock_max', 9999)))
+                    
+                    stock_superado = False
+                    for p_id, cant_total in conteo_cantidades.items():
+                        nombre_p, s_max = limites_stock[p_id]
+                        if cant_total > s_max:
+                            st.error(f"❌ Stock insuficiente para '{nombre_p}'. Intentas vender {cant_total} unidades pero solo quedan {s_max} en stock.")
+                            stock_superado = True
+                    
+                    if not stock_superado:
+                        ok = True
+                        factor_descuento = (total_venta_neto / total_venta_bruto) if total_venta_bruto > 0 else 1.0
 
-                        # Limpiamos el círculo de color antes de guardar en DynamoDB
-                        metodo_limpio = metodo_pago.split()[-1]
+                        for item in st.session_state.carrito:
+                            sub_v_bruto = float(item['precio_venta']) * int(item['cantidad'])
+                            total_v_item = round(sub_v_bruto * factor_descuento, 2)
+                            total_c_item = round(float(item['precio_compra']) * int(item['cantidad']), 2)
+                            ganancia_v_item = round(total_v_item - total_c_item, 2)
 
-                        if not registrar_venta(
-                            producto_id=item['producto_id'],
-                            cantidad=int(item['cantidad']),
-                            total_venta=total_v_item,
-                            total_costo=total_c_item,
-                            ganancia=ganancia_v_item,
-                            metodo_pago=metodo_limpio
-                        ):
-                            ok = False
-                            break
+                            metodo_limpio = metodo_pago.split()[-1]
 
-                    if ok:
-                        st.session_state.carrito = []
-                        st.success("✅ Venta registrada con éxito")
-                        st.balloons()
-                        st.rerun()
+                            if not registrar_venta(
+                                producto_id=item['producto_id'],
+                                cantidad=int(item['cantidad']),
+                                total_venta=total_v_item,
+                                total_costo=total_c_item,
+                                ganancia=ganancia_v_item,
+                                metodo_pago=metodo_limpio
+                            ):
+                                ok = False
+                                break
+
+                        if ok:
+                            st.session_state.carrito = []
+                            st.success("✅ Venta registrada con éxito")
+                            st.balloons()
+                            st.rerun()
 
                 if st.button("Vaciar Carrito", use_container_width=True):
                     st.session_state.carrito = []
