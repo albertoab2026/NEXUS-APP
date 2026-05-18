@@ -367,52 +367,54 @@ elif menu == "Ventas":
     if not productos:
         st.warning("No tienes productos. Agrega productos primero en la pestaña Productos.")
     else:
-        col1, col2 = st.columns([2, 1])
+        col1, col2 = st.columns([1.8, 1.2]) # Calibramos mejor el ancho en pantallas intermedias
         with col1:
             st.subheader("Seleccionar Productos")
-            # 🔍 BUSCADOR INTERACTIVO EN VENTAS
-            busqueda_v = st.text_input("🔍 Digite nombre del producto:", key="buscar_ventas")
+            busqueda_v = st.text_input("🔍 Buscar producto por nombre:", key="buscar_ventas", placeholder="Escriba aquí para filtrar...")
 
-            # Filtramos la lista de productos según lo que digite el vendedor
-            productos_filtrados_v = [
-                prod for prod in productos
-                if busqueda_v.lower() in prod.get('nombre', '').lower()
-            ]
+            # 🎯 REGLA SHOPIFY: Si el buscador está vacío, no saturamos la pantalla
+            if busqueda_v.strip() == "":
+                st.info("💡 Digite el nombre del producto arriba para empezar a vender.")
+            else:
+                productos_filtrados_v = [
+                    prod for prod in productos
+                    if busqueda_v.lower() in prod.get('nombre', '').lower()
+                ]
 
-            # El bucle ahora recorre únicamente los productos filtrados
-            for prod in productos_filtrados_v:
-                # --- BLINDAJE EN VIVO PARA EVITAR KEYERROR ---
-                p_stock = int(prod.get('stock', 0))
-                p_nombre = prod.get('nombre', 'Producto sin nombre')
-                p_precio_venta = float(prod.get('precio_venta', 0.0))
-                p_precio_compra = float(prod.get('precio_compra', 0.0))
-                p_id = prod.get('producto_id', 'S/I')
+                if not productos_filtrados_v:
+                    st.error("❌ No se encontraron productos con ese nombre.")
+                else:
+                    for prod in productos_filtrados_v:
+                        p_stock = int(prod.get('stock', 0))
+                        p_nombre = prod.get('nombre', 'Producto sin nombre')
+                        p_precio_venta = float(prod.get('precio_venta', 0.0))
+                        p_precio_compra = float(prod.get('precio_compra', 0.0))
+                        p_id = prod.get('producto_id', 'S/I')
 
-                if p_stock > 0:
-                    col_a, col_b, col_c = st.columns([3, 1, 1])
-                    with col_a:
-                        st.write(f"**{p_nombre}** - Venta: S/{p_precio_venta:.2f}")
-                    with col_b:
-                        qty = st.number_input("Cant", min_value=0, max_value=p_stock, key=f"qty_{p_id}")
-                    with col_c:
-                        if st.button("Agregar", key=f"add_{p_id}"):
-                            if qty > 0:
-                                encontrado = False
-                                for item in st.session_state.carrito:
-                                    if item['producto_id'] == p_id:
-                                        # 🎯 MEJORA 1: Fija la cantidad exacta en vez de sumar a ciegas
-                                        item['cantidad'] = qty
-                                        encontrado = True
-                                        break
-                                if not encontrado:
-                                    st.session_state.carrito.append({
-                                        'producto_id': p_id,
-                                        'nombre': p_nombre,
-                                        'precio_venta': p_precio_venta,
-                                        'precio_compra': p_precio_compra,
-                                        'cantidad': qty
-                                    })
-                                st.rerun()
+                        if p_stock > 0:
+                            col_a, col_b, col_c = st.columns([2.5, 1.2, 1.3])
+                            with col_a:
+                                st.write(f"**{p_nombre}**\nS/{p_precio_venta:.2f}")
+                            with col_b:
+                                qty = st.number_input("Cant", min_value=0, max_value=p_stock, key=f"qty_{p_id}", label_visibility="collapsed")
+                            with col_c:
+                                if st.button("Agregar", key=f"add_{p_id}", use_container_width=True):
+                                    if qty > 0:
+                                        encontrado = False
+                                        for item in st.session_state.carrito:
+                                            if item['producto_id'] == p_id:
+                                                item['cantidad'] = qty
+                                                encontrado = True
+                                                break
+                                        if not encontrado:
+                                            st.session_state.carrito.append({
+                                                'producto_id': p_id,
+                                                'nombre': p_nombre,
+                                                'precio_venta': p_precio_venta,
+                                                'precio_compra': p_precio_compra,
+                                                'cantidad': qty
+                                            })
+                                        st.rerun()
 
         with col2:
             st.subheader("Carrito")
@@ -420,26 +422,25 @@ elif menu == "Ventas":
                 total_venta = 0
                 total_costo = 0
                 
-                # 🎯 MEJORA 2: Recorremos con índice para poder borrar ítems individualmente
                 for index, item in enumerate(st.session_state.carrito):
                     subtotal_venta = float(item['precio_venta']) * int(item['cantidad'])
                     subtotal_costo = float(item['precio_compra']) * int(item['cantidad'])
                     total_venta += subtotal_venta
                     total_costo += subtotal_costo
                     
-                    # Mini columnas dentro del carrito para poner el botón de eliminar al costado
                     c_prod, c_del = st.columns([4, 1])
                     with c_prod:
-                        st.write(f"**({item['cantidad']})** {item['nombre']} \n S/{subtotal_venta:.2f}")
+                        st.write(f"**({item['cantidad']})** {item['nombre']}\nS/{subtotal_venta:.2f}")
                     with c_del:
-                        if st.button("❌", key=f"del_cart_{item['producto_id']}_{index}"):
+                        # 🎯 BOTÓN MODERNO: Usamos el estilo transparente para que no salga el recuadro morado
+                        if st.button("🗑️", key=f"del_cart_{item['producto_id']}_{index}", type="secondary"):
                             st.session_state.carrito.pop(index)
                             st.rerun()
 
+                st.markdown("---")
                 st.markdown(f"### Total Venta: S/{total_venta:.2f}")
                 st.markdown(f"### Ganancia: S/{(total_venta - total_costo):.2f}")
 
-                # Método para que elijan cómo te pagaron antes de cerrar la venta
                 metodo_pago = st.radio("Forma de Pago:", ["Efectivo", "Yape", "Plin"], horizontal=True)
 
                 if st.button("Finalizar Venta", type="primary", use_container_width=True):
@@ -471,7 +472,6 @@ elif menu == "Ventas":
                     st.rerun()
             else:
                 st.info("Carrito vacío")
-
 
 # --- PÁGINA REPORTES (Versión Comercial Blindada de Costo Cero) ---
 elif menu == "Reportes":
