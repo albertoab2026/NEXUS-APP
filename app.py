@@ -175,6 +175,20 @@ def actualizar_producto(producto_id, nuevo_precio, nuevo_stock):
         st.error(f"Error actualizando: {e}")
         return False
 
+def eliminar_producto(producto_id):
+    try:
+        id_dueno = st.session_state.user_data['usuario_id']  
+        tabla_productos.delete_item(
+            Key={
+                'id_del_dueno': str(id_dueno),
+                'producto_id': str(producto_id)
+            }
+        )
+        return True
+    except Exception as e:
+        st.error(f"Error al eliminar en la base de datos: {e}")
+        return False
+
 # ======= 4. PANTALLA LOGIN =======
 def mostrar_login():
     st.markdown("""
@@ -320,17 +334,27 @@ if menu == "Productos":
             }
             productos_limpios.append(p_limpio)
 
-        df_prod = pd.DataFrame(productos_limpios)
-        st.dataframe(
-            df_prod[['nombre', 'precio_venta', 'stock', 'categoria']],
-            use_container_width=True,
-            column_config={
-                "nombre": "Producto",
-                "precio_venta": st.column_config.NumberColumn("Precio Venta", format="S/%.2f"),
-                "stock": "Stock disponible",
-                "categoria": "Categoría"
-            }
-        )
+        st.markdown("---")
+        st.subheader("🗑️ Control de Inventario")
+        
+        for p in productos_limpios:
+            p_id = p['producto_id']
+            p_nombre = p['nombre']
+            p_stock = p['stock']
+            p_precio = p['precio_venta']
+            p_cat = p['categoria']
+            
+            # Formato en columnas para que entre perfecto en pantallas móviles
+            col_info, col_btn = st.columns([4, 1])
+            with col_info:
+                st.write(f"**{p_nombre}** ({p_cat})  \nStock: `{p_stock}` | Precio: `S/{p_precio:.2f}`")
+            with col_btn:
+                # Cada botón tiene una llave única usando el ID del producto
+                if st.button("🗑️", key=f"del_{p_id}"):
+                    if eliminar_producto(p_id):
+                        st.success(f"¡{p_nombre} eliminado!")
+                        st.rerun()
+
 
     else:
         st.info("No hay productos. Agrega el primero.")
@@ -346,7 +370,18 @@ elif menu == "Ventas":
         col1, col2 = st.columns([2, 1])
         with col1:
             st.subheader("Seleccionar Productos")
-            for prod in productos:
+                # 🔍 BUSCADOR INTERACTIVO EN VENTAS
+                busqueda_v = st.text_input("🔍 Digite nombre del producto:", key="buscar_ventas")
+                
+                # Filtramos la lista de productos según lo que digite el vendedor
+                productos_filtrados_v = [
+                    prod for prod in productos 
+                    if busqueda_v.lower() in prod.get('nombre', '').lower()
+                ]
+                
+                # El bucle ahora recorre únicamente los productos filtrados
+                for prod in productos_filtrados_v:
+
                 # --- BLINDAJE EN VIVO PARA EVITAR KEYERROR ---
                 p_stock = int(prod.get('stock', 0))
                 p_nombre = prod.get('nombre', 'Producto sin nombre')
