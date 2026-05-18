@@ -382,54 +382,56 @@ elif menu == "Ventas":
 
                 if not productos_filtrados_v:
                     st.error("❌ No se encontraron productos con ese nombre.")
-            else:
-                for prod in productos_filtrados_v:
-                    p_id = prod.get('producto_id', 'S/I')
-                    p_nombre = prod.get('nombre', 'Producto sin nombre')
-                    p_precio_venta = float(prod.get('precio_venta', 0.0))
-                    p_precio_compra = float(prod.get('precio_compra', 0.0))
-                    
-                    # 🧠 Calculamos cuántas unidades de ESTE producto ya están en el carrito
-                    cantidad_en_carrito = sum(int(item['cantidad']) for item in st.session_state.carrito if item['producto_id'] == p_id)
-                    
-                    p_stock_real = int(prod.get('stock', 0))
-                    p_stock_disponible = p_stock_real - cantidad_en_carrito
+                else:
+                    for prod in productos_filtrados_v:
+                        p_id = prod.get('producto_id', 'S/I')
+                        p_nombre = prod.get('nombre', 'Producto sin nombre')
+                        p_precio_venta = float(prod.get('precio_venta', 0.0))
+                        p_precio_compra = float(prod.get('precio_compra', 0.0))
+                        
+                        # 🧠 Calculamos cuántas unidades de ESTE producto ya están en el carrito
+                        cantidad_en_carrito = sum(int(item['cantidad']) for item in st.session_state.carrito if item['producto_id'] == p_id)
+                        
+                        p_stock_real = int(prod.get('stock', 0))
+                        p_stock_disponible = p_stock_real - cantidad_en_carrito
 
-                    if p_stock_real > 0:
-                        col_a, col_b, col_c = st.columns([2.5, 1.2, 1.3])
-                        with col_a:
-                            if p_stock_disponible <= 0:
-                                st.write(f"**{p_nombre}**\nS/{p_precio_venta:.2f} | 🟡 Carrito Lleno")
-                            else:
-                                st.write(f"**{p_nombre}**\nS/{p_precio_venta:.2f} | 🟢 Stock: {p_stock_disponible}")
-                        with col_b:
-                            qty = st.number_input("Cant", min_value=0, max_value=max(0, p_stock_disponible), key=f"qty_{p_id}", label_visibility="collapsed")
-                        with col_c:
-                            boton_bloqueado = p_stock_disponible <= 0
-                            if st.button("Agregar", key=f"add_{p_id}", use_container_width=True, disabled=boton_bloqueado):
-                                if qty > 0:
-                                    encontrado = False
-                                    for item in st.session_state.carrito:
-                                        if item['producto_id'] == p_id:
-                                            item['cantidad'] = int(item['cantidad']) + qty
-                                            encontrado = True
-                                            break
-                                    if not encontrado:
-                                        st.session_state.carrito.append({
-                                            'producto_id': p_id,
-                                            'nombre': p_nombre,
-                                            'precio_venta': p_precio_venta,
-                                            'precio_compra': p_precio_compra,
-                                            'cantidad': qty,
-                                            'stock_max': p_stock_real
-                                        })
-                                    st.rerun()
+                        if p_stock_real > 0:
+                            col_a, col_b, col_c = st.columns([2.5, 1.2, 1.3])
+                            with col_a:
+                                if p_stock_disponible <= 0:
+                                    st.write(f"**{p_nombre}**\nS/{p_precio_venta:.2f} | 🟡 Carrito Lleno")
+                                else:
+                                    st.write(f"**{p_nombre}**\nS/{p_precio_venta:.2f} | 🟢 Stock: {p_stock_disponible}")
+                            with col_b:
+                                qty = st.number_input("Cant", min_value=0, max_value=max(0, p_stock_disponible), key=f"qty_{p_id}", label_visibility="collapsed")
+                            with col_c:
+                                boton_bloqueado = p_stock_disponible <= 0
+                                if st.button("Agregar", key=f"add_{p_id}", use_container_width=True, disabled=boton_bloqueado):
+                                    if qty > 0:
+                                        encontrado = False
+                                        for item in st.session_state.carrito:
+                                            if item['producto_id'] == p_id:
+                                                item['cantidad'] = int(item['cantidad']) + qty
+                                                encontrado = True
+                                                break
+                                        if not encontrado:
+                                            st.session_state.carrito.append({
+                                                'producto_id': p_id,
+                                                'nombre': p_nombre,
+                                                'precio_venta': p_precio_venta,
+                                                'precio_compra': p_precio_compra,
+                                                'cantidad': qty,
+                                                'stock_max': p_stock_real
+                                            })
+                                        st.rerun()
+
         with col2:
             st.subheader("Carrito")
             if st.session_state.carrito:
                 total_venta_bruto = 0
                 total_costo = 0
                 
+                # Caja de scroll para listas gigantes
                 with st.container(height=300):
                     for index, item in enumerate(st.session_state.carrito):
                         subtotal_venta = float(item['precio_venta']) * int(item['cantidad'])
@@ -457,6 +459,7 @@ elif menu == "Ventas":
                     st.caption(f"*(Precio original: S/{total_venta_bruto:.2f} | Ahorro: S/{descuento:.2f})*")
                 st.markdown(f"### Ganancia: S/{ganancia_neta:.2f}")
 
+                # Métodos de pago con círculos coloridos
                 metodo_pago = st.radio(
                     "Forma de Pago:", 
                     ["💵 Efectivo", "🟣 Yape", "🔵 Plin"], 
@@ -464,7 +467,6 @@ elif menu == "Ventas":
                 )
 
                 if st.button("Finalizar Venta", type="primary", use_container_width=True):
-                    # 🛡️ MEJORA: Validar que la suma total en el carrito no supere el stock real de DynamoDB
                     conteo_cantidades = {}
                     limites_stock = {}
                     
