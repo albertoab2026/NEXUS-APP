@@ -393,45 +393,49 @@ elif menu == "Ventas":
                         p_stock_real = int(prod.get('stock', 0))
                         p_stock_disponible = p_stock_real - cantidad_en_carrito
 
-                        if p_stock_real > 0:
-                            col_a, col_b, col_c = st.columns([2.5, 1.2, 1.3])
-                            with col_a:
-                                if p_stock_disponible <= 0:
-                                    st.write(f"**{p_nombre}**\nS/{p_precio_venta:.2f} | 🟡 Agotado")
-                                else:
-                                    st.write(f"**{p_nombre}**\nS/{p_precio_venta:.2f} | 🟢 Stock: {p_stock_disponible}")
-                            with col_b:
-                                qty = st.number_input("Cant", min_value=0, max_value=max(0, p_stock_disponible), key=f"input_qty_{p_id}", label_visibility="collapsed")
-                            with col_c:
-                                boton_bloqueado = p_stock_disponible <= 0
-                                
-                                def procesar_compra(id_prod, nombre_prod, precio_v, precio_c, cantidad_solicitada, stock_m):
-                                    if cantidad_solicitada > 0:
-                                        encontrado = False
-                                        for item in st.session_state.carrito:
-                                            if item['producto_id'] == id_prod:
-                                                item['cantidad'] = int(item['cantidad']) + cantidad_solicitada
-                                                encontrado = True
-                                                break
-                                        if not encontrado:
-                                            st.session_state.carrito.append({
-                                                'producto_id': id_prod,
-                                                'nombre': nombre_prod,
-                                                'precio_venta': precio_v,
-                                                'precio_compra': precio_c,
-                                                'cantidad': cantidad_solicitada,
-                                                'stock_max': stock_m
-                                            })
-                                        st.session_state["buscar_ventas"] = ""
+                       # 🎨 DIBUJAR EN PANTALLA (Tenga o no tenga stock)
+                        col_a, col_b, col_c = st.columns([2.5, 1.2, 1.3])
+                        with col_a:
+                            # Si ya no queda nada en tienda o todo se subió al carrito temporal
+                            if p_stock_disponible <= 0:
+                                st.write(f"**{p_nombre}**\nS/{p_precio_venta:.2f} | 🟡 Agotado")
+                            else:
+                                st.write(f"**{p_nombre}**\nS/{p_precio_venta:.2f} | 🟢 Stock: {p_stock_disponible}")
+                        
+                        with col_b:
+                            qty = st.number_input("Cant", min_value=0, max_value=max(0, p_stock_disponible), key=f"input_qty_{p_id}", label_visibility="collapsed")
+                        
+                        with col_c:
+                            # Se bloquea el botón si el stock disponible es 0 o menor
+                            boton_bloqueado = p_stock_disponible <= 0
+                            
+                            def procesar_compra(id_prod, nombre_prod, precio_v, precio_c, cantidad_solicitada, stock_m):
+                                if cantidad_solicitada > 0:
+                                    encontrado = False
+                                    for item in st.session_state.carrito:
+                                        if item['producto_id'] == id_prod:
+                                            item['cantidad'] = int(item['cantidad']) + cantidad_solicitada
+                                            encontrado = True
+                                            break
+                                    if not encontrado:
+                                        st.session_state.carrito.append({
+                                            'producto_id': id_prod,
+                                            'nombre': nombre_prod,
+                                            'precio_venta': precio_v,
+                                            'precio_compra': precio_c,
+                                            'cantidad': cantidad_solicitada,
+                                            'stock_max': stock_m
+                                        })
+                                    st.session_state["buscar_ventas"] = ""
 
-                                st.button(
-                                    "Agregar", 
-                                    key=f"btn_add_{p_id}", 
-                                    use_container_width=True, 
-                                    disabled=boton_bloqueado, 
-                                    on_click=procesar_compra,
-                                    args=(p_id, p_nombre, p_precio_venta, p_precio_compra, qty, p_stock_real)
-                                )
+                            st.button(
+                                "Agregar", 
+                                key=f"btn_add_{p_id}", 
+                                use_container_width=True, 
+                                disabled=boton_bloqueado, 
+                                on_click=procesar_compra,
+                                args=(p_id, p_nombre, p_precio_venta, p_precio_compra, qty, p_stock_real)
+                            )
 
         with col2:
             st.subheader("Carrito")
