@@ -687,11 +687,9 @@ elif menu == "Reportes":
         
         df = pd.DataFrame(ventas_raw)
         
-        # 1. Normalización de fecha (convertimos a hora local Perú)
+        # 1. Normalización de fecha a Perú
         df['fecha_dt'] = pd.to_datetime(df['fecha'], errors='coerce')
-        # Restamos 5 horas para ajustar UTC a Perú
         df['fecha_peru'] = df['fecha_dt'].apply(lambda x: x - datetime.timedelta(hours=5) if pd.notnull(x) else x)
-        
         df['Hora'] = df['fecha_peru'].dt.strftime('%H:%M:%S')
         df['Fecha_Corta'] = df['fecha_peru'].dt.strftime('%Y-%m-%d')
 
@@ -699,13 +697,12 @@ elif menu == "Reportes":
         fecha_busqueda = st.date_input("Selecciona el día a auditar:", datetime.datetime.now().date())
         fecha_busqueda_str = fecha_busqueda.strftime('%Y-%m-%d')
         
-        # Filtrar
         df_filtrado = df[df['Fecha_Corta'] == fecha_busqueda_str].copy()
         
         if df_filtrado.empty:
             st.warning(f"No hay ventas para el día {fecha_busqueda_str}.")
         else:
-            # 3. Desglose de ítems
+            # 3. Desglose seguro
             filas = []
             for _, fila in df_filtrado.iterrows():
                 items = fila.get('items', [])
@@ -715,7 +712,7 @@ elif menu == "Reportes":
                     precio = float(item.get('precio_venta', 0))
                     
                     filas.append({
-                        'fecha_sort': fila['fecha_peru'], # Aseguramos que esta columna exista
+                        'fecha_sort': fila['fecha_peru'], 
                         'Hora': fila['Hora'],
                         'Producto': mapa_productos.get(item.get('producto_id'), 'Desconocido'),
                         'Cantidad': cant,
@@ -724,16 +721,17 @@ elif menu == "Reportes":
             
             df_final = pd.DataFrame(filas)
             
-            # 4. Ordenar y mostrar
-            # Al crear 'fecha_sort' en el bucle anterior, este comando no fallará
-            df_final = df_final.sort_values(by='fecha_sort', ascending=False)
+            # 4. Asegurar existencia de la columna antes de ordenar
+            if 'fecha_sort' in df_final.columns:
+                df_final = df_final.sort_values(by='fecha_sort', ascending=False)
             
-            # Mostrar métricas
+            # 5. Mostrar
             st.metric("Ingreso Total del día", f"S/{df_final['Total Venta'].sum():.2f}")
             
-            # Tabla con altura limitada (height=400) para que no sea infinita
+            # Eliminamos fecha_sort solo al final, antes de mostrar la tabla
+            cols_a_mostrar = [c for c in df_final.columns if c != 'fecha_sort']
             st.dataframe(
-                df_final.drop(columns=['fecha_sort']), 
+                df_final[cols_a_mostrar], 
                 use_container_width=True, 
                 height=400
             )
