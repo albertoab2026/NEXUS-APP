@@ -681,9 +681,10 @@ elif menu == "Reportes":
         st.info("💡 No hay ventas registradas.")
     else:
         import pandas as pd
+        # Creamos el DataFrame
         df = pd.DataFrame(ventas_raw)
         
-        # 1. Ajuste Horario
+        # 1. Ajuste Horario (Convertimos a Lima)
         df['fecha_dt'] = pd.to_datetime(df['fecha']).dt.tz_localize(None) - pd.Timedelta(hours=5)
         df['Fecha_Corta'] = df['fecha_dt'].dt.date
         df['Hora'] = df['fecha_dt'].dt.strftime('%H:%M:%S')
@@ -698,33 +699,27 @@ elif menu == "Reportes":
             mapa_productos = {p['producto_id']: p['nombre'] for p in productos_raw} if productos_raw else {}
             df_filtrado['Producto'] = df_filtrado['producto_id'].map(mapa_productos).fillna(df_filtrado['producto_id'])
             
-            # 3. CORRECCIÓN DE PAGOS: Buscamos en todas las columnas posibles
-            # Si no tienes la columna 'pago', este código te dirá qué columnas tienes
-            columnas_disponibles = df_filtrado.columns.tolist()
-            # Asumimos que el método de pago está en alguna columna. 
-            # Cambia 'pago' por el nombre real si es diferente (ej: 'metodo', 'medio_pago')
-            col_pago = 'pago' if 'pago' in columnas_disponibles else (columnas_disponibles[-1])
+            # --- DEPURACIÓN IMPORTANTE ---
+            # Si el pago está en una columna llamada 'pago', 'metodo_pago' o similar, 
+            # esta línea lo normaliza. Si sigue saliendo 'agua cielo...', es que 
+            # el nombre de la columna es otro o el dato no existe.
+            # Imprimimos las columnas para que tú veas qué nombres hay:
+            st.write("Columnas disponibles:", df_filtrado.columns.tolist())
             
-            df_filtrado['pago_norm'] = df_filtrado[col_pago].astype(str).str.lower()
+            # Intentamos detectar el pago. Si no lo encuentra, usa 'Efectivo'
+            # ¿Es posible que el pago esté dentro de 'items'?
+            df_filtrado['pago_norm'] = df_filtrado.get('pago', 'Efectivo').astype(str).str.lower()
             
-            # Ordenar
-            df_filtrado = df_filtrado.sort_values(by='fecha_dt', ascending=False)
-            
-            # 4. Cálculo de Totales (Yape/Plin/Efectivo)
+            # 3. Cálculo de Totales
             yape = df_filtrado[df_filtrado['pago_norm'].str.contains('yape', na=False)]['total_venta'].sum()
             plin = df_filtrado[df_filtrado['pago_norm'].str.contains('plin', na=False)]['total_venta'].sum()
             efectivo = df_filtrado[~df_filtrado['pago_norm'].str.contains('yape|plin', na=False)]['total_venta'].sum()
             
             st.markdown("### 💵 Distribución de Caja")
             c1, c2, c3 = st.columns(3)
-            c1.metric("Efectivo", f"S/{efectivo:.2f}")
-            c2.metric("Yape", f"S/{yape:.2f}")
-            c3.metric("Plin", f"S/{plin:.2f}")
+            c1.metric("💵 Efectivo", f"S/{efectivo:.2f}")
+            c2.metric("📱 Yape", f"S/{yape:.2f}")
+            c3.metric("🔮 Plin", f"S/{plin:.2f}")
             
-            # 5. TABLA FIJA: use_container_width=True evita que se mueva sola
-            st.markdown("---")
-            st.dataframe(
-                df_filtrado[['Hora', 'Producto', 'cantidad', 'total_venta', 'pago_norm']], 
-                use_container_width=True,
-                hide_index=True
-            )
+            # 4. Tabla
+            st.dataframe(df_filtrado, use_container_width=True)
