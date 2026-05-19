@@ -676,9 +676,9 @@ elif menu == "Reportes":
         
         # 1. CARGA DE DATOS DESDE DYNAMODB
         ventas_raw = obtener_ventas()
-        productos_raw = obtener_productos()  # Cargamos productos para traer los nombres reales
+        productos_raw = obtener_productos() # Traemos la lista de productos para el mapeo
         
-        # Creamos un diccionario mapa para cambiar códigos por nombres reales
+        # Creamos el mapa de ID -> Nombre Real
         mapa_productos = {}
         if productos_raw:
             mapa_productos = {p['producto_id']: p['nombre'] for p in productos_raw if 'producto_id' in p}
@@ -689,12 +689,25 @@ elif menu == "Reportes":
             import pandas as pd
             import datetime
             
+            # Convertimos todos los registros de DynamoDB a un DataFrame inicial
+            df = pd.DataFrame(ventas_raw)
+            
+            # CORRECCIÓN DE FECHA Y HORA (Tu lógica original para Lima UTC-5)
+            df['fecha_dt'] = pd.to_datetime(df['fecha'], errors='coerce')
+            df['fecha_peru'] = df['fecha_dt'].apply(lambda x: x - datetime.timedelta(hours=5) if pd.notnull(x) else x)
+            
+            # Ordenamos cronológicamente: lo más reciente primero
+            df = df.sort_values(by='fecha_peru', ascending=False)
+            
+            # Creamos columnas base de tiempo con los formatos que tus tablas necesitan
+            df['Hora'] = df['fecha_peru'].dt.strftime('%H:%M:%S').fillna("00:00:00")
+            df['Fecha_Corta'] = df['fecha_peru'].dt.strftime('%Y/%m/%d').fillna("⚠️ Sin Fecha")
+
             # =====================================================================
-            # 📅 SECCIÓN: FILTRADO POR RANGO DE FECHAS
+            # 📅 SECCIÓN: FILTRADO POR RANGO DE FECHAS (¡AUTOMÁTICO!)
             # =====================================================================
             st.markdown("### 🔍 Filtrar Auditoría")
             
-            # Obtenemos el día actual en Perú para los selectores por defecto
             hoy_peru = (datetime.datetime.now() - datetime.timedelta(hours=5)).date()
             
             c_f1, c_f2 = st.columns(2)
@@ -703,35 +716,32 @@ elif menu == "Reportes":
             with c_f2:
                 fecha_fin = st.date_input("Hasta el día:", hoy_peru)
                 
-            # Convertimos las fechas ingresadas en Streamlit a texto "YYYY-MM-DD" para comparar directo
-            f_inicio_str = fecha_inicio.strftime("%Y-%m-%d")
-            f_fin_str = fecha_fin.strftime("%Y-%m-%d")
-
-            # =====================================================================
-            # 🔄 PROCESAMIENTO Y CRUCE DE DATOS (Mapeo de nombres e Items)
-            # =====================================================================
-            ventas_procesadas = []
+            # Formateamos las fechas de los inputs con "/" para que coincidan con tu 'Fecha_Corta' (ej: 2026/05/19)
+            f_inicio_str = fecha_inicio.strftime("%Y/%m/%d")
+            f_fin_str = fecha_fin.strftime("%Y/%m/%d")
             
-            for v in ventas_raw:
-                fecha_venta_completa = v.get('fecha', '')
-                # Extraemos solo la fecha (YYYY-MM-DD) separándola de la hora
-                fecha_corta_v = fecha_venta_completa.split(' ')[0] if ' ' in fecha_venta_completa else fecha_venta_completa
-                hora_v = fecha_venta_completa.split(' ')[1] if ' ' in fecha_venta_completa else "00:00:00"
+            # Aplicamos el filtro al DataFrame general
+            df_filtrado = df[(df['Fecha_Corta'] >= f_inicio_str) & (df['Fecha_Corta'] <= f_fin_str)].copy()
+            
+            if df_filtrado.empty:
+                st.warning("⚠️ No se encontraron transacciones registradas para este rango de fechas.")
+            else:
+                # =====================================================================
+                # 🔄 DESGLOSE DE ITEMS Y TRADUCCIÓN DE CÓDIGOS A NOMBRES (PUNTO 1)
+                # =====================================================================
+                filas_desglosadas = []
                 
-                # Evaluamos si la fecha del registro cae dentro del rango seleccionado en los selectores
-                if f_inicio_str <= fecha_corta_v <= f_fin_str:
-                    metodo_pago = v.get('pago', 'Efectivo')
-                    pago_limpio = str(metodo_pago).lower().strip()
-                    
-                    # Desglosamos los artículos que están dentro de la lista 'items' de cada venta
-                    items_venta = v.get('items', [])
-                    for item in items_venta:
+                for _, fila in df_filtrado.iterrows():
+                    items = fila.get('items', [])
+                    # Si por algún motivo no es una lista, lo manejamos como vacío
+                    if not isinstance(items, list):
+                        items = []
+                        
+                    for item in items:
                         p_id = item.get('producto_id', '')
+                        # Solución Punto 1: Cruzamos el ID con el mapa para mostrar el nombre real
+                        nombre_producto = mapa_productos.get(p_id, f"Código: {p_id[:8]}...")
                         
-                        # SOLUCIÓN PUNTO 1: Buscamos el nombre real en el mapa. Si no existe, muestra el inicio del ID
-                        nombre_final_producto = mapa_productos.get(p_id, f"Código: {p_id[:8]}...")
-                        
-                        # Convertimos a números de forma segura para los cálculos
                         cant = int(item.get('cantidad', 0))
                         p_venta = float(item.get('precio_venta', 0))
                         p_compra = float(item.get('precio_compra', 0))
@@ -740,86 +750,99 @@ elif menu == "Reportes":
                         tot_costo = cant * p_compra
                         ganancia_item = tot_venta - tot_costo
                         
-                        ventas_procesadas.append({
-                            'Fecha': fecha_corta_v,
-                            'Hora': hora_v,
-                            'Producto': nombre_final_producto, # Aquí se guarda el nombre real (ej: "coca cola 450ml")
-                            'Cant': cant,
-                            'Pago': metodo_pago,
-                            'Total Venta': tot_venta,
-                            'Total Costo': tot_costo,
-                            'Ganancia': ganancia_item,
-                            'pago_limpio': pago_limpio
+                        filas_desglosadas.append({
+                            'Fecha_Corta': fila.get('Fecha_Corta'),
+                            'Hora': fila.get('Hora'),
+                            'producto_id': nombre_producto,  # Reemplazamos el ID amorfo por el nombre legible
+                            'cantidad': cant,
+                            'pago': fila.get('pago', 'Efectivo'),
+                            'total_venta': tot_venta,
+                            'total_costo': tot_costo,
+                            'ganancia': ganancia_item
                         })
-
-            # Convertimos la lista estructurada a un DataFrame de Pandas
-            if not ventas_procesadas:
-                st.warning("⚠️ No se encontraron transacciones registradas para este rango de fechas.")
-                df_filtrado = pd.DataFrame()
-            else:
-                df_filtrado = pd.DataFrame(ventas_procesadas)
-
-            # =====================================================================
-            # 📊 PANEL VISUAL MÉTRICAS & CAJAS
-            # =====================================================================
-            if not df_filtrado.empty:
-                ingreso_total = df_filtrado['Total Venta'].sum()
-                inversion_total = df_filtrado['Total Costo'].sum()
-                ganancia_neta = df_filtrado['Ganancia'].sum()
-
-                efectivo_total = df_filtrado[df_filtrado['pago_limpio'].str.contains('efectivo|efec', na=False)]['Total Venta'].sum()
-                yape_total = df_filtrado[df_filtrado['pago_limpio'].str.contains('yape', na=False)]['Total Venta'].sum()
-                plin_total = df_filtrado[df_filtrado['pago_limpio'].str.contains('plin', na=False)]['Total Venta'].sum()
-
-                st.markdown("### 📈 Rendimiento Financiero")
-                m1, m2, m3 = st.columns(3)
-                m1.metric("Ingreso Total (Ventas)", f"S/{ingreso_total:.2f}")
-                m2.metric("Inversion (Costo Compra)", f"S/{inversion_total:.2f}")
                 
-                if ganancia_neta >= 0:
-                    m3.metric("GANANCIA REAL NETO 💰", f"S/{ganancia_neta:.2f}")
+                # Creamos el DataFrame final desglosado que tus métricas y tablas consumen
+                df_final_items = pd.DataFrame(filas_desglosadas)
+                
+                if df_final_items.empty:
+                    st.info("💡 No hay artículos vendidos en las transacciones de este periodo.")
                 else:
-                    m3.metric("GANANCIA REAL NETO 🚨", f"S/{ganancia_neta:.2f}", delta="- Pérdida")
-
-                st.markdown("### 💵 Distribución de Caja")
-                c1, c2, c3 = st.columns(3)
-                with c1:
-                    st.info(f"💵 **Efectivo en Caja:**\n\n### S/{efectivo_total:.2f}")
-                with c2:
-                    st.success(f"📱 **Total Yape:**\n\n### S/{yape_total:.2f}")
-                with c3:
-                    st.error(f"🔮 **Total Plin:**\n\n### S/{plin_total:.2f}")
-
-                # =====================================================================
-                # 📋 TABLA DIARIA EN STREAMLIT
-                # =====================================================================
-                st.markdown("---")
-                st.markdown("### 📋 Detalle de lo Vendido en el Periodo")
-                
-                # Seleccionamos solo las columnas legibles para la pantalla del administrador
-                vista_pantalla = df_filtrado[['Hora', 'Producto', 'Cant', 'Pago', 'Total Venta', 'Ganancia']].copy()
-                
-                # Le damos formato estético con el símbolo S/ solo para la interfaz web
-                vista_pantalla['Total Venta'] = vista_pantalla['Total Venta'].map("S/{:.2f}".format)
-                vista_pantalla['Ganancia'] = vista_pantalla['Ganancia'].map("S/{:.2f}".format)
-                
-                st.dataframe(vista_pantalla, use_container_width=True)
-
-                # =====================================================================
-                # 📥 EXCEL REPARADO Y ORDENADO (PUNTO 3)
-                # =====================================================================
-                st.markdown("#### 📥 Auditoría y Cierre de Caja")
-                
-                # Filtramos y ordenamos las columnas que van al Excel de descarga
-                reporte_excel = df_filtrado[['Fecha', 'Hora', 'Producto', 'Cant', 'Pago', 'Total Venta', 'Total Costo', 'Ganancia']].copy()
-                
-                # SOLUCIÓN PUNTO 3: Usamos ';' como separador y 'utf-8-sig' para que Excel separe todo en celdas limpias automáticamente
-                csv_perfecto = reporte_excel.to_csv(index=False, sep=';').encode('utf-8-sig')
-                
-                st.download_button(
-                    label="🍏 Descargar Historial Completo Ordenado para Excel (.CSV)",
-                    data=csv_perfecto,
-                    file_name=f"auditoria_nexus_{f_inicio_str}_al_{f_fin_str}.csv",
-                    mime="text/csv",
-                    use_container_width=True
-                )
+                    # Estandarizamos la columna de pago para que las métricas de caja no fallen
+                    df_final_items['metodo_pago_limpio'] = df_final_items['pago'].astype(str).str.lower().str.strip()
+                    
+                    # =====================================================================
+                    # 📊 PANEL VISUAL: RENDIMIENTO FINANCIERO (Tus métricas originales)
+                    # =====================================================================
+                    ingreso_total = df_final_items['total_venta'].sum()
+                    inversion_total = df_final_items['total_costo'].sum()
+                    ganancia_neta = df_final_items['ganancia'].sum()
+                    
+                    efectivo_total = df_final_items[df_final_items['metodo_pago_limpio'].str.contains('efectivo|efec', na=False)]['total_venta'].sum()
+                    yape_total = df_final_items[df_final_items['metodo_pago_limpio'].str.contains('yape', na=False)]['total_venta'].sum()
+                    plin_total = df_final_items[df_final_items['metodo_pago_limpio'].str.contains('plin', na=False)]['total_venta'].sum()
+                    
+                    st.markdown("### 📈 Rendimiento Financiero")
+                    m1, m2, m3 = st.columns(3)
+                    m1.metric("Ingreso Total (Ventas)", f"S/{ingreso_total:.2f}")
+                    m2.metric("Inversión (Costo Compra)", f"S/{inversion_total:.2f}")
+                    
+                    if ganancia_neta >= 0:
+                        m3.metric("GANANCIA REAL NETO 💰", f"S/{ganancia_neta:.2f}")
+                    else:
+                        m3.metric("GANANCIA REAL NETO 🚨", f"S/{ganancia_neta:.2f}", delta="- Pérdida")
+                        
+                    # DISTRIBUCIÓN DE CAJA (Efectivo, Yape, Plin)
+                    st.markdown("### 💵 Distribución de Caja")
+                    c1, c2, c3 = st.columns(3)
+                    with c1:
+                        st.info(f"💵 **Efectivo en Caja:**\n\n### S/{efectivo_total:.2f}")
+                    with c2:
+                        st.success(f"📱 **Total Yape:**\n\n### S/{yape_total:.2f}")
+                    with c3:
+                        st.error(f"🔮 **Total Plin:**\n\n### S/{plin_total:.2f}")
+                        
+                    # =====================================================================
+                    # 📋 TABLAS EN PANTALLA (Detalle de lo Vendido)
+                    # =====================================================================
+                    st.markdown("---")
+                    st.markdown("### 📋 Detalle de lo Vendido en el Periodo")
+                    
+                    # Renombramos las columnas temporalmente solo para que la interfaz se vea elegante
+                    vista_pantalla = df_final_items[['Hora', 'producto_id', 'cantidad', 'pago', 'total_venta', 'ganancia']].copy()
+                    vista_pantalla.columns = ['Hora', 'Producto', 'Cant', 'Pago', 'Total Venta', 'Ganancia']
+                    
+                    # Aplicamos formato de moneda visual
+                    vista_pantalla['Total Venta'] = vista_pantalla['Total Venta'].map("S/{:.2f}".format)
+                    vista_pantalla['Ganancia'] = vista_pantalla['Ganancia'].map("S/{:.2f}".format)
+                    
+                    st.dataframe(vista_pantalla, use_container_width=True)
+                    
+                    # HISTORIAL COMPLETO DE AUDITORÍA (Tu segunda tabla colapsable)
+                    with st.expander("📂 Ver historial completo de auditoría"):
+                        vista_historial = df_final_items[['Fecha_Corta', 'Hora', 'producto_id', 'cantidad', 'pago', 'total_venta', 'total_costo', 'ganancia']].copy()
+                        vista_historial.columns = ['Fecha/Hora', 'Hora', 'Producto', 'Cant', 'Método', 'Venta S/', 'Costo S/', 'Ganancia S/']
+                        
+                        vista_historial['Venta S/'] = vista_historial['Venta S/'].map("S/{:.2f}".format)
+                        vista_historial['Costo S/'] = vista_historial['Costo S/'].map("S/{:.2f}".format)
+                        vista_historial['Ganancia S/'] = vista_historial['Ganancia S/'].map("S/{:.2f}".format)
+                        
+                        st.dataframe(vista_historial, use_container_width=True)
+                        
+                    # =====================================================================
+                    # 📥 EXCEL REPARADO Y INDEPENDIENTE POR COLUMNAS (PUNTO 3)
+                    # =====================================================================
+                    st.markdown("#### 📥 Auditoría y Cierre de Caja")
+                    
+                    reporte_excel = df_final_items[['Fecha_Corta', 'Hora', 'producto_id', 'cantidad', 'pago', 'total_venta', 'total_costo', 'ganancia']].copy()
+                    reporte_excel.columns = ['Fecha_Corta', 'Hora', 'Producto', 'Cantidad', 'Pago', 'Total_Venta', 'Total_Costo', 'Ganancia']
+                    
+                    # EXPLICACIÓN PUNTO 3: sep=';' y utf-8-sig estructuran el CSV directo en celdas para el Excel en español
+                    csv_perfecto = reporte_excel.to_csv(index=False, sep=';').encode('utf-8-sig')
+                    
+                    st.download_button(
+                        label="🍏 Descargar Historial Completo Ordenado para Excel (.CSV)",
+                        data=csv_perfecto,
+                        file_name=f"auditoria_nexus_{f_inicio_str.replace('/', '-')}_al_{f_fin_str.replace('/', '-')}.csv",
+                        mime="text/csv",
+                        use_container_width=True
+                    )
