@@ -674,40 +674,106 @@ elif menu == "Ventas":
 elif menu == "Reportes":
     st.title("📊 Centro de Analítica - NEXUS")
     
+    # 1. CARGA DE DATOS DESDE DYNAMODB
     ventas_raw = obtener_ventas()
     productos_raw = obtener_productos()
     
+    mapa_productos = {}
+    if productos_raw:
+        mapa_productos = {p['producto_id']: p['nombre'] for p in productos_raw if 'producto_id' in p}
+    
     if not ventas_raw:
-        st.info("💡 No hay ventas registradas.")
+        st.info("💡 Aún no se han registrado ventas en este comercio.")
     else:
         import pandas as pd
-        df = pd.DataFrame(ventas_raw)
+        import datetime
         
-        # 1. Normalizar fecha (Convertimos a hora de Perú)
-        # Esto soluciona que las fechas de la noche se pasen al día siguiente
-        df['fecha_dt'] = pd.to_datetime(df['fecha']).dt.tz_convert('America/Lima')
-        df['Fecha_Corta'] = df['fecha_dt'].dt.date
-        df['Hora'] = df['fecha_dt'].dt.strftime('%H:%M:%S')
+        df_base = pd.DataFrame(ventas_raw)
         
-        # 2. Selector de fecha
-        fecha_busqueda = st.date_input("Selecciona el día:")
+        # 🕒 AJUSTE HORARIO: Conversión a hora Perú y extracción de componentes
+        df_base['fecha_dt'] = pd.to_datetime(df_base['fecha'], errors='coerce')
+        df_base['fecha_peru'] = df_base['fecha_dt'].apply(lambda x: x - datetime.timedelta(hours=5) if pd.notnull(x) else x)
         
-        # 3. Filtro
-        df_filtrado = df[df['Fecha_Corta'] == fecha_busqueda].copy()
-        
-        if df_filtrado.empty:
-            st.warning(f"No hay ventas para {fecha_busqueda}.")
+        df_base['Hora'] = df_base['fecha_peru'].dt.strftime('%H:%M:%S').fillna("00:00:00")
+        df_base['Fecha_Corta'] = df_base['fecha_peru'].dt.strftime('%Y-%m-%d').fillna("⚠️ Sin Fecha")
+
+        # 📅 BUSCADOR POR FECHA
+        st.markdown("### 🔍 Buscar Reporte Diario")
+        hoy_peru = (datetime.datetime.now() - datetime.timedelta(hours=5)).date()
+        fecha_busqueda = st.date_input("Selecciona el día que deseas auditar:", hoy_peru)
+        fecha_busqueda_str = fecha_busqueda.strftime('%Y-%m-%d')
+            
+        df_fecha_filtrado = df_base[df_base['Fecha_Corta'] == fecha_busqueda_str].copy()
+
+        if df_fecha_filtrado.empty:
+            st.warning(f"⚠️ No hay ventas registradas para el día {fecha_busqueda_str}.")
+            # Mostramos los contadores en cero
+            m1, m2, m3 = st.columns(3)
+            m1.metric("Ingreso Total", "S/0.00")
+            m2.metric("Inversión", "S/0.00")
+            m3.metric("GANANCIA REAL NETO 💰", "S/0.00")
         else:
-            # 4. Preparar tabla con nombres reales (usando tu lógica original)
-            mapa_productos = {p['producto_id']: p['nombre'] for p in productos_raw} if productos_raw else {}
+            # 🔄 DESGLOSE Y CÁLCULOS
+            filas_desglosadas = []
+            for _, fila in df_fecha_filtrado.iterrows():
+                items_lista = fila.get('items', [])
+                if not isinstance(items_lista, list): items_lista = []
+                        
+                for item in items_lista:
+                    p_id = item.get('producto_id', '')
+                    nombre = mapa_productos.get(p_id, f"Desconocido ({p_id[:5]})")
+                    cant = float(item.get('cantidad', 0))
+                    p_venta = float(item.get('precio_venta', 0))
+                    p_compra = float(item.get('precio_compra', 0))
+                    
+                    filas_desglosadas.append({
+                        'Fecha_Corta': fila.get('Fecha_Corta'),
+                        'Hora': fila.get('Hora'),
+                        'fecha_sort': fila.get('fecha_peru'),
+                        'Producto': nombre,
+                        'cantidad': int(cant),
+                        'pago': fila.get('pago', 'Efectivo'),
+                        'total_venta': cant * p_venta,
+                        'total_costo': cant * p_compra,
+                        'ganancia': (cant * p_venta) - (cant * p_compra)
+                    })
             
-            # Formatear visualización
-            df_filtrado['Producto'] = df_filtrado['producto_id'].map(mapa_productos).fillna(df_filtrado['producto_id'])
-            vista = df_filtrado[['Hora', 'Producto', 'cantidad', 'total_venta']]
+            df_filtrado = pd.DataFrame(filas_desglosadas)
+            # ORDENAR: El más nuevo arriba (descendente)
+            df_filtrado = df_filtrado.sort_values(by='fecha_sort', ascending=False)
+
+            # 💰 MÉTODOS DE PAGO Y MÉTRICAS
+            df_filtrado['pago_limpio'] = df_filtrado['pago'].astype(str).str.lower().str.strip()
+            ingreso_total = df_filtrado['total_venta'].sum()
+            ganancia_neta = df_filtrado['ganancia'].sum()
+            inversion_total = df_filtrado['total_costo'].sum()
+
+            efectivo_total = df_filtrado[df_filtrado['pago_limpio'].str.contains('efectivo|efec', na=False)]['total_venta'].sum()
+            yape_total = df_filtrado[df_filtrado['pago_limpio'].str.contains('yape', na=False)]['total_venta'].sum()
+            plin_total = df_filtrado[df_filtrado['pago_limpio'].str.contains('plin', na=False)]['total_venta'].sum()
+
+            # 📊 PANEL VISUAL
+            st.markdown("### 📈 Rendimiento Financiero")
+            m1, m2, m3 = st.columns(3)
+            m1.metric("Ingreso Total", f"S/{ingreso_total:.2f}")
+            m2.metric("Inversión", f"S/{inversion_total:.2f}")
+            m3.metric("GANANCIA REAL NETO 💰", f"S/{ganancia_neta:.2f}")
+
+            st.markdown("### 💵 Distribución de Caja")
+            c1, c2, c3 = st.columns(3)
+            c1.info(f"💵 Efectivo: S/{efectivo_total:.2f}")
+            c2.success(f"📱 Yape: S/{yape_total:.2f}")
+            c3.error(f"🔮 Plin: S/{plin_total:.2f}")
+
+            # 📋 TABLA DIARIA (Limitada a 400px de alto)
+            st.markdown("---")
+            st.markdown("### 📋 Detalle de lo Vendido")
+            vista_tabla = df_filtrado[['Hora', 'Producto', 'cantidad', 'pago', 'total_venta', 'ganancia']]
+            vista_tabla.rename(columns={'total_venta': 'Total Venta', 'cantidad': 'Cant'}, inplace=True)
             
-            st.success(f"✅ Mostrando {len(vista)} ventas para el día {fecha_busqueda}")
-            st.dataframe(vista, use_container_width=True)
+            st.dataframe(vista_tabla, use_container_width=True, max_height=400)
             
-            # Métricas rápidas
-            total_dia = df_filtrado['total_venta'].sum()
-            st.metric("Ingreso Total del día", f"S/{total_dia:.2f}")
+            # 📥 DESCARGA
+            csv_data = df_filtrado.to_csv(index=False, sep=';').encode('utf-8-sig')
+            st.download_button("🍏 Descargar Historial Completo (.CSV)", csv_data, 
+                               file_name=f"auditoria_{fecha_busqueda_str}.csv", use_container_width=True)
