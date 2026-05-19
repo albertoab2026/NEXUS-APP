@@ -467,21 +467,16 @@ elif menu == "Ventas":
                     ok = True
                     
                     for item in st.session_state.carrito:
-                        total_v = round(float(item['precio_venta']) * int(item['cantidad']), 2)
-                        total_c = round(float(item['precio_compra']) * int(item['cantidad']), 2)
-                        ganancia_v = round(total_v - total_c, 2)
-
-                        # 🚀 LLAMADA TOTALMENTE LIMPIA: Sin heredar inquilinos externos
+                        # 🚀 LLAMADA EXACTA CON LOS 4 PARAMETROS REQUERIDOS
                         try:
                             res = registrar_venta(
                                 producto_id=item['producto_id'],
                                 cantidad=int(item['cantidad']),
-                                total_venta=total_v,
-                                total_costo=total_c,
-                                ganancia=ganancia_v,
-                                metodo_pago=metodo_pago
+                                precio_venta=float(item['precio_venta']),
+                                precio_compra=float(item['precio_compra'])
                             )
-                            if not res:
+                            # Si tu función retorna False o no retorna True, marcamos error
+                            if res is False:
                                 ok = False
                                 break
                         except Exception as e:
