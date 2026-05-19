@@ -497,16 +497,15 @@ elif menu == "Ventas":
                     items_guardar = [item.copy() for item in st.session_state.carrito]
                     
                 # Dentro del bloque for item in st.session_state.carrito:
-                for item in st.session_state.carrito:
-                    try:
-                        res = registrar_venta(
-                            producto_id=item['producto_id'],
-                            cantidad=int(item['cantidad']),
-                            precio_venta=float(item['precio_venta']),
-                            precio_compra=float(item['precio_compra']),
-                            pago=metodo_pago  # <--- AGREGA ESTO AQUÍ
-                        )
-                        # ... resto del código
+                for item in st.session_state.carrito: # Línea 500
+                        try:
+                            res = registrar_venta( # Línea 502
+                                producto_id=item['producto_id'],
+                                cantidad=int(item['cantidad']),
+                                precio_venta=float(item['precio_venta']),
+                                precio_compra=float(item['precio_compra']),
+                                pago=metodo_pago
+                            )
                             if res is False:
                                 ok = False
                                 break
