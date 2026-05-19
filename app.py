@@ -447,33 +447,32 @@ elif menu == "Ventas":
 
         with col_carrito:
             st.markdown("### 🧾 Resumen de Pedido")
+            
             if st.session_state.carrito:
                 total_venta_bruto = 0
                 for item in st.session_state.carrito:
                     total_venta_bruto += float(item['precio_venta']) * int(item['cantidad'])
                 
-                descuento = st.number_input("🎁 Aplicar Descuento (S/):", min_value=0.0, value=0.0, step=0.50, key="desc_global")
-                total_venta_neto = round(total_venta_bruto - descuento, 2)
-
-                st.markdown(f"### Total: S/{total_venta_neto:.2f}")
+                # ... (resto de tu lógica de visualización del carrito)
+                
                 metodo_pago = st.radio("Forma de Pago:", ["💵 Efectivo", "📱 Yape", "💳 Plin"], horizontal=True)
                 
-                w_cliente_nombre = st.text_input("Nombre Cliente:")
-                w_cliente_celular = st.text_input("Celular:")
+                # Campos de cliente
+                w_cliente_nombre = st.text_input("Nombre Cliente:", key="w_cli_nom")
+                w_cliente_celular = st.text_input("Celular:", key="w_cli_cel")
 
                 if st.button("⚡ Finalizar y Registrar Venta", type="primary", use_container_width=True):
                     ok = True
                     items_guardar = [item.copy() for item in st.session_state.carrito]
                     
-                    for item in st.session_state.carrito:
+                    for item in items_guardar:
                         try:
-                            # Aquí es donde ocurre la magia: pasamos el pago
                             res = registrar_venta(
                                 producto_id=item['producto_id'],
                                 cantidad=int(item['cantidad']),
                                 precio_venta=float(item['precio_venta']),
                                 precio_compra=float(item['precio_compra']),
-                                pago=metodo_pago # Este es el campo nuevo
+                                pago=metodo_pago
                             )
                             if res is False:
                                 ok = False
@@ -484,25 +483,12 @@ elif menu == "Ventas":
                             break
 
                     if ok:
-                        import datetime
-                        hora_servidor = datetime.datetime.now()
-                        hora_peru = hora_servidor - datetime.timedelta(hours=5)
-                        fecha_formateada = hora_peru.strftime("%Y-%m-%d %H:%M:%S")
-
-                        st.session_state.ultima_venta = {
-                            "tenant": tenant_actual,
-                            "fecha": fecha_formateada,
-                            "items": items_guardar,
-                            "descuento": descuento,
-                            "total": total_venta_neto,
-                            "pago": metodo_pago,
-                            "cliente_nom": w_cliente_nombre if w_cliente_nombre.strip() else "Consumidor Final",
-                            "cliente_cel": w_cliente_celular.strip()
-                        }
                         st.session_state.carrito = []
                         st.success("🎉 Venta procesada con éxito.")
                         st.balloons()
                         st.rerun()
+            else:
+                st.info("🛒 El carrito está vacío. Añade productos.")
         # =====================================================================
         # 🏢 SECCIÓN: COMPROBANTE DIGITAL AUTO-GENERADO CON DESCUENTO REFLEJADO
         # =====================================================================
