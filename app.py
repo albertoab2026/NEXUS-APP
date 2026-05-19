@@ -498,42 +498,42 @@ elif menu == "Ventas":
                     
                 # Dentro del bloque for item in st.session_state.carrito:
                 for item in st.session_state.carrito:
-                        try:
-                            res = registrar_venta(
-                                producto_id=item['producto_id'],
-                                cantidad=int(item['cantidad']),
-                                precio_venta=float(item['precio_venta']),
-                                precio_compra=float(item['precio_compra']),
-                                pago=metodo_pago
-                            )
-                            if res is False:
-                                ok = False
-                                break
-                        except Exception as e:
-                            st.error(f"Error: {e}")
+                    try:
+                        res = registrar_venta(
+                            producto_id=item['producto_id'],
+                            cantidad=int(item['cantidad']),
+                            precio_venta=float(item['precio_venta']),
+                            precio_compra=float(item['precio_compra']),
+                            pago=metodo_pago
+                        )
+                        if res is False:
                             ok = False
                             break
-                
-                    if ok:
-                        import datetime
-                        hora_servidor = datetime.datetime.now()
-                        hora_peru = hora_servidor - datetime.timedelta(hours=5)
-                        fecha_formateada = hora_peru.strftime("%Y-%m-%d %H:%M:%S")
-                
-                        st.session_state.ultima_venta = {
-                            "tenant": tenant_actual,
-                            "fecha": fecha_formateada,
-                            "items": items_guardar,
-                            "descuento": descuento,
-                            "total": total_venta_neto,
-                            "pago": metodo_pago,
-                            "cliente_nom": w_cliente_nombre.strip() if w_cliente_nombre.strip() else "Consumidor Final",
-                            "cliente_cel": w_cliente_celular.strip()
-                        }
-                        st.session_state.carrito = []
-                        st.success("🎉 Venta procesada con éxito.")
-                        st.balloons()
-                        st.rerun()
+                    except Exception as e:
+                        st.error(f"Error: {e}")
+                        ok = False
+                        break
+
+                if ok:
+                    import datetime
+                    hora_servidor = datetime.datetime.now()
+                    hora_peru = hora_servidor - datetime.timedelta(hours=5)
+                    fecha_formateada = hora_peru.strftime("%Y-%m-%d %H:%M:%S")
+
+                    st.session_state.ultima_venta = {
+                        "tenant": tenant_actual,
+                        "fecha": fecha_formateada,
+                        "items": items_guardar,
+                        "descuento": descuento,
+                        "total": total_venta_neto,
+                        "pago": metodo_pago,
+                        "cliente_nom": w_cliente_nombre.strip() if w_cliente_nombre.strip() else "Consumidor Final",
+                        "cliente_cel": w_cliente_celular.strip()
+                    }
+                    st.session_state.carrito = []
+                    st.success("🎉 Venta procesada con éxito.")
+                    st.balloons()
+                    st.rerun()
 
                 if st.button("Vaciar Carrito", use_container_width=True):
                     st.session_state.carrito = []
