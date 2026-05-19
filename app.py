@@ -387,76 +387,75 @@ elif menu == "Ventas":
                     if busqueda_v.lower() in prod.get('nombre', '').lower()
                 ]
 
-            if not productos_mostrar:
+if not productos_mostrar:
                 st.error("❌ No se encontraron productos con ese nombre.")
             else:
                 st.markdown("---")
-                # Iteramos y dibujamos cada producto dentro de una tarjeta visual
-                for prod in productos_mostrar:
-                    p_id = prod.get('producto_id', 'S/I')
-                    p_nombre = prod.get('nombre', 'Producto sin nombre')
-                    p_precio_venta = float(prod.get('precio_venta', 0.0))
-                    p_precio_compra = float(prod.get('precio_compra', 0.0))
-                    
-                    # Control de stock cruzado con el carrito temporal
-                    cantidad_en_carrito = sum(int(item['cantidad']) for item in st.session_state.carrito if item['producto_id'] == p_id)
-                    p_stock_real = int(prod.get('stock', 0))
-                    p_stock_disponible = p_stock_real - cantidad_en_carrito
-                    
-                    # 🎨 CONTENEDOR ESTILO TARJETA PREMIUM
-                    with st.container(border=True):
-                        c_info, c_cant, c_btn = st.columns([2.2, 1.1, 1.2])
+                
+                # 🏢 CONTENEDOR CON SCROLL FIJO ESTILO SAAS COMERCIAL
+                # Mantiene la interfaz limpia en PC y Celular sin estirar la pantalla
+                with st.container(height=500, border=False):
+                    for prod in productos_mostrar:
+                        p_id = prod.get('producto_id', 'S/I')
+                        p_nombre = prod.get('nombre', 'Producto sin nombre')
+                        p_precio_venta = float(prod.get('precio_venta', 0.0))
+                        p_precio_compra = float(prod.get('precio_compra', 0.0))
                         
-                        with c_info:
-                            st.markdown(f"**{p_nombre}**")
-                            if p_stock_disponible <= 0:
-                                st.markdown(f"🔴 **Agotado** · <span style='color:gray;'>S/{p_precio_venta:.2f}</span>", unsafe_allow_html=True)
-                            else:
-                                st.markdown(f"🟢 **Stock: {p_stock_disponible}** · **S/{p_precio_venta:.2f}**", unsafe_allow_html=True)
+                        # Control de stock cruzado con el carrito temporal
+                        cantidad_en_carrito = sum(int(item['cantidad']) for item in st.session_state.carrito if item['producto_id'] == p_id)
+                        p_stock_real = int(prod.get('stock', 0))
+                        p_stock_disponible = p_stock_real - cantidad_en_carrito
                         
-                        with c_cant:
-                            # Selector numérico compacto e intuitivo
-                            qty = st.number_input(
-                                "Cant", 
-                                min_value=0, 
-                                max_value=max(0, p_stock_disponible), 
-                                key=f"qty_{p_id}", 
-                                label_visibility="collapsed"
-                            )
-                        
-                        with c_btn:
-                            # Botón adaptativo: deshabilitado si no hay stock
-                            es_invalido = p_stock_disponible <= 0
+                        # 🎨 TARJETA VISUAL DE CADA PRODUCTO
+                        with st.container(border=True):
+                            c_info, c_cant, c_btn = st.columns([2.2, 1.1, 1.2])
                             
-                            def agregar_al_carrito_saas(id_p, nom_p, pre_v, pre_c, cant_solicitada, stock_r):
-                                if cant_solicitada > 0:
-                                    existe = False
-                                    for item in st.session_state.carrito:
-                                        if item['producto_id'] == id_p:
-                                            item['cantidad'] = int(item['cantidad']) + cant_solicitada
-                                            existe = True
-                                            break
-                                    if not existe:
-                                        st.session_state.carrito.append({
-                                            'producto_id': id_p,
-                                            'nombre': nom_p,
-                                            'precio_venta': pre_v,
-                                            'precio_compra': pre_c,
-                                            'cantidad': cant_solicitada,
-                                            'stock_max': stock_r
-                                        })
-                                    # Limpiamos el input borrando el estado de búsqueda para agilizar el flujo
-                                    st.session_state["buscar_ventas"] = ""
+                            with c_info:
+                                st.markdown(f"**{p_nombre}**")
+                                if p_stock_disponible <= 0:
+                                    st.markdown(f"🔴 **Agotado** · <span style='color:gray;'>S/{p_precio_venta:.2f}</span>", unsafe_allow_html=True)
+                                else:
+                                    st.markdown(f"🟢 **Stock: {p_stock_disponible}** · **S/{p_precio_venta:.2f}**", unsafe_allow_html=True)
+                            
+                            with c_cant:
+                                qty = st.number_input(
+                                    "Cant", 
+                                    min_value=0, 
+                                    max_value=max(0, p_stock_disponible), 
+                                    key=f"qty_{p_id}", 
+                                    label_visibility="collapsed"
+                                )
+                            
+                            with c_btn:
+                                es_invalido = p_stock_disponible <= 0
+                                
+                                def agregar_al_carrito_saas(id_p, nom_p, pre_v, pre_c, cant_solicitada, stock_r):
+                                    if cant_solicitada > 0:
+                                        existe = False
+                                        for item in st.session_state.carrito:
+                                            if item['producto_id'] == id_p:
+                                                item['cantidad'] = int(item['cantidad']) + cant_solicitada
+                                                existe = True
+                                                break
+                                        if not existe:
+                                            st.session_state.carrito.append({
+                                                'producto_id': id_p,
+                                                'nombre': nom_p,
+                                                'precio_venta': pre_v,
+                                                'precio_compra': pre_c,
+                                                'cantidad': cant_solicitada,
+                                                'stock_max': stock_r
+                                            })
+                                        st.session_state["buscar_ventas"] = ""
 
-                            st.button(
-                                "🛒 Añadir", 
-                                key=f"btn_saas_{p_id}", 
-                                use_container_width=True, 
-                                disabled=es_invalido,
-                                on_click=agregar_al_carrito_saas,
-                                args=(p_id, p_nombre, p_precio_venta, p_precio_compra, qty, p_stock_real)
-                            )
-
+                                st.button(
+                                    "🛒 Añadir", 
+                                    key=f"btn_saas_{p_id}", 
+                                    use_container_width=True, 
+                                    disabled=es_invalido,
+                                    on_click=agregar_al_carrito_saas,
+                                    args=(p_id, p_nombre, p_precio_venta, p_precio_compra, qty, p_stock_real)
+                                )
         with col_carrito:
             st.markdown("### 🧾 Resumen de Pedido")
             
