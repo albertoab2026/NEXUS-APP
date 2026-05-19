@@ -701,7 +701,7 @@ elif menu == "Reportes":
             df_base['Fecha_Corta'] = df_base['fecha_peru'].dt.strftime('%Y-%m-%d').fillna("⚠️ Sin Fecha")
 
             # =====================================================================
-            # 📅 SECCIÓN: BUSCADOR POR FECHA DEL DÍA (Más fácil y limpio)
+            # 📅 SECCIÓN: BUSCADOR POR FECHA DEL DÍA
             # =====================================================================
             st.markdown("### 🔍 Buscar Reporte Diario")
             
@@ -757,11 +757,18 @@ elif menu == "Reportes":
                 # Creamos el DataFrame final con los datos limpios desglosados
                 df_filtrado = pd.DataFrame(filas_desglosadas)
 
-                # ⏳ ORDENACIÓN ESTRICTA: De la venta más reciente a la más antigua del día
-                df_filtrado = df_filtrado.sort_values(by='fecha_sort', ascending=False)
+                # 🛡️ CONTROL CRÍTICO ANTES DE OPERAR (Evita el KeyError si la tabla está vacía)
+                if not df_filtrado.empty and 'fecha_sort' in df_filtrado.columns:
+                    # ⏳ ORDENACIÓN ESTRICTA: De la venta más reciente a la más antigua del día
+                    df_filtrado = df_filtrado.sort_values(by='fecha_sort', ascending=False)
+                
+                # Aseguramos que existan las columnas mínimas para que el resto no rompa
+                for col in ['total_venta', 'total_costo', 'ganancia', 'pago']:
+                    if col not in df_filtrado.columns:
+                        df_filtrado[col] = 0.0 if col != 'pago' else 'Efectivo'
 
                 # =====================================================================
-                # 💰 MÉTODOS DE PAGO Y MÉTRICAS (Lógica de negocio uniforme)
+                # 💰 MÉTODOS DE PAGO Y MÉTRICAS
                 # =====================================================================
                 df_filtrado['pago_limpio'] = df_filtrado['pago'].astype(str).str.lower().str.strip()
 
@@ -799,14 +806,19 @@ elif menu == "Reportes":
                     st.error(f"🔮 **Total Plin:**\n\n### S/{plin_total:.2f}")
 
                 # =====================================================================
-                # 📋 TABLA DIARIA CON SCROLL INTEGRADO (Evita tablas infinitas)
+                # 📋 TABLA DIARIA CON SCROLL INTEGRADO
                 # =====================================================================
                 st.markdown("---")
                 st.markdown("### 📋 Detalle de lo Vendido en el Periodo")
                 
                 # Preparamos una copia visual limpia cambiando los encabezados para el cliente
-                vista_tabla = df_filtrado[['Hora', 'producto_id', 'cantidad', 'pago', 'total_venta', 'ganancia']].copy()
-                vista_tabla.columns = ['Hora', 'Producto', 'Cant', 'Pago', 'Total Venta', 'Ganancia']
+                columnas_vista = ['Hora', 'producto_id', 'cantidad', 'pago', 'total_venta', 'ganancia']
+                columnas_validas = [c for c in columnas_vista if c in df_filtrado.columns]
+                
+                vista_tabla = df_filtrado[columnas_validas].copy()
+                
+                dic_renombrar = {'Hora': 'Hora', 'producto_id': 'Producto', 'cantidad': 'Cant', 'pago': 'Pago', 'total_venta': 'Total Venta', 'ganancia': 'Ganancia'}
+                vista_tabla.rename(columns=dic_renombrar, inplace=True)
                 
                 # Renderizamos la tabla con altura fija (300px) para activar el scroll interno automático
                 st.dataframe(vista_tabla, use_container_width=True, height=300)
@@ -816,10 +828,15 @@ elif menu == "Reportes":
                 # =====================================================================
                 st.markdown("#### 📥 Auditoría y Cierre de Caja")
                 
-                reporte_excel = df_filtrado[['Fecha_Corta', 'Hora', 'producto_id', 'cantidad', 'pago', 'total_venta', 'total_costo', 'ganancia']].copy()
-                reporte_excel.columns = ['Fecha', 'Hora', 'Producto', 'Cantidad', 'Método Pago', 'Venta S/.', 'Costo S/.', 'Ganancia S/.']
+                cols_excel = ['Fecha_Corta', 'Hora', 'producto_id', 'cantidad', 'pago', 'total_venta', 'total_costo', 'ganancia']
+                cols_excel_validas = [c for c in cols_excel if c in df_filtrado.columns]
                 
-                # Usamos codificación nativa utf-8-sig y separador ';' para que Excel lo abra perfecto en columnas separadas
+                reporte_excel = df_filtrado[cols_excel_validas].copy()
+                
+                dic_excel = {'Fecha_Corta': 'Fecha', 'Hora': 'Hora', 'producto_id': 'Producto', 'cantidad': 'Cantidad', 'pago': 'Método Pago', 'total_venta': 'Venta S/.', 'total_costo': 'Costo S/.', 'ganancia': 'Ganancia S/.'}
+                reporte_excel.rename(columns=dic_excel, inplace=True)
+                
+                # Usamos codificación nativa utf-8-sig y separador ';' para que Excel lo abra perfecto
                 csv_data = reporte_excel.to_csv(index=False, sep=';').encode('utf-8-sig')
                 
                 st.download_button(
