@@ -681,10 +681,9 @@ elif menu == "Reportes":
         st.info("💡 No hay ventas registradas.")
     else:
         import pandas as pd
-        # Creamos el DataFrame
         df = pd.DataFrame(ventas_raw)
         
-        # 1. Ajuste Horario (Convertimos a Lima)
+        # 1. Asegurar formato de fecha
         df['fecha_dt'] = pd.to_datetime(df['fecha']).dt.tz_localize(None) - pd.Timedelta(hours=5)
         df['Fecha_Corta'] = df['fecha_dt'].dt.date
         df['Hora'] = df['fecha_dt'].dt.strftime('%H:%M:%S')
@@ -695,31 +694,28 @@ elif menu == "Reportes":
         if df_filtrado.empty:
             st.warning(f"No hay ventas para {fecha_busqueda}.")
         else:
-            # 2. Mapeos
+            # 2. Mapeo de productos
             mapa_productos = {p['producto_id']: p['nombre'] for p in productos_raw} if productos_raw else {}
             df_filtrado['Producto'] = df_filtrado['producto_id'].map(mapa_productos).fillna(df_filtrado['producto_id'])
             
-            # --- DEPURACIÓN IMPORTANTE ---
-            # Si el pago está en una columna llamada 'pago', 'metodo_pago' o similar, 
-            # esta línea lo normaliza. Si sigue saliendo 'agua cielo...', es que 
-            # el nombre de la columna es otro o el dato no existe.
-            # Imprimimos las columnas para que tú veas qué nombres hay:
-            st.write("Columnas disponibles:", df_filtrado.columns.tolist())
+            # 3. Gestión de pagos (Lógica preventiva)
+            # Como el campo no existe en tu BD, asignamos 'Efectivo' por defecto hasta que lo implementes
+            if 'pago' in df_filtrado.columns:
+                df_filtrado['pago_norm'] = df_filtrado['pago'].astype(str).str.lower()
+            else:
+                df_filtrado['pago_norm'] = 'efectivo' # Placeholder hasta que envíes el campo real
             
-            # Intentamos detectar el pago. Si no lo encuentra, usa 'Efectivo'
-            # ¿Es posible que el pago esté dentro de 'items'?
-            df_filtrado['pago_norm'] = df_filtrado.get('pago', 'Efectivo').astype(str).str.lower()
+            # 4. Cálculos financieros
+            df_filtrado['total_venta'] = pd.to_numeric(df_filtrado['total_venta'], errors='coerce').fillna(0)
+            yape = df_filtrado[df_filtrado['pago_norm'] == 'yape']['total_venta'].sum()
+            plin = df_filtrado[df_filtrado['pago_norm'] == 'plin']['total_venta'].sum()
+            efectivo = df_filtrado[df_filtrado['pago_norm'] == 'efectivo']['total_venta'].sum()
             
-            # 3. Cálculo de Totales
-            yape = df_filtrado[df_filtrado['pago_norm'].str.contains('yape', na=False)]['total_venta'].sum()
-            plin = df_filtrado[df_filtrado['pago_norm'].str.contains('plin', na=False)]['total_venta'].sum()
-            efectivo = df_filtrado[~df_filtrado['pago_norm'].str.contains('yape|plin', na=False)]['total_venta'].sum()
-            
+            # 5. Visualización estable
             st.markdown("### 💵 Distribución de Caja")
             c1, c2, c3 = st.columns(3)
             c1.metric("💵 Efectivo", f"S/{efectivo:.2f}")
             c2.metric("📱 Yape", f"S/{yape:.2f}")
             c3.metric("🔮 Plin", f"S/{plin:.2f}")
             
-            # 4. Tabla
-            st.dataframe(df_filtrado, use_container_width=True)
+            st.dataframe(df_filtrado[['Hora', 'Producto', 'cantidad', 'total_venta', 'pago_norm']], use_container_width=True)
