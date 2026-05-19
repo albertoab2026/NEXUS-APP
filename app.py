@@ -683,8 +683,7 @@ elif menu == "Reportes":
         import pandas as pd
         df = pd.DataFrame(ventas_raw)
         
-        # 1. Normalizar fecha (Convertimos a hora de Perú)
-        # Esto soluciona que las fechas de la noche se pasen al día siguiente
+        # 1. Normalizar fecha (Zona horaria Lima)
         df['fecha_dt'] = pd.to_datetime(df['fecha']).dt.tz_convert('America/Lima')
         df['Fecha_Corta'] = df['fecha_dt'].dt.date
         df['Hora'] = df['fecha_dt'].dt.strftime('%H:%M:%S')
@@ -692,22 +691,48 @@ elif menu == "Reportes":
         # 2. Selector de fecha
         fecha_busqueda = st.date_input("Selecciona el día:")
         
-        # 3. Filtro
+        # 3. Filtrar
         df_filtrado = df[df['Fecha_Corta'] == fecha_busqueda].copy()
         
         if df_filtrado.empty:
             st.warning(f"No hay ventas para {fecha_busqueda}.")
         else:
-            # 4. Preparar tabla con nombres reales (usando tu lógica original)
+            # 4. Mapeo de productos y Cálculos de Ganancia
             mapa_productos = {p['producto_id']: p['nombre'] for p in productos_raw} if productos_raw else {}
+            mapa_costos = {p['producto_id']: float(p.get('precio_compra', 0)) for p in productos_raw} if productos_raw else {}
             
-            # Formatear visualización
             df_filtrado['Producto'] = df_filtrado['producto_id'].map(mapa_productos).fillna(df_filtrado['producto_id'])
-            vista = df_filtrado[['Hora', 'Producto', 'cantidad', 'total_venta']]
             
-            st.success(f"✅ Mostrando {len(vista)} ventas para el día {fecha_busqueda}")
-            st.dataframe(vista, use_container_width=True)
+            # Cálculo de Ganancia Real
+            df_filtrado['costo_unitario'] = df_filtrado['producto_id'].map(mapa_costos).fillna(0)
+            df_filtrado['ganancia_real'] = df_filtrado['total_venta'] - (df_filtrado['cantidad'] * df_filtrado['costo_unitario'])
             
-            # Métricas rápidas
-            total_dia = df_filtrado['total_venta'].sum()
-            st.metric("Ingreso Total del día", f"S/{total_dia:.2f}")
+            # Ordenar: Lo más reciente primero
+            df_filtrado = df_filtrado.sort_values(by='fecha_dt', ascending=False)
+            
+            # 5. Métricas Financieras
+            st.markdown("### 📈 Rendimiento Financiero")
+            m1, m2, m3 = st.columns(3)
+            m1.metric("Ingreso Total", f"S/{df_filtrado['total_venta'].sum():.2f}")
+            m2.metric("Inversión", f"S/{(df_filtrado['cantidad'] * df_filtrado['costo_unitario']).sum():.2f}")
+            m3.metric("GANANCIA REAL 💰", f"S/{df_filtrado['ganancia_real'].sum():.2f}")
+            
+            # 6. Distribución de Caja (Yape/Plin/Efectivo)
+            # Aseguramos que la columna 'pago' exista, si no, es efectivo por defecto
+            if 'pago' not in df_filtrado.columns: df_filtrado['pago'] = 'Efectivo'
+            df_filtrado['pago_lower'] = df_filtrado['pago'].astype(str).str.lower()
+            
+            efectivo = df_filtrado[~df_filtrado['pago_lower'].str.contains('yape|plin')]['total_venta'].sum()
+            yape = df_filtrado[df_filtrado['pago_lower'].str.contains('yape')]['total_venta'].sum()
+            plin = df_filtrado[df_filtrado['pago_lower'].str.contains('plin')]['total_venta'].sum()
+            
+            st.markdown("### 💵 Distribución de Caja")
+            c1, c2, c3 = st.columns(3)
+            c1.info(f"💵 Efectivo: S/{efectivo:.2f}")
+            c2.success(f"📱 Yape: S/{yape:.2f}")
+            c3.error(f"🔮 Plin: S/{plin:.2f}")
+            
+            # 7. Tabla Final
+            st.markdown("### 📋 Detalle de Ventas")
+            vista = df_filtrado[['Hora', 'Producto', 'cantidad', 'total_venta', 'ganancia_real', 'pago']]
+            st.dataframe(vista, use_container_width=True, height=400)
