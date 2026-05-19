@@ -697,20 +697,20 @@ elif menu == "Reportes":
         
         df_base = pd.DataFrame(ventas_raw)
         
-        # 🕒 NORMALIZACIÓN HORARIA: Conversión segura
-        df_base['fecha_dt'] = pd.to_datetime(df_base['fecha'], errors='coerce')
-        # Restamos 5 horas para Perú
-        df_base['fecha_peru'] = df_base['fecha_dt'].apply(lambda x: x - datetime.timedelta(hours=5) if pd.notnull(x) else x)
+        # 🕒 NORMALIZACIÓN HORARIA: Conversión a fecha de Lima
+        df_base['fecha_dt'] = pd.to_datetime(df_base['fecha'], utc=True) # Reconoce el formato UTC
+        df_base['fecha_lima'] = df_base['fecha_dt'].dt.tz_convert('America/Lima') # Cambia a hora Perú
         
-        df_base['Hora'] = df_base['fecha_peru'].dt.strftime('%H:%M:%S').fillna("00:00:00")
-        df_base['Fecha_Corta'] = df_base['fecha_peru'].dt.strftime('%Y-%m-%d').fillna("1900-01-01")
+        # Extraemos solo la fecha (año-mes-día) para comparar
+        df_base['Fecha_Corta'] = df_base['fecha_lima'].dt.date 
+        df_base['Hora'] = df_base['fecha_lima'].dt.strftime('%H:%M:%S')
 
         # 🔍 BUSCADOR
-        hoy_peru = (datetime.datetime.now() - datetime.timedelta(hours=5)).date()
+        hoy_peru = datetime.datetime.now(datetime.timezone(datetime.timedelta(hours=-5))).date()
         fecha_busqueda = st.date_input("Selecciona el día que deseas auditar:", hoy_peru)
-        fecha_busqueda_str = fecha_busqueda.strftime('%Y-%m-%d')
             
-        df_filtrado_dia = df_base[df_base['Fecha_Corta'] == fecha_busqueda_str].copy()
+        # Filtramos comparando objetos 'date' directamente
+        df_filtrado_dia = df_base[df_base['Fecha_Corta'] == fecha_busqueda].copy()
         
         # --- DIAGNÓSTICO SI NO HAY VENTAS ---
         if df_filtrado_dia.empty:
