@@ -370,7 +370,14 @@ elif menu == "Ventas":
         col1, col2 = st.columns([1.8, 1.2])
         with col1:
             st.subheader("Seleccionar Productos")
-            busqueda_v = st.text_input("🔍 Buscar producto por nombre:", key="buscar_ventas", placeholder="Escriba aquí para filtrar...")
+            
+            # 🧠 Inicializamos un contador de versión para el buscador si no existe
+            if "version_buscador" not0 in st.session_state:
+                st.session_state["version_buscador"] = 0
+                
+            # 🎯 El key cambia dinámicamente, lo que limpia el input automáticamente al mutar
+            key_dinamico = f"buscar_ventas_v{st.session_state['version_buscador']}"
+            busqueda_v = st.text_input("🔍 Buscar producto por nombre:", key=key_dinamico, placeholder="Escriba aquí para filtrar...")
 
             if busqueda_v.strip() == "":
                 st.info("💡 Digite el nombre del producto arriba para empezar a vender.")
@@ -389,7 +396,6 @@ elif menu == "Ventas":
                         p_precio_venta = float(prod.get('precio_venta', 0.0))
                         p_precio_compra = float(prod.get('precio_compra', 0.0))
                         
-                        # 🧠 Calculamos cuántas unidades de ESTE producto ya están en el carrito
                         cantidad_en_carrito = sum(int(item['cantidad']) for item in st.session_state.carrito if item['producto_id'] == p_id)
                         
                         p_stock_real = int(prod.get('stock', 0))
@@ -405,7 +411,7 @@ elif menu == "Ventas":
                                 else:
                                     st.write(f"**{p_nombre}**\nS/{p_precio_venta:.2f} | 🟢 Stock: {p_stock_disponible}")
                             with col_b:
-                                qty = st.number_input("Cant", min_value=0, max_value=max(0, p_stock_disponible), key=f"qty_{p_id}", label_visibility="collapsed")
+                                qty = st.number_input("Cant", min_value=0, max_value=max(0, p_stock_disponible), key=f"qty_{p_id}_{st.session_state['version_buscador']}", label_visibility="collapsed")
                             with col_c:
                                 boton_bloqueado = p_stock_disponible <= 0
                                 if st.button("Agregar", key=f"add_{p_id}", use_container_width=True, disabled=boton_bloqueado):
@@ -425,10 +431,10 @@ elif menu == "Ventas":
                                                 'cantidad': qty,
                                                 'stock_max': p_stock_real
                                             })
-                                        # 🎯 CORRECCIÓN CLAVE: Limpieza usando corchetes en una sola línea continua
-                                        st.session_state['buscar_ventas'] = ''
+                                        # 🎯 TRUCO MAESTRO: Cambiamos el ID del componente para forzar su limpieza total
+                                        st.session_state["version_buscador"] += 1
                                         st.rerun()
-
+                                        
 
         with col2:
             st.subheader("Carrito")
