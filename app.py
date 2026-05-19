@@ -687,21 +687,18 @@ elif menu == "Reportes":
             df = pd.DataFrame(ventas_raw)
             
             # 🕒 CORRECCIÓN DE FECHA Y HORA (Forzar Zona Horaria Perú UTC-5)
-            # Nos aseguramos de que el campo "fecha" se convierta correctamente
             df['fecha_dt'] = pd.to_datetime(df['fecha'], errors='coerce')
-            
-            # Si los datos viejos vienen de la consola de AWS (UTC 0), les aplicamos el desfase de 5 horas
             df['fecha_peru'] = df['fecha_dt'].apply(lambda x: x - datetime.timedelta(hours=5) if pd.notnull(x) else x)
             
             # Ordenamos cronológicamente: lo más reciente primero
             df = df.sort_values(by='fecha_peru', ascending=False)
             
-            # Creamos columnas amigables de visualización local
-            df['Hora'] = df['fecha_peru'].dt.strftime('%H:%M:%S')
-            df['Fecha_Corta'] = df['fecha_peru'].dt.strftime('%Y-%m-%d')
+            # Creamos las columnas base de tiempo de forma segura en el df principal
+            df['Hora'] = df['fecha_peru'].dt.strftime('%H:%M:%S').fillna("00:00:00")
+            df['Fecha_Corta'] = df['fecha_peru'].dt.strftime('%Y-%m-%d').fillna("⚠️ Sin Fecha")
 
             # =====================================================================
-            # 📅 SECCIÓN: FILTRADO POR RANGO DE FECHAS (Adiós tablas infinitas)
+            # 📅 SECCIÓN: FILTRADO POR RANGO DE FECHAS
             # =====================================================================
             st.markdown("### 🔍 Filtrar Auditoría")
             
@@ -718,21 +715,21 @@ elif menu == "Reportes":
             df_filtrado = df[(df['fecha_peru'].dt.date >= fecha_inicio) & (df['fecha_peru'].dt.date <= fecha_fin)].copy()
 
             # =====================================================================
-            # 💰 NORMALIZACIÓN DEL MÉTODO DE PAGO (Rastreo tolerante a Emojis)
+            # 💰 NORMALIZACIÓN DEL MÉTODO DE PAGO Y ATRIBUTOS
             # =====================================================================
             # Buscamos la columna de pago dinámicamente por si cambia de nombre
-            col_pago = next((c for c in df_filtrado.columns if 'pago' in c.lower() or 'metodo' in c.lower()), None)
+            col_pago = next((c for c in df_filtrado.columns if 'pago' in c.lower() or 'metodo' in c.lower()), 'pago')
             
-            if col_pago:
+            if col_pago in df_filtrado.columns:
                 df_filtrado['pago_limpio'] = df_filtrado[col_pago].astype(str).str.lower().str.strip()
             else:
                 df_filtrado['pago_limpio'] = 'efectivo'
-                col_pago = 'pago'
+                df_filtrado[col_pago] = 'Efectivo'
 
-            # Buscamos el nombre del producto de forma flexible
-            col_prod = next((c for c in df_filtrado.columns if 'prod' in c.lower() or 'nombre' in c.lower()), 'nombre_producto')
+            # Buscamos el nombre del producto de forma flexible (producto_id o nombre_producto)
+            col_prod = next((c for c in df_filtrado.columns if 'prod' in c.lower() or 'nombre' in c.lower()), 'producto_id')
 
-            # Convertimos montos a flotantes numéricos para evitar errores de concatenación de texto
+            # Convertimos montos a flotantes numéricos de manera segura
             df_filtrado['total_venta'] = pd.to_numeric(df_filtrado.get('total_venta', 0), errors='coerce').fillna(0)
             df_filtrado['total_costo'] = pd.to_numeric(df_filtrado.get('total_costo', 0), errors='coerce').fillna(0)
             df_filtrado['ganancia'] = pd.to_numeric(df_filtrado.get('ganancia', 0), errors='coerce').fillna(0)
@@ -760,7 +757,7 @@ elif menu == "Reportes":
             else:
                 m3.metric("GANANCIA REAL NETO 🚨", f"S/{ganancia_neta:.2f}", delta="- Pérdida")
 
-            # Desglose físico de billeteras digitales
+            # Desglose físico de las 3 cajas uniformes (¡Todos con su cuadrado!)
             st.markdown("### 💵 Distribución de Caja")
             c1, c2, c3 = st.columns(3)
             with c1:
@@ -768,8 +765,8 @@ elif menu == "Reportes":
             with c2:
                 st.success(f"📱 **Total Yape:**\n\n### S/{yape_total:.2f}")
             with c3:
-                st.subheader(f"🔮 Total Plin:")
-                st.markdown(f"<h3 style='color: #8e44ad;'>S/{plin_total:.2f}</h3>", unsafe_allow_html=True)
+                # Usamos una caja nativa gris/neutral para Plin que contrasta excelente
+                st.error(f"🔮 **Total Plin:**\n\n### S/{plin_total:.2f}")
 
             # =====================================================================
             # 📋 TABLA DIARIA Y DESCARGA CONTABLE (.CSV / EXCEL)
@@ -782,22 +779,29 @@ elif menu == "Reportes":
             else:
                 # Armamos la vista de tabla para la interfaz de forma segura
                 columnas_vista = ['Hora', col_prod, 'cantidad', col_pago, 'total_venta', 'ganancia']
-                # Filtramos solo las columnas existentes para evitar KeyErrors accidentales
                 columnas_existentes = [c for c in columnas_vista if c in df_filtrado.columns]
                 
                 vista_tabla = df_filtrado[columnas_existentes].copy()
                 
-                # Renderizamos las transacciones en pantalla (máximo 20 para conservar rendimiento)
+                # Cambiamos nombres para que el usuario lo vea profesional
+                dic_nombres = {'Hora': 'Hora', col_prod: 'Producto / ID', 'cantidad': 'Cant', col_pago: 'Pago', 'total_venta': 'Total Venta', 'ganancia': 'Ganancia'}
+                vista_tabla.rename(columns=dic_nombres, inplace=True)
+                
+                # Renderizamos la tabla
                 st.dataframe(vista_tabla.head(20), use_container_width=True)
                 if len(vista_tabla) > 20:
-                    st.caption(f"💡 *Mostrando las últimas 20 de {len(vista_tabla)} ventas en el sistema. Usa el botón de abajo para ver el reporte completo.*")
+                    st.caption(f"💡 *Mostrando las últimas 20 de {len(vista_tabla)} ventas. Usa el botón de abajo para bajar el reporte completo.*")
                 
-                # Configuración del motor de descargas contables
+                # Configuración del motor de descargas contables (Evitando KeyErrors)
                 st.markdown("#### 📥 Auditoría y Cierre de Caja")
                 
-                reporte_excel = df_filtrado[['Fecha_Corta', 'Hora', col_prod, 'cantidad', col_pago, 'total_venta', 'total_costo', 'ganancia']].copy()
-                reporte_excel.columns = ['Fecha', 'Hora', 'Producto', 'Cantidad', 'Método Pago', 'Venta S/.', 'Costo S/.', 'Ganancia S/.']
+                # Extraemos y renombramos de manera segura validando la existencia de cada columna
+                cols_excel_origen = ['Fecha_Corta', 'Hora', col_prod, 'cantidad', col_pago, 'total_venta', 'total_costo', 'ganancia']
+                cols_validas = [c for c in cols_excel_origen if c in df_filtrado.columns]
                 
+                reporte_excel = df_filtrado[cols_validas].copy()
+                
+                # Generamos el archivo descargable
                 csv_data = reporte_excel.to_csv(index=False).encode('utf-8')
                 
                 st.download_button(
