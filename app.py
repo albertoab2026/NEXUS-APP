@@ -467,12 +467,13 @@ elif menu == "Ventas":
                     
                     for item in st.session_state.carrito:
                         try:
+                            # Aquí es donde ocurre la magia: pasamos el pago
                             res = registrar_venta(
                                 producto_id=item['producto_id'],
                                 cantidad=int(item['cantidad']),
                                 precio_venta=float(item['precio_venta']),
                                 precio_compra=float(item['precio_compra']),
-                                pago=metodo_pago
+                                pago=metodo_pago # Este es el campo nuevo
                             )
                             if res is False:
                                 ok = False
@@ -483,10 +484,25 @@ elif menu == "Ventas":
                             break
 
                     if ok:
+                        import datetime
+                        hora_servidor = datetime.datetime.now()
+                        hora_peru = hora_servidor - datetime.timedelta(hours=5)
+                        fecha_formateada = hora_peru.strftime("%Y-%m-%d %H:%M:%S")
+
+                        st.session_state.ultima_venta = {
+                            "tenant": tenant_actual,
+                            "fecha": fecha_formateada,
+                            "items": items_guardar,
+                            "descuento": descuento,
+                            "total": total_venta_neto,
+                            "pago": metodo_pago,
+                            "cliente_nom": w_cliente_nombre if w_cliente_nombre.strip() else "Consumidor Final",
+                            "cliente_cel": w_cliente_celular.strip()
+                        }
                         st.session_state.carrito = []
                         st.success("🎉 Venta procesada con éxito.")
+                        st.balloons()
                         st.rerun()
-
         # =====================================================================
         # 🏢 SECCIÓN: COMPROBANTE DIGITAL AUTO-GENERADO CON DESCUENTO REFLEJADO
         # =====================================================================
