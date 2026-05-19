@@ -366,14 +366,12 @@ if menu == "Productos":
 elif menu == "Ventas":
     st.title("🛒 Terminal de Ventas (POS Premium)")
     
-    # Obtenemos productos e inquilino actual
     productos = obtener_productos()
     tenant_actual = st.session_state.get('tenant_id', 'MI LOCAL')
     
     if not productos:
         st.info("💡 Aún no hay productos registrados en el inventario. Agrega algunos en la pestaña Productos.")
     else:
-        # Inicializamos estados de la sesión para el flujo de venta
         if "carrito" not in st.session_state:
             st.session_state.carrito = []
         if "buscar_ventas" not in st.session_state:
@@ -381,7 +379,6 @@ elif menu == "Ventas":
         if "ultima_venta" not in st.session_state:
             st.session_state.ultima_venta = None
 
-        # 1. SECCIÓN DE CATEGORÍAS (Buscador por categorías inteligente)
         categorias_disponibles = sorted(list(set(prod.get('categoria', 'General') for prod in productos)))
         opciones_categoria = ["📁 Todas las Categorías"] + [f"🏷️ {cat}" for cat in categorias_disponibles]
         
@@ -391,7 +388,6 @@ elif menu == "Ventas":
         with c_cat:
             categoria_seleccionada = st.selectbox("Filtrar por Categoría:", opciones_categoria)
 
-        # Filtro cruzado (Texto + Categoría)
         productos_mostrar = productos
         if busqueda_v.strip() != "":
             productos_mostrar = [p for p in productos_mostrar if busqueda_v.lower() in p.get('nombre', '').lower()]
@@ -399,7 +395,6 @@ elif menu == "Ventas":
             cat_pura = categoria_seleccionada.replace("🏷️ ", "")
             productos_mostrar = [p for p in productos_mostrar if p.get('categoria', 'General') == cat_pura]
 
-        # Creación de columnas de trabajo (Catálogo | Carrito)
         col_productos, col_carrito = st.columns([1.2, 1.0])
         
         with col_productos:
@@ -408,7 +403,6 @@ elif menu == "Ventas":
                 st.error("❌ No se encontraron productos en este filtro.")
             else:
                 st.markdown("---")
-                # Contenedor Fijo con Scroll para productos
                 with st.container(height=500, border=False):
                     for prod in productos_mostrar:
                         p_id = prod.get('producto_id', 'S/I')
@@ -424,11 +418,10 @@ elif menu == "Ventas":
                             c_info, c_cant, c_btn = st.columns([2.1, 1.1, 1.2])
                             with c_info:
                                 st.markdown(f"**{p_nombre}**")
-                                cat_label = prod.get('categoria', 'General')
                                 if p_stock_disponible <= 0:
-                                    st.markdown(f"🔴 **Agotado** · <span style='color:gray;'>S/{p_precio_venta:.2f}</span> <br><small style='color:gray;'>{cat_label}</small>", unsafe_allow_html=True)
+                                    st.markdown(f"🔴 **Agotado** · <span style='color:gray;'>S/{p_precio_venta:.2f}</span>", unsafe_allow_html=True)
                                 else:
-                                    st.markdown(f"🟢 **Stock: {p_stock_disponible}** · **S/{p_precio_venta:.2f}** <br><small style='color:gray;'>{cat_label}</small>", unsafe_allow_html=True)
+                                    st.markdown(f"🟢 **Stock: {p_stock_disponible}** · **S/{p_precio_venta:.2f}**", unsafe_allow_html=True)
                             
                             with c_cant:
                                 qty = st.number_input("Cant", min_value=0, max_value=max(0, p_stock_disponible), key=f"qty_{p_id}", label_visibility="collapsed")
@@ -454,93 +447,45 @@ elif menu == "Ventas":
 
         with col_carrito:
             st.markdown("### 🧾 Resumen de Pedido")
-            
             if st.session_state.carrito:
                 total_venta_bruto = 0
-                total_costo = 0
+                for item in st.session_state.carrito:
+                    total_venta_bruto += float(item['precio_venta']) * int(item['cantidad'])
                 
-                with st.container(height=240, border=True):
-                    for index, item in enumerate(st.session_state.carrito):
-                        sub_v = float(item['precio_venta']) * int(item['cantidad'])
-                        sub_c = float(item['precio_compra']) * int(item['cantidad'])
-                        total_venta_bruto += sub_v
-                        total_costo += sub_c
-                        
-                        cc_det, cc_del = st.columns([4.0, 1.0])
-                        with cc_det:
-                            st.markdown(f"**{item['nombre']}** \n*{item['cantidad']} und x S/{item['precio_venta']:.2f}* = **S/{sub_v:.2f}**")
-                        with cc_del:
-                            if st.button("🗑️", key=f"del_saas_{item['producto_id']}_{index}", use_container_width=True):
-                                st.session_state.carrito.pop(index)
-                                st.rerun()
-                
-                st.markdown("---")
                 descuento = st.number_input("🎁 Aplicar Descuento (S/):", min_value=0.0, value=0.0, step=0.50, key="desc_global")
                 total_venta_neto = round(total_venta_bruto - descuento, 2)
 
-                with st.container(border=True):
-                    st.markdown("<h3 style='text-align: center; margin:0;'>Total a Cobrar</h3>", unsafe_allow_html=True)
-                    st.markdown(f"<h1 style='text-align: center; color: #2ecc71; margin:0;'>S/{total_venta_neto:.2f}</h1>", unsafe_allow_html=True)
-                
+                st.markdown(f"### Total: S/{total_venta_neto:.2f}")
                 metodo_pago = st.radio("Forma de Pago:", ["💵 Efectivo", "📱 Yape", "💳 Plin"], horizontal=True)
                 
-                # Campos opcionales del Cliente para el comprobante digital
-                st.markdown("<small style='color:gray;'>Datos de envío digital (Opcional):</small>", unsafe_allow_html=True)
-                c_cli_nom, c_cli_cel = st.columns([1.5, 1.2])
-                with c_cli_nom:
-                    w_cliente_nombre = st.text_input("Nombre Cliente:", key="w_cli_nom", placeholder="Ej. Juan")
-                with c_cli_cel:
-                    w_cliente_celular = st.text_input("Celular WhatsApp:", key="w_cli_cel", placeholder="999888777")
+                w_cliente_nombre = st.text_input("Nombre Cliente:")
+                w_cliente_celular = st.text_input("Celular:")
 
                 if st.button("⚡ Finalizar y Registrar Venta", type="primary", use_container_width=True):
                     ok = True
                     items_guardar = [item.copy() for item in st.session_state.carrito]
                     
-                # Dentro del bloque for item in st.session_state.carrito:
-                for item in st.session_state.carrito:
-                    try:
-                        res = registrar_venta(
-                            producto_id=item['producto_id'],
-                            cantidad=int(item['cantidad']),
-                            precio_venta=float(item['precio_venta']),
-                            precio_compra=float(item['precio_compra']),
-                            pago=metodo_pago
-                        )
-                        if res is False:
+                    for item in st.session_state.carrito:
+                        try:
+                            res = registrar_venta(
+                                producto_id=item['producto_id'],
+                                cantidad=int(item['cantidad']),
+                                precio_venta=float(item['precio_venta']),
+                                precio_compra=float(item['precio_compra']),
+                                pago=metodo_pago
+                            )
+                            if res is False:
+                                ok = False
+                                break
+                        except Exception as e:
+                            st.error(f"Error: {e}")
                             ok = False
                             break
-                    except Exception as e:
-                        st.error(f"Error: {e}")
-                        ok = False
-                        break
 
-                if ok:
-                    import datetime
-                    hora_servidor = datetime.datetime.now()
-                    hora_peru = hora_servidor - datetime.timedelta(hours=5)
-                    fecha_formateada = hora_peru.strftime("%Y-%m-%d %H:%M:%S")
-
-                    st.session_state.ultima_venta = {
-                        "tenant": tenant_actual,
-                        "fecha": fecha_formateada,
-                        "items": items_guardar,
-                        "descuento": descuento,
-                        "total": total_venta_neto,
-                        "pago": metodo_pago,
-                        "cliente_nom": w_cliente_nombre.strip() if w_cliente_nombre.strip() else "Consumidor Final",
-                        "cliente_cel": w_cliente_celular.strip()
-                    }
-                    st.session_state.carrito = []
-                    st.success("🎉 Venta procesada con éxito.")
-                    st.balloons()
-                    st.rerun()
-
-                if st.button("Vaciar Carrito", use_container_width=True):
-                    st.session_state.carrito = []
-                    st.rerun()
-            else:
-                with st.container(border=True):
-                    st.markdown("<p style='text-align: center; color: gray;'>🛒 Esperando productos para la venta...</p>", unsafe_allow_html=True)
+                    if ok:
+                        st.session_state.carrito = []
+                        st.success("🎉 Venta procesada con éxito.")
+                        st.rerun()
 
         # =====================================================================
         # 🏢 SECCIÓN: COMPROBANTE DIGITAL AUTO-GENERADO CON DESCUENTO REFLEJADO
