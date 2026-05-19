@@ -677,30 +677,37 @@ elif menu == "Reportes":
     ventas_raw = obtener_ventas()
     productos_raw = obtener_productos()
     
-    # Diagnóstico en pantalla
-    if ventas_raw:
-        st.sidebar.subheader("🛠️ Diagnóstico Técnico")
-        st.sidebar.write(f"Ventas totales: {len(ventas_raw)}")
-        st.sidebar.write("Ejemplo fecha:", ventas_raw[0].get('fecha'))
-    
     if not ventas_raw:
-        st.info("💡 No hay ventas.")
+        st.info("💡 No hay ventas registradas.")
     else:
         import pandas as pd
         df = pd.DataFrame(ventas_raw)
         
-        # Convertimos a formato fecha ignorando la hora
-        df['fecha_dt'] = pd.to_datetime(df['fecha']).dt.date
+        # 1. Normalizar fecha (Convertimos a hora de Perú)
+        # Esto soluciona que las fechas de la noche se pasen al día siguiente
+        df['fecha_dt'] = pd.to_datetime(df['fecha']).dt.tz_convert('America/Lima')
+        df['Fecha_Corta'] = df['fecha_dt'].dt.date
+        df['Hora'] = df['fecha_dt'].dt.strftime('%H:%M:%S')
         
-        # Selector de fecha
+        # 2. Selector de fecha
         fecha_busqueda = st.date_input("Selecciona el día:")
         
-        # FILTRO CRÍTICO: Comparamos solo la fecha (año-mes-día)
-        df_filtrado = df[df['fecha_dt'] == fecha_busqueda].copy()
+        # 3. Filtro
+        df_filtrado = df[df['Fecha_Corta'] == fecha_busqueda].copy()
         
         if df_filtrado.empty:
-            st.warning(f"No hay ventas para {fecha_busqueda}. Intenta revisar si las ventas son de otro día.")
-            st.write("Fechas disponibles en base de datos:", df['fecha_dt'].unique())
+            st.warning(f"No hay ventas para {fecha_busqueda}.")
         else:
-            st.success(f"¡Encontré {len(df_filtrado)} ventas para hoy!")
-            st.dataframe(df_filtrado)
+            # 4. Preparar tabla con nombres reales (usando tu lógica original)
+            mapa_productos = {p['producto_id']: p['nombre'] for p in productos_raw} if productos_raw else {}
+            
+            # Formatear visualización
+            df_filtrado['Producto'] = df_filtrado['producto_id'].map(mapa_productos).fillna(df_filtrado['producto_id'])
+            vista = df_filtrado[['Hora', 'Producto', 'cantidad', 'total_venta']]
+            
+            st.success(f"✅ Mostrando {len(vista)} ventas para el día {fecha_busqueda}")
+            st.dataframe(vista, use_container_width=True)
+            
+            # Métricas rápidas
+            total_dia = df_filtrado['total_venta'].sum()
+            st.metric("Ingreso Total del día", f"S/{total_dia:.2f}")
