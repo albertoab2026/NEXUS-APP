@@ -717,6 +717,19 @@ elif menu == "Reportes":
 
             if df_fecha_filtrado.empty:
                 st.warning(f"⚠️ No se encontraron transacciones registradas para el día {fecha_busqueda_str}.")
+                
+                # Renderizamos métricas y distribución en cero de forma limpia para que no quede vacío
+                st.markdown("### 📈 Rendimiento Financiero")
+                m1, m2, m3 = st.columns(3)
+                m1.metric("Ingreso Total (Ventas)", "S/0.00")
+                m2.metric("Inversión (Costo Compra)", "S/0.00")
+                m3.metric("GANANCIA REAL NETO 💰", "S/0.00")
+                
+                st.markdown("### 💵 Distribución de Caja")
+                c1, c2, c3 = st.columns(3)
+                c1.info("💵 **Efectivo en Caja:**\n\n### S/0.00")
+                c2.success("📱 **Total Yape:**\n\n### S/0.00")
+                c3.error("🔮 **Total Plin:**\n\n### S/0.00")
             else:
                 # =====================================================================
                 # 🔄 DESGLOSE DE ITEMS Y TRADUCCIÓN DE ID A NOMBRE REAL
@@ -820,12 +833,15 @@ elif menu == "Reportes":
                 dic_renombrar = {'Hora': 'Hora', 'producto_id': 'Producto', 'cantidad': 'Cant', 'pago': 'Pago', 'total_venta': 'Total Venta', 'ganancia': 'Ganancia'}
                 vista_tabla.rename(columns=dic_renombrar, inplace=True)
                 
-                # Renderizado inteligente: se auto-ajusta y permite maximizar al cliente
-                st.dataframe(
-                    vista_tabla, 
-                    use_container_width=True,
-                    max_height=400
-                )
+                # RENDERIZADO PROTEGIDO: Solo si el DataFrame visual tiene filas válidas
+                if not vista_tabla.empty:
+                    st.dataframe(
+                        vista_tabla, 
+                        use_container_width=True,
+                        max_height=400
+                    )
+                else:
+                    st.info("ℹ️ No hay registros desglozados disponibles para estructurar la tabla.")
                 
                 # =====================================================================
                 # 📥 AUDITORÍA Y CIERRE DE CAJA (.CSV COMPATIBLE CON EXCEL)
