@@ -511,9 +511,14 @@ elif menu == "Ventas":
 
                     if ok:
                         import datetime
+                        # CORRECCIÓN DE HORA: Zona horaria de Perú (UTC-5)
+                        hora_servidor = datetime.datetime.now()
+                        hora_peru = hora_servidor - datetime.timedelta(hours=5)
+                        fecha_formateada = hora_peru.strftime("%Y-%m-%d %H:%M:%S")
+
                         st.session_state.ultima_venta = {
                             "tenant": tenant_actual,
-                            "fecha": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                            "fecha": fecha_formateada,
                             "items": items_guardar,
                             "descuento": descuento,
                             "total": total_venta_neto,
@@ -566,10 +571,10 @@ elif menu == "Ventas":
                 f"¡Gracias por su preferencia! ✨"
             )
 
-            # Estructura del HTML del Ticket Térmico de 80mm nativo para impresión física
+            # Estructura del HTML del Ticket Térmico con el Nombre Comercial Dinámico
             html_ticket = f"""
             <div id="ticket-saas-print" style="width: 280px; background-color: white; color: black; padding: 15px; font-family: 'Courier New', Courier, monospace; font-size: 12px; border: 1px dashed #000; margin: 0 auto;">
-                <div style="text-align: center; font-weight: bold; font-size: 14px; margin-bottom: 5px;">{uv['tenant']}</div>
+                <div style="text-align: center; font-weight: bold; font-size: 14px; margin-bottom: 5px; text-transform: uppercase;">{uv['tenant']}</div>
                 <div style="text-align: center; margin-bottom: 10px;">*** COMPROBANTE DE COMPRA ***<br><small style="font-size:10px;">Control Interno Comercial</small></div>
                 <p style="margin: 3px 0;"><b>Fecha:</b> {uv['fecha']}</p>
                 <p style="margin: 3px 0;"><b>Cliente:</b> {uv['cliente_nom']}</p>
