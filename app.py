@@ -696,7 +696,7 @@ elif menu == "Reportes":
             df_base['fecha_dt'] = pd.to_datetime(df_base['fecha'], errors='coerce')
             df_base['fecha_peru'] = df_base['fecha_dt'].apply(lambda x: x - datetime.timedelta(hours=5) if pd.notnull(x) else x)
             
-            # Creamos las columnas base de tiempo de forma segura en el df principal
+            # Creamos las columnas base de tiempo y una de FECHA LIMPIA en formato Texto para comparar sin fallas
             df_base['Hora'] = df_base['fecha_peru'].dt.strftime('%H:%M:%S').fillna("00:00:00")
             df_base['Fecha_Corta'] = df_base['fecha_peru'].dt.strftime('%Y-%m-%d').fillna("⚠️ Sin Fecha")
 
@@ -710,12 +710,13 @@ elif menu == "Reportes":
             
             # Selector simplificado de un solo día
             fecha_busqueda = st.date_input("Selecciona el día que deseas auditar:", hoy_peru)
+            fecha_busqueda_str = fecha_busqueda.strftime('%Y-%m-%d')
                 
-            # Filtramos el DataFrame base comparando solo el día seleccionado
-            df_fecha_filtrado = df_base[df_base['fecha_peru'].dt.date == fecha_busqueda].copy()
+            # FILTRO SEGURO: Comparamos texto contra texto para evitar errores de zona horaria
+            df_fecha_filtrado = df_base[df_base['Fecha_Corta'] == fecha_busqueda_str].copy()
 
             if df_fecha_filtrado.empty:
-                st.warning(f"⚠️ No se encontraron transacciones registradas para el día {fecha_busqueda}.")
+                st.warning(f"⚠️ No se encontraron transacciones registradas para el día {fecha_busqueda_str}.")
             else:
                 # =====================================================================
                 # 🔄 DESGLOSE DE ITEMS Y TRADUCCIÓN DE ID A NOMBRE REAL
@@ -757,12 +758,11 @@ elif menu == "Reportes":
                 # Creamos el DataFrame final con los datos limpios desglosados
                 df_filtrado = pd.DataFrame(filas_desglosadas)
 
-                # 🛡️ CONTROL CRÍTICO ANTES DE OPERAR (Evita el KeyError si la tabla está vacía)
+                # 🛡️ CONTROL CRÍTICO: Ordenamos solo si la tabla tiene datos
                 if not df_filtrado.empty and 'fecha_sort' in df_filtrado.columns:
-                    # ⏳ ORDENACIÓN ESTRICTA: De la venta más reciente a la más antigua del día
                     df_filtrado = df_filtrado.sort_values(by='fecha_sort', ascending=False)
                 
-                # Aseguramos que existan las columnas mínimas para que el resto no rompa
+                # Aseguramos columnas numéricas mínimas para evitar pantallas rojas
                 for col in ['total_venta', 'total_costo', 'ganancia', 'pago']:
                     if col not in df_filtrado.columns:
                         df_filtrado[col] = 0.0 if col != 'pago' else 'Efectivo'
@@ -806,7 +806,7 @@ elif menu == "Reportes":
                     st.error(f"🔮 **Total Plin:**\n\n### S/{plin_total:.2f}")
 
                 # =====================================================================
-                # 📋 TABLA DIARIA CON SCROLL INTEGRADO
+                # 📋 TABLA DIARIA AUTO-AJUSTABLE (Maximizar/Minimizar a gusto)
                 # =====================================================================
                 st.markdown("---")
                 st.markdown("### 📋 Detalle de lo Vendido en el Periodo")
@@ -820,8 +820,12 @@ elif menu == "Reportes":
                 dic_renombrar = {'Hora': 'Hora', 'producto_id': 'Producto', 'cantidad': 'Cant', 'pago': 'Pago', 'total_venta': 'Total Venta', 'ganancia': 'Ganancia'}
                 vista_tabla.rename(columns=dic_renombrar, inplace=True)
                 
-                # Renderizamos la tabla con altura fija (300px) para activar el scroll interno automático
-                st.dataframe(vista_tabla, use_container_width=True, height=300)
+                # Renderizado inteligente: se auto-ajusta y permite maximizar al cliente
+                st.dataframe(
+                    vista_tabla, 
+                    use_container_width=True,
+                    max_height=400
+                )
                 
                 # =====================================================================
                 # 📥 AUDITORÍA Y CIERRE DE CAJA (.CSV COMPATIBLE CON EXCEL)
@@ -836,13 +840,13 @@ elif menu == "Reportes":
                 dic_excel = {'Fecha_Corta': 'Fecha', 'Hora': 'Hora', 'producto_id': 'Producto', 'cantidad': 'Cantidad', 'pago': 'Método Pago', 'total_venta': 'Venta S/.', 'total_costo': 'Costo S/.', 'ganancia': 'Ganancia S/.'}
                 reporte_excel.rename(columns=dic_excel, inplace=True)
                 
-                # Usamos codificación nativa utf-8-sig y separador ';' para que Excel lo abra perfecto
+                # Usamos codificación nativa utf-8-sig y separador ';' para que Excel lo abra perfecto en columnas separadas
                 csv_data = reporte_excel.to_csv(index=False, sep=';').encode('utf-8-sig')
                 
                 st.download_button(
                     label="🍏 Descargar Historial Completo para Excel (.CSV)",
                     data=csv_data,
-                    file_name=f"auditoria_nexus_{fecha_busqueda}.csv",
+                    file_name=f"auditoria_nexus_{fecha_busqueda_str}.csv",
                     mime="text/csv",
                     use_container_width=True
                 )
