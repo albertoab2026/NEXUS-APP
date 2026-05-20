@@ -162,7 +162,7 @@ def actualizar_inventario_masivo(df_editado):
             st.error(f"Error al agregar: {e}")
     # --- FIN DEL BLOQUE DE AGREGAR ---
 
-# --- AQUÍ EMPIEZA LA FUNCIÓN DE VENTAS EN NIVEL CERO ---
+# --- FUNCIÓN DE VENTAS (Nivel 0) ---
 def registrar_venta(producto_id, cantidad, precio_venta, precio_compra, pago):
     try:
         id_dueno = st.session_state.user_data['usuario_id']
