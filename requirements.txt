@@ -4,3 +4,4 @@ pytz
 plotly
 pandas
 xlsxwriter==3.1.0
+openpyxl
