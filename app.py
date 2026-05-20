@@ -134,9 +134,18 @@ def agregar_producto(nombre, precio_venta, precio_compra, stock, categoria):
         return False
 
 def procesar_carga_excel(df):
+    tamanio_bloque = 25
+    total_filas = len(df)
+    
     try:
-        with st.spinner("Procesando Excel..."):
-            for index, row in df.iterrows():
+        # Creamos una barra de progreso para que el cliente vea que avanza
+        progreso_bar = st.progress(0)
+        
+        for i in range(0, total_filas, tamanio_bloque):
+            # Obtiene el bloque de 25 filas
+            bloque = df.iloc[i : i + tamanio_bloque]
+            
+            for index, row in bloque.iterrows():
                 agregar_producto(
                     nombre=str(row['nombre']),
                     precio_venta=float(row['precio_venta']),
@@ -144,10 +153,17 @@ def procesar_carga_excel(df):
                     stock=int(row['stock']),
                     categoria=str(row['categoria'])
                 )
-        st.success("✅ ¡Carga de productos completada!")
+            
+            # Actualiza la barra de progreso
+            progreso = min((i + tamanio_bloque) / total_filas, 1.0)
+            progreso_bar.progress(progreso)
+            
+        st.success(f"✅ ¡Carga completada! Se procesaron {total_filas} productos.")
         return True
+        
     except Exception as e:
-        st.error(f"Error al procesar el Excel: {e}")
+        st.error(f"Error detectado al procesar productos: {e}")
+        st.warning("Consejo: Revisa que los nombres de las columnas en tu Excel sean: nombre, precio_venta, precio_compra, stock, categoria.")
         return False
     
 def actualizar_inventario_masivo(df_editado):
