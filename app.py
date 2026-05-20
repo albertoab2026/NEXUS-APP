@@ -135,11 +135,16 @@ def agregar_producto(nombre, precio_venta, precio_compra, stock, categoria):
 
 def actualizar_inventario_masivo(df_editado):
     try:
-        # Recorremos cada fila del DataFrame editado
+        # Debug: imprime las columnas para ver qué está pasando
+        # st.write(df_editado.columns) 
+        
         for index, row in df_editado.iterrows():
+            # Si el error persiste, asegúrate de que row['producto_id'] exista
             tabla_productos.update_item(
-                Key={'id_del_dueno': str(st.session_state.user_data['usuario_id']), 
-                     'producto_id': row['producto_id']},
+                Key={
+                    'id_del_dueno': str(st.session_state.user_data['usuario_id']),
+                    'producto_id': str(row['producto_id']) 
+                },
                 UpdateExpression="SET nombre = :n, precio_venta = :pv, precio_compra = :pc, stock = :s, categoria = :c",
                 ExpressionAttributeValues={
                     ':n': row['nombre'],
@@ -151,7 +156,8 @@ def actualizar_inventario_masivo(df_editado):
             )
         return True
     except Exception as e:
-        st.error(f"Error al actualizar: {e}")
+        # Esto te dirá exactamente por qué falla
+        st.error(f"Error específico: {e}")
         return False
         
 # Cambia la definición de la función así:
@@ -333,8 +339,12 @@ if menu == "Productos":
 
         # LA TABLA EDITABLE (Una sola vez)
         df_editado = st.data_editor(
-            df_mostrar[['nombre', 'precio_venta', 'precio_compra', 'stock', 'categoria']],
-            num_rows="dynamic",
+            # Incluimos 'producto_id' aquí para que exista en los datos al guardar
+            df_mostrar[['producto_id', 'nombre', 'precio_venta', 'precio_compra', 'stock', 'categoria']],
+            column_config={
+                "producto_id": None, # Esto oculta la columna al usuario
+                "precio_venta": st.column_config.NumberColumn(format="S/%.2f"),
+            },
             use_container_width=True,
             height=400
         )
