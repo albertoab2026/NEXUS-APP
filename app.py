@@ -152,11 +152,12 @@ def actualizar_inventario_masivo(df_editado):
                         ':c': row['categoria']
                     }
                 )
-        st.success("✅ ¡Inventario actualizado con éxito!")
-        return True
-    except Exception as e:
-        st.error(f"Error al actualizar: {e}")
-        return False
+        # En lugar de solo st.success:
+        if nombre_nuevo:
+            if agregar_producto(nombre_nuevo, pv_nuevo, pc_nuevo, stk_nuevo, cat_nuevo):
+                # El toast se muestra en la esquina sin estorbar y es más duradero
+                st.toast("✅ ¡Producto agregado con éxito a tu inventario!", icon="📦")
+                st.rerun()
         
 # Cambia la definición de la función así:
 def registrar_venta(producto_id, cantidad, precio_venta, precio_compra, pago):
@@ -345,10 +346,11 @@ if menu == "Productos":
 
         # LA TABLA EDITABLE
         df_editado = st.data_editor(
-            df_mostrar[['producto_id', 'nombre', 'precio_venta', 'precio_compra', 'stock', 'categoria']],
+            df_mostrar[columnas_ordenadas], # Usamos nuestra nueva lista ordenada
             column_config={
                 "producto_id": None,
                 "precio_venta": st.column_config.NumberColumn(format="S/%.2f"),
+                "precio_compra": st.column_config.NumberColumn(format="S/%.2f"),
             },
             use_container_width=True,
             height=400
