@@ -133,31 +133,25 @@ def agregar_producto(nombre, precio_venta, precio_compra, stock, categoria):
         st.error(f"Error: {e}")
         return False
 
-def guardar_inventario_completo(df_editado):
+def actualizar_inventario_masivo(df_editado):
     try:
-        # Añadimos un spinner para que el usuario sepa que está trabajando
-        with st.spinner("Guardando cambios..."):
-            for index, row in df_editado.iterrows():
-                tabla_productos.update_item(
-                    Key={
-                        'id_del_dueno': str(st.session_state.user_data['usuario_id']),
-                        'producto_id': str(row['producto_id'])
-                    },
-                    UpdateExpression="SET nombre = :n, precio_venta = :pv, precio_compra = :pc, stock = :s, categoria = :c",
-                    ExpressionAttributeValues={
-                        ':n': row['nombre'],
-                        ':pv': Decimal(str(row['precio_venta'])),
-                        ':pc': Decimal(str(row['precio_compra'])),
-                        ':s': int(row['stock']),
-                        ':c': row['categoria']
-                    }
-                )
-            # ESTO ES LO QUE TE FALTA PARA VER EL MENSAJE:
-            st.success("¡Inventario actualizado correctamente!")
-            # Esto recarga la página para mostrar los datos frescos
-            st.rerun() 
+        for index, row in df_editado.iterrows():
+            tabla_productos.update_item(
+                Key={'id_del_dueno': str(st.session_state.user_data['usuario_id']), 
+                     'producto_id': row['producto_id']},
+                UpdateExpression="SET nombre = :n, precio_venta = :pv, precio_compra = :pc, stock = :s, categoria = :c",
+                ExpressionAttributeValues={
+                    ':n': row['nombre'],
+                    ':pv': Decimal(str(row['precio_venta'])),
+                    ':pc': Decimal(str(row['precio_compra'])),
+                    ':s': int(row['stock']),
+                    ':c': row['categoria']
+                }
+            )
+        return True
     except Exception as e:
-        st.error(f"Error al guardar: {e}")
+        st.error(f"Error al actualizar: {e}")
+        return False
         
 # Cambia la definición de la función así:
 def registrar_venta(producto_id, cantidad, precio_venta, precio_compra, pago):
@@ -349,11 +343,11 @@ if menu == "Productos":
         )
 
         if st.button("💾 Guardar cambios masivos"):
+            # ¡IMPORTANTE! Asegúrate de que el nombre aquí coincida EXACTAMENTE 
+            # con el nombre de la función que definiste arriba
             if actualizar_inventario_masivo(df_editado):
-                st.success("¡Inventario actualizado en la base de datos!")
-                st.rerun()
-            else:
-                st.error("Hubo un problema al guardar.")      
+                st.success("¡Base de datos actualizada!")
+                st.rerun()      
 
 # --- PÁGINA VENTAS (Diseño Estilo SaaS Comercial) ---
 elif menu == "Ventas":
