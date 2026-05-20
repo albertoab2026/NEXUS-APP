@@ -157,6 +157,14 @@ def actualizar_inventario_masivo(df_editado):
     except Exception as e:
         st.error(f"Error al actualizar: {e}")
         return False
+        
+# --- Asegúrate de inicializar las variables antes de usarlas ---
+# Esto evita el NameError
+nombre_nuevo = st.session_state.get('nombre_input', "")
+pv_nuevo = st.session_state.get('pv_input', 0.0)
+pc_nuevo = st.session_state.get('pc_input', 0.0)
+stk_nuevo = st.session_state.get('stk_input', 0)
+cat_nuevo = st.session_state.get('cat_input', "")
 
 # --- Lógica de Agregar Producto ---
 if nombre_nuevo:
