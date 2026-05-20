@@ -345,15 +345,16 @@ if menu == "Productos":
 
         # LA TABLA EDITABLE
         df_editado = st.data_editor(
-            df_mostrar[['producto_id', 'nombre', 'precio_venta', 'precio_compra', 'stock', 'categoria']],
+            # Aquí cambié el orden: puse 'precio_compra' antes que 'precio_venta'
+            df_mostrar[['producto_id', 'nombre', 'precio_compra', 'precio_venta', 'stock', 'categoria']],
             column_config={
                 "producto_id": None,
+                "precio_compra": st.column_config.NumberColumn(format="S/%.2f"),
                 "precio_venta": st.column_config.NumberColumn(format="S/%.2f"),
             },
             use_container_width=True,
             height=400
         )
-
         # BOTÓN DE GUARDADO CON LÓGICA DE CONFIRMACIÓN
         if st.button("💾 Guardar cambios masivos"):
             with st.spinner("Guardando en la base de datos..."):
