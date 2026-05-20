@@ -749,13 +749,20 @@ elif menu == "Reportes":
                 fig_bar = px.bar(df_top, x='total_venta', y='Producto', orientation='h', title="Top 10 Productos")
                 st.plotly_chart(fig_bar, use_container_width=True)
                 
-                # --- Normalización robusta de pagos ---
-                # str.strip() quita espacios antes/después, str.lower() todo a minúscula, str.capitalize() pone la primera en mayúscula
+                # --- 1. Normalización PROFUNDA de pagos ---
+                # .astype(str) asegura que sean texto
+                # .str.strip() elimina espacios invisibles al inicio o final
+                # .str.lower() pone todo en minúsculas para eliminar variaciones de mayúsculas
+                # .str.capitalize() pone solo la primera letra en mayúscula (ej: "Efectivo")
                 df_filtrado['pago_norm'] = df_filtrado['pago'].astype(str).str.strip().str.lower().str.capitalize()
 
-            # Ahora el gráfico usará esta columna ya limpia
+            # --- 2. Gráfico de Torta con datos ya consolidados ---
             with col_graf2:
-                fig_pie = px.pie(df_filtrado, values='total_venta', names='pago_norm', title="Distribución de Pagos", hole=0.4)
+                fig_pie = px.pie(df_filtrado, 
+                                 values='total_venta', 
+                                 names='pago_norm', 
+                                 title="Distribución de Pagos", 
+                                 hole=0.4)
                 st.plotly_chart(fig_pie, use_container_width=True)
         
             if 'Hora' in df_filtrado.columns:
