@@ -650,13 +650,18 @@ elif menu == "Reportes":
         import pandas as pd
         df = pd.DataFrame(ventas_raw)
         
-        # 1. Asegurar formato de fecha
+        # 1. Asegurar formato de fecha y zona horaria (Perú)
         df['fecha_dt'] = pd.to_datetime(df['fecha']).dt.tz_localize(None) - pd.Timedelta(hours=5)
         df['Fecha_Corta'] = df['fecha_dt'].dt.date
         df['Hora'] = df['fecha_dt'].dt.strftime('%H:%M:%S')
         
-        fecha_busqueda = st.date_input("Selecciona el día:")
+        # Corrección de fecha: Forzamos la fecha de hoy en Perú
+        fecha_hoy = (datetime.now() - timedelta(hours=5)).date()
+        fecha_busqueda = st.date_input("Selecciona el día:", value=fecha_hoy)
+        
+        # Filtramos y ordenamos por hora (más reciente primero)
         df_filtrado = df[df['Fecha_Corta'] == fecha_busqueda].copy()
+        df_filtrado = df_filtrado.sort_values(by='fecha_dt', ascending=False)
         
         if df_filtrado.empty:
             st.warning(f"No hay ventas para {fecha_busqueda}.")
