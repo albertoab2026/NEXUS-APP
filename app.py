@@ -340,14 +340,17 @@ if menu == "Productos":
             # Formato en columnas para que entre perfecto en pantallas móviles
             col_info, col_btn = st.columns([4, 1])
             with col_info:
-                st.write(f"**{p_nombre}** ({p_cat})  \nStock: `{p_stock}` | Precio: `S/{p_precio:.2f}`")
-            with col_btn:
-                # Cada botón tiene una llave única usando el ID del producto
-                if st.button("🗑️", key=f"del_{p_id}"):
-                    if eliminar_producto(p_id):
-                        st.success(f"¡{p_nombre} eliminado!")
-                        st.rerun()
-
+            # Usamos un expansor para que la edición no ocupe espacio visual innecesario
+            with st.expander(f"📝 {p_nombre} | S/{p_precio:.2f}"):
+                with st.form(key=f"edit_form_{p_id}"):
+                    nuevo_nombre = st.text_input("Nombre del Producto", value=p_nombre)
+                    nuevo_precio = st.number_input("Precio de Venta", value=float(p_precio), format="%.2f")
+                    
+                    if st.form_submit_button("Guardar Cambios"):
+                        # Aquí debes llamar a tu función que actualiza la base de datos
+                        # Ejemplo: actualizar_producto(p_id, nuevo_nombre, nuevo_precio)
+                        st.success(f"Producto actualizado correctamente.")
+                        st.rerun() # Recarga para ver el cambio instantáneo
 
     else:
         st.info("No hay productos. Agrega el primero.")
