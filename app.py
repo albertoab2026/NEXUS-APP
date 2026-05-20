@@ -740,20 +740,15 @@ elif menu == "Reportes":
         """, unsafe_allow_html=True)
     
         # 6. Descarga a Excel con Totales
-        import io # Importación forzada aquí mismo
         buffer = io.BytesIO()
-        import pandas as pd # Aseguramos tener pandas disponible
         with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
             df_mostrar[columnas_a_mostrar].to_excel(writer, sheet_name='Ventas_Auditoria', index=False)
             
-            # Acceder al libro y hoja para agregar sumatorias
             workbook = writer.book
             worksheet = writer.sheets['Ventas_Auditoria']
             
-            # Formato de dinero
             money_fmt = workbook.add_format({'num_format': 'S/ #,##0.00'})
             
-            # Calcular fila final
             row_idx = len(df_mostrar) + 1
             worksheet.write(row_idx, 2, "TOTALES:")
             worksheet.write_formula(row_idx, 3, f'=SUM(D2:D{row_idx})', money_fmt)
