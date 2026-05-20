@@ -716,7 +716,7 @@ elif menu == "Reportes":
             efectivo = df_filtrado[df_filtrado['pago_norm'] == 'efectivo']['total_venta'].sum()
             total_ventas_dia = efectivo + yape + plin
             
-        # 5. Visualización estable (Diseño mejorado)
+        # --- 5. Visualización Mejorada con Métricas y Gráficos ---
         st.markdown("""
             <style>
             div[data-testid="metric-container"] { background-color: #1e293b; padding: 20px; border-radius: 10px; border: 1px solid #475569; }
@@ -724,16 +724,39 @@ elif menu == "Reportes":
             div[data-testid="metric-container"] [data-testid="stMetricValue"] { font-size: 2.5rem !important; color: #38bdf8 !important; }
             </style>
         """, unsafe_allow_html=True)
-    
-        st.markdown("### 💵 Resumen del Día")
+        
+        st.markdown("### 📊 Resumen del Día")
         c1, c2, c3, c4 = st.columns(4)
         c1.metric("💰 Total Ventas", f"S/{total_ventas_dia:.2f}")
         c2.metric("💵 Efectivo", f"S/{efectivo:.2f}")
         c3.metric("📱 Yape", f"S/{yape:.2f}")
-        c4.metric("🔮 Plin", f"S/{plin:.2f}")
-    
+        c4.metric("🟣 Plin", f"S/{plin:.2f}")
+        
         delta_val = ganancia_hoy - ganancia_pasada
-        st.metric("📈 Ganancia Real (Hoy)", f"S/{ganancia_hoy:.2f}", delta=f"{delta_val:.2f} vs hace 7 días")
+        st.metric("📝 Ganancia Real (Hoy)", f"S/{ganancia_hoy:.2f}", delta=f"{delta_val:.2f} vs hace 7 días")
+        
+        # --- NUEVA SECCIÓN DE GRÁFICOS ---
+        import plotly.express as px
+        st.write("---")
+        st.subheader("📊 Análisis Visual del Día")
+        
+        col_graf1, col_graf2 = st.columns(2)
+        
+        with col_graf1:
+            # Gráfico de Barras: Top Productos
+            df_top = df_filtrado.groupby('Producto')['total_venta'].sum().reset_index().sort_values('total_venta', ascending=False).head(10)
+            fig_bar = px.bar(df_top, x='total_venta', y='Producto', orientation='h', title="Top 10 Productos (S/.)")
+            st.plotly_chart(fig_bar, use_container_width=True)
+        
+        with col_graf2:
+            # Gráfico de Torta: Métodos de Pago
+            fig_pie = px.pie(df_filtrado, values='total_venta', names='pago_norm', title="Distribución de Pagos", hole=0.4)
+            st.plotly_chart(fig_pie, use_container_width=True)
+        
+        # Gráfico de Líneas: Tendencia por Hora
+        df_hora = df_filtrado.groupby('Fecha_Hora_Mov')['total_venta'].sum().reset_index()
+        fig_line = px.area(df_hora, x='Fecha_Hora_Mov', y='total_venta', title="Tendencia de Ventas por Hora", line_shape='spline')
+        st.plotly_chart(fig_line, use_container_width=True)
     
         # Tabla con Expansor y Columna Ganancia
         columnas_a_mostrar = ['Hora', 'Producto', 'cantidad', 'total_venta', 'ganancia_real', 'pago_norm']
