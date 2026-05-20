@@ -734,7 +734,7 @@ elif menu == "Reportes":
         
         delta_val = ganancia_hoy - ganancia_pasada
         st.metric("📝 Ganancia Real (Hoy)", f"S/{ganancia_hoy:.2f}", delta=f"{delta_val:.2f} vs hace 7 días")
-        
+        st.write("Columnas disponibles:", df_filtrado.columns.tolist())
         # --- NUEVA SECCIÓN DE GRÁFICOS ---
         import plotly.express as px
         st.write("---")
