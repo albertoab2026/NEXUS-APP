@@ -152,21 +152,23 @@ def actualizar_inventario_masivo(df_editado):
                         ':c': row['categoria']
                     }
                 )
-        # En lugar de solo st.success:
+        # --- Lógica de Agregar Producto ---
         if nombre_nuevo:
-            if agregar_producto(nombre_nuevo, pv_nuevo, pc_nuevo, stk_nuevo, cat_nuevo):
-                # El toast se muestra en la esquina sin estorbar y es más duradero
-                st.toast("✅ ¡Producto agregado con éxito a tu inventario!", icon="📦")
-                st.rerun()
-        
-# Cambia la definición de la función así:
+            try:
+                if agregar_producto(nombre_nuevo, pv_nuevo, pc_nuevo, stk_nuevo, cat_nuevo):
+                    st.toast("✅ ¡Producto agregado con éxito a tu inventario!", icon="📦")
+                    st.rerun()
+            except Exception as e:
+                st.error(f"Error al agregar: {e}")
+        # --- AQUÍ TERMINA EL BLOQUE DE AGREGAR ---
+
+# --- AHORA, LA FUNCIÓN DE VENTAS COMIENZA LIMPIA ---
 def registrar_venta(producto_id, cantidad, precio_venta, precio_compra, pago):
     try:
         id_dueno = st.session_state.user_data['usuario_id']
         fecha_utc = datetime.now(timezone.utc).isoformat()
         total_venta = float(precio_venta) * int(cantidad)
         
-        # Guardamos el valor directamente
         tabla_ventas.put_item(Item={
             'usuario_id': id_dueno,
             'Venta_id': str(uuid.uuid4()),
@@ -174,7 +176,7 @@ def registrar_venta(producto_id, cantidad, precio_venta, precio_compra, pago):
             'cantidad': int(cantidad),
             'total_venta': Decimal(str(total_venta)),
             'fecha': fecha_utc,
-            'pago': str(pago)  # <--- ASEGÚRATE DE QUE ESTA LÍNEA ESTÉ AQUÍ
+            'pago': str(pago)
         })
         return True
     except Exception as e:
