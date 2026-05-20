@@ -135,19 +135,24 @@ def agregar_producto(nombre, precio_venta, precio_compra, stock, categoria):
 
 def actualizar_inventario_masivo(df_editado):
     try:
-        for index, row in df_editado.iterrows():
-            tabla_productos.update_item(
-                Key={'id_del_dueno': str(st.session_state.user_data['usuario_id']), 
-                     'producto_id': row['producto_id']},
-                UpdateExpression="SET nombre = :n, precio_venta = :pv, precio_compra = :pc, stock = :s, categoria = :c",
-                ExpressionAttributeValues={
-                    ':n': row['nombre'],
-                    ':pv': Decimal(str(row['precio_venta'])),
-                    ':pc': Decimal(str(row['precio_compra'])),
-                    ':s': int(row['stock']),
-                    ':c': row['categoria']
-                }
-            )
+        # Spinner para feedback visual
+        with st.spinner("Actualizando base de datos..."):
+            for index, row in df_editado.iterrows():
+                tabla_productos.update_item(
+                    Key={
+                        'id_del_dueno': str(st.session_state.user_data['usuario_id']),
+                        'producto_id': str(row['producto_id'])
+                    },
+                    UpdateExpression="SET nombre = :n, precio_venta = :pv, precio_compra = :pc, stock = :s, categoria = :c",
+                    ExpressionAttributeValues={
+                        ':n': row['nombre'],
+                        ':pv': Decimal(str(row['precio_venta'])),
+                        ':pc': Decimal(str(row['precio_compra'])),
+                        ':s': int(row['stock']),
+                        ':c': row['categoria']
+                    }
+                )
+        st.success("✅ ¡Inventario actualizado con éxito!")
         return True
     except Exception as e:
         st.error(f"Error al actualizar: {e}")
@@ -309,20 +314,28 @@ with st.sidebar:
 if menu == "Productos":
     st.title("📦 Gestión de Inventario")
     
-    # 1. Formulario para añadir (esto no causa duplicados)
-    with st.expander("➕ Nuevo Producto"):
-        # ... (Aquí va tu código de formulario actual) ...
-        if st.button("Guardar Producto Nuevo"):
-            # ... tu lógica ...
-            st.rerun()
+    # 1. FORMULARIO SEGURO (Uso de st.form para evitar conflictos)
+    with st.expander("➕ Agregar Nuevo Producto"):
+        with st.form("form_nuevo_prod", clear_on_submit=True):
+            nombre_nuevo = st.text_input("Nombre del producto")
+            pv_nuevo = st.number_input("Precio Venta", step=0.1)
+            pc_nuevo = st.number_input("Precio Compra", step=0.1)
+            stk_nuevo = st.number_input("Stock", step=1)
+            cat_nuevo = st.text_input("Categoría")
+            
+            if st.form_submit_button("Guardar Producto Nuevo"):
+                if nombre_nuevo:
+                    if agregar_producto(nombre_nuevo, pv_nuevo, pc_nuevo, stk_nuevo, cat_nuevo):
+                        st.success("¡Producto agregado!")
+                        st.rerun()
+                else:
+                    st.error("El nombre es obligatorio")
 
     st.subheader("Control de Inventario")
     productos = obtener_productos()
     
     if productos:
         df_inv = pd.DataFrame(productos)
-        
-        # EL BUSCADOR (Definido UNA sola vez)
         busqueda_p = st.text_input("🔍 Buscar por nombre:", key="buscador_unico")
         
         if busqueda_p:
@@ -330,25 +343,30 @@ if menu == "Productos":
         else:
             df_mostrar = df_inv
 
-        # LA TABLA EDITABLE (Una sola vez)
+        # LA TABLA EDITABLE
         df_editado = st.data_editor(
-            # Incluimos 'producto_id' aquí para que exista en los datos al guardar
             df_mostrar[['producto_id', 'nombre', 'precio_venta', 'precio_compra', 'stock', 'categoria']],
             column_config={
-                "producto_id": None, # Esto oculta la columna al usuario
+                "producto_id": None,
                 "precio_venta": st.column_config.NumberColumn(format="S/%.2f"),
             },
             use_container_width=True,
             height=400
         )
 
+        # BOTÓN DE GUARDADO CON LÓGICA DE CONFIRMACIÓN
         if st.button("💾 Guardar cambios masivos"):
-            # ¡IMPORTANTE! Asegúrate de que el nombre aquí coincida EXACTAMENTE 
-            # con el nombre de la función que definiste arriba
-            if actualizar_inventario_masivo(df_editado):
-                st.success("¡Base de datos actualizada!")
-                st.rerun()      
-
+            with st.spinner("Guardando en la base de datos..."):
+                # Aquí llamamos a la función que definiste en la línea 135
+                if 'actualizar_inventario_masivo' in globals():
+                    if actualizar_inventario_masivo(df_editado):
+                        st.success("✅ ¡Inventario actualizado!")
+                        st.rerun()
+                else:
+                    st.error("Error técnico: La función de actualización no está cargada.")
+    else:
+        st.info("No hay productos registrados.")
+        
 # --- PÁGINA VENTAS (Diseño Estilo SaaS Comercial) ---
 elif menu == "Ventas":
     st.title("🛒 Terminal de Ventas (POS Premium)")
