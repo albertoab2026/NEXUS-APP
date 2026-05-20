@@ -740,10 +740,10 @@ elif menu == "Reportes":
         """, unsafe_allow_html=True)
     
         # 6. Descarga a Excel con Totales
-            import io
-            buffer = io.BytesIO()
-            with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
-                df_mostrar[columnas_a_mostrar].to_excel(writer, sheet_name='Ventas_Auditoria', index=False)
+        import io
+        buffer = io.BytesIO()
+        with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
+            df_mostrar[columnas_a_mostrar].to_excel(writer, sheet_name='Ventas_Auditoria', index=False)
             
             # Acceder al libro y hoja para agregar sumatorias
             workbook = writer.book
