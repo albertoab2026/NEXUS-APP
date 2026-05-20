@@ -137,12 +137,13 @@ def actualizar_inventario_masivo(df_editado):
     try:
         with st.spinner("Actualizando..."):
             for index, row in df_editado.iterrows():
-                # Obtenemos el ID original de alguna forma, 
-                # o asegúrate de que 'producto_id' esté en el df_editado
+                # Si esto falla, es porque 'producto_id' no está en el DataFrame
+                producto_id_actual = row['producto_id'] 
+                
                 tabla_productos.update_item(
                     Key={
                         'id_del_dueno': str(st.session_state.user_data['usuario_id']),
-                        'producto_id': str(row['producto_id']) # Asegúrate de que este ID exista
+                        'producto_id': str(producto_id_actual)
                     },
                     UpdateExpression="SET nombre = :n, precio_venta = :pv, precio_compra = :pc, stock = :s, categoria = :c",
                     ExpressionAttributeValues={
@@ -156,7 +157,7 @@ def actualizar_inventario_masivo(df_editado):
         st.success("✅ ¡Inventario actualizado!")
         return True
     except Exception as e:
-        st.error(f"Error: {e}")
+        st.error(f"Error técnico: {e}") # Esto te dirá exactamente qué columna falta
         return False
         
 # Cambia la definición de la función así:
