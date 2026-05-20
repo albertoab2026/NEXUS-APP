@@ -345,11 +345,12 @@ if menu == "Productos":
             df_mostrar = df_inv
 
         # LA TABLA EDITABLE
-        columnas_ordenadas = ['nombre', 'precio_compra', 'precio_venta', 'stock', 'categoria']
-        
+        columnas_a_mostrar = ['producto_id', 'nombre', 'precio_compra', 'precio_venta', 'stock', 'categoria']
+
         df_editado = st.data_editor(
-            df_mostrar[columnas_ordenadas],
+            df_mostrar[columnas_a_mostrar],
             column_config={
+                "producto_id": None, # Esto lo oculta de la vista del usuario
                 "precio_compra": st.column_config.NumberColumn(format="S/%.2f"),
                 "precio_venta": st.column_config.NumberColumn(format="S/%.2f"),
             },
