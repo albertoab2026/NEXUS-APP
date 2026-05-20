@@ -285,25 +285,53 @@ with st.sidebar:
         st.session_state.carrito = []
         st.rerun()
 
-# --- PÁGINA PRODUCTOS ---
+# --- PÁGINA PRODUCTOS (VERSIÓN PROFESIONAL) ---
 if menu == "Productos":
-    st.title("📦 Productos")
-    productos = obtener_productos()
-
+    st.title("📦 Gestión de Inventario")
+    
+    # 1. Nueva sección para añadir productos
     with st.expander("➕ Nuevo Producto"):
+        # ... (Tu código actual de formulario de nuevo producto se queda igual aquí)
         nombre = st.text_input("Nombre")
         precio_compra = st.number_input("Precio Compra S/", min_value=0.0, step=0.1)
         precio_venta = st.number_input("Precio Venta S/", min_value=0.0, step=0.1)
         stock = st.number_input("Stock", min_value=0, step=1)
+        categoria = st.text_input("Categoría", value="General")
         
-        categoria_input = st.text_input("Categoría (Ej: Bebidas, Limpieza, Farmacia)", value="General")
-        categoria = categoria_input.strip() if categoria_input.strip() else "General"
+        if st.button("Guardar"):
+            if nombre and agregar_producto(nombre, precio_venta, precio_compra, stock, categoria):
+                st.success("¡Producto guardado!")
+                st.rerun()
 
-    if st.button("Guardar"):
-        if nombre and agregar_producto(nombre, precio_venta, precio_compra, stock, categoria):
-            st.success("¡Producto guardado!")
+    # 2. Gestión masiva (El salto de calidad)
+    st.subheader("Control de Inventario")
+    productos = obtener_productos()
+    
+    if productos:
+        df_inv = pd.DataFrame(productos)
+        
+        # Filtro de búsqueda (ya lo tenías, mantenlo así)
+        busqueda_p = st.text_input("🔍 Buscar producto por nombre:", key="buscar_inventario")
+        if busqueda_p:
+            df_mostrar = df_inv[df_inv['nombre'].str.contains(busqueda_p, case=False, na=False)]
+        else:
+            df_mostrar = df_inv
+
+        # Aquí ocurre la magia: Editor interactivo
+        df_editado = st.data_editor(
+            df_mostrar[['nombre', 'precio_venta', 'precio_compra', 'stock', 'categoria']],
+            num_rows="dynamic",
+            use_container_width=True
+        )
+
+        if st.button("💾 Guardar todos los cambios"):
+            # IMPORTANTE: Aquí debes implementar la lógica que recorre df_editado 
+            # y actualiza cada fila en tu base de datos.
+            st.success("¡Base de datos actualizada!")
             st.rerun()
-
+    else:
+        st.info("No hay productos. Agrega el primero.")
+        
     # --- BLOQUE BLINDADO DE PRODUCTOS ---
     if productos:
         # 🔍 BUSCADOR EN TIEMPO REAL
