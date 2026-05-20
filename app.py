@@ -715,15 +715,6 @@ elif menu == "Reportes":
             plin = df_filtrado[df_filtrado['pago_norm'] == 'plin']['total_venta'].sum()
             efectivo = df_filtrado[df_filtrado['pago_norm'] == 'efectivo']['total_venta'].sum()
             
-        # 5. Visualización estable (Diseño mejorado)
-        st.markdown("""
-            <style>
-            div[data-testid="metric-container"] { background-color: #1e293b; padding: 20px; border-radius: 10px; border: 1px solid #475569; }
-            div[data-testid="metric-container"] label { font-size: 1.2rem !important; }
-            div[data-testid="metric-container"] [data-testid="stMetricValue"] { font-size: 2.5rem !important; color: #38bdf8 !important; }
-            </style>
-        """, unsafe_allow_html=True)
-    
         # 5. Visualización estable (CSS corregido para fondo oscuro)
         st.markdown("""
             <style>
