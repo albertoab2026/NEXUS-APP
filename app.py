@@ -101,7 +101,6 @@ def registrar_dueno(dni, nombre, nombre_negocio, email, password, rubro):
 def obtener_productos():
     try:
         id_dueno = st.session_state.user_data['usuario_id']
-        
         response = tabla_productos.query(KeyConditionExpression=Key('id_del_dueno').eq(id_dueno))
         return response.get('Items', [])
     except Exception as e:
@@ -216,44 +215,34 @@ def actualizar_inventario_masivo(df_editado):
         return False
         
 # Cambia la definición de la función así:
-def registrar_venta(producto_id, cantidad, precio_venta, precio_compra, pago, cliente, celular):
+def registrar_venta(producto_id, cantidad, precio_venta, precio_compra, pago):
     try:
         id_dueno = st.session_state.user_data['usuario_id']
         fecha_utc = datetime.now(timezone.utc).isoformat()
         total_venta = float(precio_venta) * int(cantidad)
-
-        # Aquí guardamos los datos en tu tabla NEXUS_VENTAS
+        
+        # Guardamos el valor directamente
         tabla_ventas.put_item(Item={
             'usuario_id': id_dueno,
             'Venta_id': str(uuid.uuid4()),
             'producto_id': producto_id,
             'cantidad': int(cantidad),
-            'precio_venta': Decimal(str(precio_venta)),
-            'precio_compra': Decimal(str(precio_compra)),
             'total_venta': Decimal(str(total_venta)),
             'fecha': fecha_utc,
-            'pago': str(pago),
-            'cliente': str(cliente),    # <-- Ahora sí los recibe
-            'celular': str(celular)     # <-- Ahora sí los recibe
+            'pago': str(pago)  # <--- ASEGÚRATE DE QUE ESTA LÍNEA ESTÉ AQUÍ
         })
         return True
     except Exception as e:
-        st.error(f"Error al registrar en tabla: {e}")
+        st.error(f"Error en venta: {e}")
         return False
 
 def actualizar_producto(producto_id, nuevo_precio, nuevo_stock):
     try:
-        id_dueno = st.session_state.user_data['usuario_id']
+        id_dueno = st.session_state.user_data['usuario_id']  
         tabla_productos.update_item(
-            Key={
-                'id_del_dueno': str(id_dueno), 
-                'producto_id': str(producto_id)
-            },
+            Key={'id_del_dueno': str(id_dueno), 'producto_id': str(producto_id)},
             UpdateExpression="SET precio_venta = :p, stock = :s",
-            ExpressionAttributeValues={
-                ':p': Decimal(str(nuevo_precio)),
-                ':s': int(nuevo_stock)
-            }
+            ExpressionAttributeValues={':p': Decimal(str(nuevo_precio)), ':s': int(nuevo_stock)}
         )
         return True
     except Exception as e:
@@ -578,61 +567,47 @@ elif menu == "Ventas":
 
                 if st.button("⚡ Finalizar y Registrar Venta", type="primary", use_container_width=True):
                     ok = True
-                    # 1. Procesar registro y stock
+                    items_guardar = [item.copy() for item in st.session_state.carrito]
+                    
                     for item in st.session_state.carrito:
                         try:
-                            # Registramos la venta
                             res = registrar_venta(
                                 producto_id=item['producto_id'],
                                 cantidad=int(item['cantidad']),
                                 precio_venta=float(item['precio_venta']),
                                 precio_compra=float(item['precio_compra']),
-                                pago=metodo_pago,
-                                cliente=w_cliente_nombre.strip() if w_cliente_nombre.strip() else "Consumidor Final",
-                                celular=w_cliente_celular.strip()
+                                pago=metodo_pago
                             )
-                            # Actualizamos stock
-                            nuevo_stock = int(item['stock_max']) - int(item['cantidad'])
-                            actualizar_producto(item['producto_id'], item['precio_venta'], nuevo_stock)
-                            
                             if res is False:
                                 ok = False
                                 break
                         except Exception as e:
-                            st.error(f"Error: {e}")
+                            st.error(f"Error al registrar: {e}")
                             ok = False
                             break
-                    
-                    # 2. Si todo salió bien, mostramos el éxito y opciones
+
                     if ok:
-                        st.success("🎉 ¡Venta procesada con éxito!")
-                        st.balloons()
-                        
-                        # Aquí recuperas tus botones de descarga e impresión
-                        st.markdown("---")
-                        st.subheader("Opciones de post-venta:")
-                        
-                        # En tu sección de post-venta
-                        c1, c2, c3 = st.columns(3)
-                        with c1:
-                            if st.button("🖨️ Imprimir Ticket", use_container_width=True):
-                                pass # Tu lógica
-                        with c2:
-                            if st.button("📊 Descargar Excel", use_container_width=True):
-                                pass # Tu lógica
-                        with c3:
-                            # Usamos un botón normal que redirija, así mantiene el mismo estilo que los otros
-                            if st.button("📲 Enviar WhatsApp", use_container_width=True):
-                                st.markdown(f'<meta http-equiv="refresh" content="0; url=https://wa.me/{w_cliente_celular}">', unsafe_allow_html=True)
-                           
-                        # Limpiamos y refrescamos
+                        import datetime
+                        hora_servidor = datetime.datetime.now()
+                        hora_peru = hora_servidor - datetime.timedelta(hours=5)
+                        fecha_formateada = hora_peru.strftime("%Y-%m-%d %H:%M:%S")
+
+                        st.session_state.ultima_venta = {
+                            "tenant": tenant_actual,
+                            "fecha": fecha_formateada,
+                            "items": items_guardar,
+                            "descuento": descuento,
+                            "total": total_venta_neto,
+                            "pago": metodo_pago,
+                            "cliente_nom": w_cliente_nombre.strip() if w_cliente_nombre.strip() else "Consumidor Final",
+                            "cliente_cel": w_cliente_celular.strip()
+                        }
                         st.session_state.carrito = []
-                        if st.button("🔄 Nueva Venta"):
-                            st.rerun()
-                    else:
-                        st.error("❌ Hubo un error al registrar la venta.")
-
-
+                        st.success("🎉 Venta procesada con éxito.")
+                        st.balloons()
+                        st.rerun()
+            else:
+                st.info("🛒 El carrito está vacío. ¡Añade productos del catálogo!")
         # =====================================================================
         # 🏢 SECCIÓN: COMPROBANTE DIGITAL AUTO-GENERADO CON DESCUENTO REFLEJADO
         # =====================================================================
