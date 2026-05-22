@@ -402,7 +402,15 @@ if not st.session_state.logged_in:
                         # Falló la función (ej. DNI ya existía)
                         st.error("Error al registrar: intenta con otros datos.")
                 else:
-                    st.warning("Por favor, completa todos los campos.")    
+                    st.warning("Por favor, completa todos los campos.") 
+            # 2. Control post-registro
+            if "registro_exitoso" in st.session_state and st.session_state.registro_exitoso:
+                st.success("¡Registro exitoso! Ya puedes iniciar sesión.")
+                st.balloons()
+                # Opcional: un botón para limpiar y volver a registrar
+                if st.button("Volver al inicio"):
+                    del st.session_state.registro_exitoso
+                    st.rerun()        
 
     # SECCIÓN DE TARJETAS (FUERA DE COLUMNAS PARA QUE MANTENGAN SU ANCHO)
     st.markdown("<div style='margin-top: 60px;'></div>", unsafe_allow_html=True)
