@@ -383,7 +383,7 @@ if not st.session_state.logged_in:
             reg_dni = st.text_input("DNI del dueño", key="reg_dni")
             reg_nombre = st.text_input("Nombre completo", key="reg_nombre")
             reg_negocio = st.text_input("Nombre del negocio", key="reg_negocio")
-            reg_email = .textst_input("Email", key="reg_email")
+            reg_email = st.text_input("Email", key="reg_email")
             reg_celular = st.text_input("Número de celular", key="reg_celular")
             reg_rubro = st.selectbox("Rubro", list(CATEGORIAS_POR_RUBRO.keys()), key="reg_rubro")
             reg_password = st.text_input("Contraseña", type="password", key="reg_pass")
