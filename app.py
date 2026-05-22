@@ -359,7 +359,9 @@ def eliminar_producto(producto_id):
 st.markdown("<div class='header-container'><h1>⚡ NEXUS</h1><p>Tu negocio en control total. Empieza hoy mismo.</p></div>", unsafe_allow_html=True)
 
 # Barra de regalo
-st.markdown("<div class='regalo-bar'>🎁 ¡PRUEBA 7 DÍAS GRATIS! Regístrate ahora sin compromiso.</div>", unsafe_allow_html=True)
+# Solo mostrar si el usuario NO está logueado
+if not st.session_state.get("logged_in", False):
+    st.warning("¡PRUEBA 7 DÍAS GRATIS! Regístrate ahora sin compromiso.")
 
 if not st.session_state.logged_in:
     # Contenedor centralizado para login/registro
