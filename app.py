@@ -414,21 +414,6 @@ if not st.session_state.logged_in:
                             st.error("Error al registrar: intenta con otros datos.")
                     else:
                         st.warning("Por favor, completa todos los campos.")
-            # 2. Control post-registro
-            if "registro_exitoso" in st.session_state and st.session_state.registro_exitoso:
-                st.success("¡Registro exitoso! Ya puedes iniciar sesión.")
-                st.balloons()
-
-                # Este botón ahora se encarga de limpiar el estado y recargar la página
-                if st.button("Volver al inicio"):
-                    # Borramos el indicador de éxito
-                    for key in ["reg_dni", "reg_nombre", "reg_negocio", "reg_email", "reg_celular", "reg_pass"]:
-                        if key in st.session_state:
-                            del st.session_state[key]
-                    # 2. Borramos el indicador de éxito
-                    del st.session_state.registro_exitoso
-
-                    st.rerun()
 
     # SECCIÓN DE TARJETAS (FUERA DE COLUMNAS PARA QUE MANTENGAN SU ANCHO)
     st.markdown("<div style='margin-top: 60px;'></div>", unsafe_allow_html=True)
