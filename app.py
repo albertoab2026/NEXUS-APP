@@ -389,14 +389,20 @@ if not st.session_state.logged_in:
             reg_rubro = st.selectbox("Rubro", list(CATEGORIAS_POR_RUBRO.keys()), key="reg_rubro")
             reg_password = st.text_input("Contraseña", type="password", key="reg_pass")
             
+            # 1. Botón de registro
             if st.button("Activar prueba gratis", use_container_width=True):
-                if registrar_dueno(reg_dni, reg_nombre, reg_negocio, reg_email, reg_password, reg_rubro, reg_celular):
-                    time.sleep(2)
-                    st.success("¡Registro exitoso! Ya puedes iniciar sesión.")
-                    st.balloons()
-                    st.rerun()
-            else:
-                st.warning("Por favor, completa todos los campos.")    
+                # Validamos que los campos tengan datos
+                if reg_dni and reg_nombre and reg_email and reg_password and reg_celular:
+                    # Llamamos a la función
+                    if registrar_dueno(reg_dni, reg_nombre, reg_negocio, reg_email, reg_password, reg_rubro, reg_celular):
+                        # ÉXITO: Guardamos en session_state para que la app lo recuerde
+                        st.session_state.registro_exitoso = True
+                        st.rerun() # Refrescamos para que el código tome el nuevo estado
+                    else:
+                        # Falló la función (ej. DNI ya existía)
+                        st.error("Error al registrar: intenta con otros datos.")
+                else:
+        st.warning("Por favor, completa todos los campos.")    
 
     # SECCIÓN DE TARJETAS (FUERA DE COLUMNAS PARA QUE MANTENGAN SU ANCHO)
     st.markdown("<div style='margin-top: 60px;'></div>", unsafe_allow_html=True)
