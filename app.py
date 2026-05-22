@@ -29,40 +29,51 @@ if 'user_data' not in st.session_state:
 if 'carrito' not in st.session_state:
     st.session_state.carrito = []
 
-# ======= 1. TÍTULO CON CONTRASTE ALTO =======
+# ======= 1. CSS MAESTRO (TODO EN UNO) =======
 st.markdown("""
 <style>
+    .stApp { background-color: #0F172A !important; }
+    
+    /* Contenedor del Título */
     .header-container {
-        background: linear-gradient(135deg, #1E3A8A, #1E293B) !important; /* Degradado Azul vibrante */
-        padding: 40px !important;
+        background: linear-gradient(135deg, #1e3a8a, #1e293b) !important;
+        padding: 30px !important;
         border-radius: 20px !important;
-        border: 2px solid #60A5FA !important; /* Borde azul claro para resaltar */
+        border: 1px solid #334155 !important;
         text-align: center !important;
-        margin-bottom: 30px !important;
+        margin-bottom: 20px !important;
     }
+    
+    /* Barra Amarilla */
     .regalo-bar {
-        background: #F59E0B !important; /* Amarillo vibrante */
+        background: #F59E0B !important;
         color: #000 !important;
-        padding: 20px !important;
+        padding: 15px !important;
+        border-radius: 12px !important;
+        text-align: center !important;
+        margin-bottom: 25px !important;
+        font-weight: 800 !important;
+    }
+
+    /* Grid de 2x2 para tarjetas */
+    .feature-grid {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        gap: 20px !important;
+        margin-top: 30px !important;
+    }
+    .feature-card {
+        padding: 25px !important;
         border-radius: 15px !important;
         text-align: center !important;
-        margin-top: 40px !important;
-        font-weight: 800 !important;
-        box-shadow: 0 4px 15px rgba(245, 158, 11, 0.3);
+        color: white !important;
+        border: 1px solid rgba(255,255,255,0.1) !important;
     }
+    .card-1 { background: #2563eb !important; }
+    .card-2 { background: #dc2626 !important; }
+    .card-3 { background: #059669 !important; }
+    .card-4 { background: #d97706 !important; }
 </style>
-
-<div class='header-container'>
-    <h1 style='font-size: 3.5rem; color: #FFFFFF; margin: 0;'>⚡ NEXUS</h1>
-    <p style='font-size: 1.4rem; color: #BFDBFE; margin-top: 10px;'>Tu negocio en control total. Empieza hoy mismo.</p>
-</div>
-""", unsafe_allow_html=True)
-
-# ======= 2. BARRA DE REGALO (AL FINAL) =======
-st.markdown("""
-<div class='regalo-bar'>
-    🎁 ¡PRUEBA 7 DÍAS GRATIS! Regístrate ahora y digitaliza tu negocio sin compromiso.
-</div>
 """, unsafe_allow_html=True)
 
 # ======= 2. CONEXIÓN AWS =======
@@ -313,6 +324,12 @@ def eliminar_producto(producto_id):
         return False
     
 # ======= 4. INTERFAZ DE INICIO (ESTRUCTURA COMPLETA) =======
+# Título
+st.markdown("<div class='header-container'><h1>⚡ NEXUS</h1><p>Tu negocio en control total. Empieza hoy mismo.</p></div>", unsafe_allow_html=True)
+
+# Barra de regalo
+st.markdown("<div class='regalo-bar'>🎁 ¡PRUEBA 7 DÍAS GRATIS! Regístrate ahora sin compromiso.</div>", unsafe_allow_html=True)
+
 if not st.session_state.logged_in:
     # Contenedor centralizado para login/registro
     _, col_central, _ = st.columns([1, 2, 1])
