@@ -360,17 +360,15 @@ st.markdown("<div class='header-container'><h1>⚡ NEXUS</h1><p>Tu negocio en co
 
 # Barra de regalo
 # --- BANNER INTELIGENTE ---
-    if not st.session_state.get("logged_in", False):
-        # Banner para VISITANTES (ESTILO ORIGINAL)
-        st.markdown("""
-            <div style="background-color: #FFF3CD; border: 2px solid #FFC107; padding: 20px; border-radius: 10px; text-align: center; color: #856404; font-size: 20px; font-weight: bold; margin-bottom: 20px;">
-                🎁 ¡PRUEBA 7 DÍAS GRATIS! <br> 
-                <span style="font-size: 16px; font-weight: normal;">Regístrate ahora sin compromiso y empieza hoy mismo.</span>
-            </div>
-        """, unsafe_allow_html=True)
-    else:
-        # Banner para USUARIOS LOGUEADOS (informativo)
-        st.info("⚡ Estás en modo de prueba. ¡Disfruta de la gestión total de tu negocio!")
+if not st.session_state.get("logged_in", False):
+    st.markdown("""
+        <div style="background-color: #FFF3CD; border: 2px solid #FFC107; padding: 20px; border-radius: 10px; text-align: center; color: #856404; font-size: 20px; font-weight: bold; margin-bottom: 20px;">
+            🎁 ¡PRUEBA 7 DÍAS GRATIS! <br> 
+            <span style="font-size: 16px; font-weight: normal;">Regístrate ahora sin compromiso y empieza hoy mismo.</span>
+        </div>
+    """, unsafe_allow_html=True)
+else:
+    st.info("⚡ Estás en modo de prueba. ¡Disfruta de la gestión total de tu negocio!")
 
 if not st.session_state.logged_in:
     # Contenedor centralizado para login/registro
