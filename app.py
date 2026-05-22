@@ -473,15 +473,27 @@ if menu == "Productos":
                 procesar_carga_excel(df_excel)
                 st.rerun() # Esto es necesario para refrescar la tabla después de subir el archivo
     
-    # 1. FORMULARIO SEGURO (Uso de st.form para evitar conflictos)
+# 1. FORMULARIO SEGURO
     with st.expander("➕ Agregar Nuevo Producto"):
         with st.form("form_nuevo_prod", clear_on_submit=True):
             nombre_nuevo = st.text_input("Nombre del producto")
             pv_nuevo = st.number_input("Precio Venta", step=0.1)
             pc_nuevo = st.number_input("Precio Compra", step=0.1)
             stk_nuevo = st.number_input("Stock", step=1)
-            cat_nuevo = st.text_input("Categoría")
             
+            # --- Lógica de Categorías DENTRO del form ---
+            rubro = st.session_state.user_data.get('rubro', 'Otro')
+            opciones_base = CATEGORIAS_POR_RUBRO.get(rubro, ["General"])
+            opciones_lista = opciones_base + ["+ Agregar nueva categoría"]
+            
+            seleccion_cat = st.selectbox("Categoría", opciones_lista)
+            
+            if seleccion_cat == "+ Agregar nueva categoría":
+                cat_nuevo = st.text_input("Escribe el nombre de tu nueva categoría:")
+            else:
+                cat_nuevo = seleccion_cat
+            
+            # --- Botón de guardar DENTRO del form ---
             if st.form_submit_button("Guardar Producto Nuevo"):
                 if nombre_nuevo:
                     if agregar_producto(nombre_nuevo, pv_nuevo, pc_nuevo, stk_nuevo, cat_nuevo):
