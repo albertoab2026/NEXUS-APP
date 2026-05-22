@@ -402,7 +402,7 @@ if not st.session_state.logged_in:
                         # Falló la función (ej. DNI ya existía)
                         st.error("Error al registrar: intenta con otros datos.")
                 else:
-        st.warning("Por favor, completa todos los campos.")    
+                    st.warning("Por favor, completa todos los campos.")    
 
     # SECCIÓN DE TARJETAS (FUERA DE COLUMNAS PARA QUE MANTENGAN SU ANCHO)
     st.markdown("<div style='margin-top: 60px;'></div>", unsafe_allow_html=True)
