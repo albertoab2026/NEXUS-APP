@@ -533,6 +533,7 @@ if menu == "Productos":
             
         # --- LÓGICA DE FILTRADO ---
         df_mostrar = df_inv.copy()
+        st.write(f"Productos encontrados: {len(df_mostrar)}")
         
         if busqueda_p:
             df_mostrar = df_mostrar[df_mostrar['nombre'].str.contains(busqueda_p, case=False, na=False)]
