@@ -520,32 +520,24 @@ if menu == "Productos":
     if productos:
         df_inv = pd.DataFrame(productos)
         
-        # --- FILTROS MÚLTIPLES ---
+        # --- FILTROS ---
         col1, col2 = st.columns(2)
-        
         with col1:
             busqueda_p = st.text_input("🔍 Buscar por nombre:", key="buscador_unico")
-        
         with col2:
-            # Creamos la lista de categorías únicas disponibles
             categorias_unicas = sorted(df_inv['categoria'].unique().tolist())
             filtro_cat = st.selectbox("📂 Filtrar por Categoría:", ["Todas"] + categorias_unicas)
             
         # --- LÓGICA DE FILTRADO ---
         df_mostrar = df_inv.copy()
-        st.write(f"Productos encontrados: {len(df_mostrar)}")
-        
         if busqueda_p:
             df_mostrar = df_mostrar[df_mostrar['nombre'].str.contains(busqueda_p, case=False, na=False)]
-        
         if filtro_cat != "Todas":
             df_mostrar = df_mostrar[df_mostrar['categoria'] == filtro_cat]
-    else:
-        df_mostrar = pd.DataFrame()
 
-        # LA TABLA EDITABLE
+        # --- AHORA LA TABLA ESTÁ DENTRO DEL IF ---
         columnas_a_mostrar = ['producto_id', 'nombre', 'precio_compra', 'precio_venta', 'stock', 'categoria']
-
+        
         df_editado = st.data_editor(
             df_mostrar[columnas_a_mostrar],
             key='editor_inventario',
@@ -557,6 +549,9 @@ if menu == "Productos":
             use_container_width=True,
             height=400
         )
+    else:
+        st.info("Aún no hay productos registrados.")
+        
         # --- NUEVO BLOQUE: SECTOR DE BORRADO SEGURO ---
         st.divider()
         st.subheader("🗑️ Eliminar Producto")
