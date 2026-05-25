@@ -375,13 +375,13 @@ def eliminar_producto(producto_id):
     
 # ======= 4. INTERFAZ DE INICIO (ESTRUCTURA COMPLETA) =======
 # Título
-st.markdown(f"""
-   st.markdown("""
+st.markdown("""
     <div style="background-color: #1e3a8a; padding: 20px; border-radius: 10px; text-align: center;">
         <h1 style="color: white;">⚡ NEXUS</h1>
         <p style="color: #cbd5e1;">Gestión Nexus - Tu negocio bajo control</p>
     </div>
 """, unsafe_allow_html=True)
+st.write("") # Espaciado
 
 # Barra de regalo
 # --- BANNER INTELIGENTE ---
