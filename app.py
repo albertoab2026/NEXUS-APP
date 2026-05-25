@@ -493,28 +493,32 @@ if menu == "Productos":
             opciones_base = CATEGORIAS_POR_RUBRO.get(rubro, ["General"])
             opciones_lista = opciones_base + ["+ Agregar nueva categoría"]
             
-            # 2. Selector con un 'on_change' para detectar cuando cambias la opción
+            # Usamos una columna o un espacio para el selector
             seleccion_cat = st.selectbox("Selecciona categoría", opciones_lista, key="sel_cat")
             
-            # 3. Lógica persistente para mostrar el input de nueva categoría
+            cat_final = seleccion_cat
             if seleccion_cat == "+ Agregar nueva categoría":
-                cat_final = st.text_input("Escribe el nombre de tu nueva categoría:", key="nueva_cat_input")
-            else:
-                cat_final = seleccion_cat
-                # Limpiamos el input si cambiamos de opción
-                st.session_state["nueva_cat_input"] = ""
-    
-            # 4. Botón de guardar
-            if st.form_submit_button("Guardar Producto Nuevo"):
-                if nombre_nuevo and cat_final:
-                    if agregar_producto(nombre_nuevo, pv_nuevo, pc_nuevo, stk_nuevo, cat_final):
-                        st.success("¡Producto agregado!")
-                        # Limpiamos el estado al guardar
-                        st.session_state["sel_cat"] = opciones_lista[0]
-                        st.session_state["nueva_cat_input"] = ""
-                        st.rerun()
-                else:
-                    st.error("Nombre y categoría son obligatorios")
+                cat_final = st.text_input("Escribe el nombre de tu nueva categoría:", key="input_manual_unico")
+            
+            # 2. Ahora el formulario (sin lógica de categoría adentro)
+            with st.form("form_unico_producto", clear_on_submit=True):
+                nombre_nuevo = st.text_input("Nombre del producto")
+                pv_nuevo = st.number_input("Precio Venta", step=0.1)
+                pc_nuevo = st.number_input("Precio Compra", step=0.1)
+                stk_nuevo = st.number_input("Stock", step=1)
+                
+                # El botón está dentro del formulario, pero sabe qué es cat_final
+                if st.form_submit_button("Guardar Producto Nuevo"):
+                    # Validamos que si eligió "Agregar...", haya escrito algo
+                    if seleccion_cat == "+ Agregar nueva categoría" and not cat_final:
+                        st.error("Por favor, escribe el nombre de la nueva categoría.")
+                    elif nombre_nuevo and cat_final:
+                        if agregar_producto(nombre_nuevo, pv_nuevo, pc_nuevo, stk_nuevo, cat_final):
+                            st.success("¡Producto agregado!")
+                            st.session_state["input_manual_unico"] = "" # Limpiamos
+                            st.rerun()
+                    else:
+                        st.error("Nombre y categoría son obligatorios")
                     
     st.subheader("Control de Inventario")
     productos = obtener_productos()
