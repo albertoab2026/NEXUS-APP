@@ -488,28 +488,30 @@ if menu == "Productos":
             pc_nuevo = st.number_input("Precio Compra", step=0.1)
             stk_nuevo = st.number_input("Stock", step=1)
             
-            # 1. Selector de categorías
+            # 1. Definimos las opciones
             rubro = st.session_state.user_data.get('rubro', 'Otro')
             opciones_base = CATEGORIAS_POR_RUBRO.get(rubro, ["General"])
             opciones_lista = opciones_base + ["+ Agregar nueva categoría"]
             
+            # 2. Selector con un 'on_change' para detectar cuando cambias la opción
             seleccion_cat = st.selectbox("Selecciona categoría", opciones_lista, key="sel_cat")
             
-            # 2. Lógica para categoría manual (usando un campo de texto independiente)
-            cat_final = seleccion_cat
+            # 3. Lógica persistente para mostrar el input de nueva categoría
             if seleccion_cat == "+ Agregar nueva categoría":
-                # Usamos un key único para este campo de texto
-                cat_manual = st.text_input("Escribe el nombre de tu nueva categoría:", key="input_manual_unico")
-                if cat_manual:
-                    cat_final = cat_manual
-            
-            # 3. Botón de guardar
+                cat_final = st.text_input("Escribe el nombre de tu nueva categoría:", key="nueva_cat_input")
+            else:
+                cat_final = seleccion_cat
+                # Limpiamos el input si cambiamos de opción
+                st.session_state["nueva_cat_input"] = ""
+    
+            # 4. Botón de guardar
             if st.form_submit_button("Guardar Producto Nuevo"):
                 if nombre_nuevo and cat_final:
                     if agregar_producto(nombre_nuevo, pv_nuevo, pc_nuevo, stk_nuevo, cat_final):
                         st.success("¡Producto agregado!")
-                        # Limpiamos el campo manual tras guardar
-                        st.session_state["input_manual_unico"] = ""
+                        # Limpiamos el estado al guardar
+                        st.session_state["sel_cat"] = opciones_lista[0]
+                        st.session_state["nueva_cat_input"] = ""
                         st.rerun()
                 else:
                     st.error("Nombre y categoría son obligatorios")
