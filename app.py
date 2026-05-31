@@ -9,6 +9,60 @@ from datetime import datetime, timedelta, timezone
 import hashlib
 from decimal import Decimal
 
+elif menu == "⚙️ Ajustes":
+    mostrar_ajustes()
+def actualizar_clave_usuario(usuario_id, nueva_clave):
+    dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
+    table = dynamodb.Table('NEXUS_USUARIOS')
+    try:
+        table.update_item(
+            Key={'usuario_id': usuario_id},
+            UpdateExpression="set password_hash = :c",
+            ExpressionAttributeValues={':c': nueva_clave}
+        )
+        return True
+    except Exception as e:
+        st.error(f"Error al conectar con la base de datos: {e}")
+        return False
+
+def mostrar_ajustes():
+    st.title("⚙️ Ajustes de Cuenta")
+    tab1, tab2 = st.tabs(["🔒 Seguridad", "💳 Planes y Pagos"])
+    
+    with tab1:
+        st.subheader("Cambiar Contraseña")
+        with st.form("form_clave"):
+            actual = st.text_input("Contraseña Actual", type="password")
+            nueva = st.text_input("Nueva Contraseña", type="password")
+            conf = st.text_input("Confirmar Nueva Contraseña", type="password")
+            btn_update = st.form_submit_button("Actualizar Clave")
+        
+        if btn_update:
+            if nueva == conf and nueva != "":
+                usuario_actual = st.session_state.get('usuario_id')
+                if usuario_actual:
+                    if actualizar_clave_usuario(usuario_actual, nueva):
+                        st.success("✅ ¡Tu clave ha sido cambiada correctamente!")
+                    else:
+                        st.error("❌ Error al guardar en la base de datos.")
+                else:
+                    st.error("❌ Error: No se encontró el usuario en la sesión.")
+            else:
+                st.error("❌ Las claves no coinciden o están vacías.")
+
+    with tab2:
+        st.subheader("Renovación de Planes")
+        st.write("Realiza el depósito vía **Yape/Plin** al: **914282688**")
+        st.write("Técnico: **Alberto Ballarta**")
+        
+        dni_actual = st.session_state.get('user_data', {}).get('dni', '')
+        dni_input = st.text_input("Ingresa tu DNI:", value=dni_actual)
+        
+        mensaje = f"Hola Alberto, soy el cliente con DNI {dni_input} y deseo renovar mi plan."
+        link_wa = f"https://wa.me/51914282688?text={mensaje.replace(' ', '%20')}"
+        
+        st.markdown(f'<a href="{link_wa}" target="_blank" style="background-color: #25d366; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">📲 Enviar comprobante al WhatsApp</a>', unsafe_allow_html=True)
+
 # ======= 1. CONFIG INICIAL =======
 st.set_page_config(page_title="NEXUS", page_icon="⚡", layout="wide")
 
@@ -1103,67 +1157,3 @@ elif menu == "Reportes":
             )
         else:
             st.warning("No hay ventas para generar el reporte.")
-
-elif menu == "⚙️ Ajustes":
-    mostrar_ajustes()  
-
-def actualizar_clave_usuario(usuario_id, nueva_clave):
-    dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
-    table = dynamodb.Table('NEXUS_USUARIOS')
-    try:
-        table.update_item(
-            Key={'usuario_id': usuario_id},
-            # CAMBIAMOS 'clave' por 'password_hash' aquí abajo:
-            UpdateExpression="set password_hash = :c",
-            ExpressionAttributeValues={':c': nueva_clave}
-        )
-        return True
-    except Exception as e:
-        st.error(f"Error al conectar con la base de datos: {e}")
-        return False
-
-# 2. LA FUNCIÓN QUE DIBUJA Y RECIBE LOS CLICS (Aquí es donde debes poner la lógica del botón)
-def mostrar_ajustes():
-    st.title("⚙️ Ajustes de Cuenta")
-    tab1, tab2 = st.tabs(["🔒 Seguridad", "💳 Planes y Pagos"])
-    
-    with tab1:
-        st.subheader("Cambiar Contraseña")
-        with st.form("form_clave"):
-            actual = st.text_input("Contraseña Actual", type="password")
-            nueva = st.text_input("Nueva Contraseña", type="password")
-            conf = st.text_input("Confirmar Nueva Contraseña", type="password")
-            btn_update = st.form_submit_button("Actualizar Clave")
-        
-        # Esta parte debe estar alineada con el 'with st.form'
-        if btn_update:
-            st.write("DEBUG: Botón presionado") # <-- Si esto no aparece, el botón no funciona
-            if nueva == conf and nueva != "":
-                usuario_actual = st.session_state.get('usuario_id')
-                if usuario_actual:
-                    if actualizar_clave_usuario(usuario_actual, nueva):
-                        st.success("✅ ¡Tu clave ha sido cambiada correctamente!")
-                    else:
-                        st.error("❌ Error al guardar en la base de datos.")
-                else:
-                    st.error("❌ Error: No se encontró el usuario en la sesión.")
-            else:
-                st.error("❌ Las claves no coinciden o están vacías.")
-
-    with tab_pagos:
-        st.subheader("Renovación de Planes")
-        col1, col2 = st.columns(2)
-        col1.info("### 🟢 Básico\nS/ 40 mensuales")
-        col2.warning("### 🔵 Premium\nS/ 50 mensuales")
-        st.markdown("---")
-        st.write("Realiza el depósito vía **Yape/Plin** al: **914282688**")
-        st.write("Tecnico: **Alberto Ballarta**")
-        
-        # Obtenemos el DNI del usuario logueado desde session_state
-        dni_actual = st.session_state.user_data.get('dni', '')
-        dni_input = st.text_input("Ingresa tu DNI:", value=dni_actual)
-        
-        mensaje = f"Hola Alberto, soy el cliente con DNI {dni_input} y deseo renovar mi plan."
-        link_wa = f"https://wa.me/51914282688?text={mensaje.replace(' ', '%20')}"
-        
-        st.markdown(f'<a href="{link_wa}" target="_blank" style="background-color: #25d366; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">📲 Enviar comprobante al WhatsApp</a>', unsafe_allow_html=True)
