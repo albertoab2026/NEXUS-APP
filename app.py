@@ -602,7 +602,7 @@ if menu == "Ventas":
     st.title("🛒 Terminal de Ventas")
 
     productos = obtener_productos()
-    tenant_actual = st.session_state.get('tenant_id', 'MI LOCAL')
+    tenant_actual = st.session_state.user_data.get('nombre_negocio','MI NEGOCIO')
 
     if not productos:
         st.info("💡 Aún no hay productos registrados en el inventario. Agrega algunos en la pestaña Productos.")
