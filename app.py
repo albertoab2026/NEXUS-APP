@@ -744,5 +744,276 @@ if menu == "Ventas":
                             "items": items_guardar,
                             "descuento": descuento,
                             "total": total_venta_neto,        
-        
+                            "pago": metodo_pago,
+                            "cliente_nom": w_cliente_nombre.strip() if w_cliente_nombre.strip() else "Consumidor Final",
+                            "cliente_cel": w_cliente_celular.strip()
+                        }
+                        st.session_state.carrito = []
+                        st.success("🎉 Venta procesada con éxito.")
+                        st.balloons()
+                        st.rerun()
+            else:
+                st.info("🛒 El carrito está vacío. ¡Añade productos del catálogo!")
+
+        if st.session_state.ultima_venta is not None:
+            st.markdown("---")
+            st.markdown("### 📄 Último Comprobante Generado")
+
+            uv = st.session_state.ultima_venta
+            lineas_productos = ""
+            total_sin_descuento = 0
+            for it in uv["items"]:
+                subtotal_item = int(it['cantidad']) * float(it['precio_venta'])
+                total_sin_descuento += subtotal_item
+                lineas_productos += f"{it['cantidad']}x {it['nombre']} (S/{float(it['precio_venta']):.2f}) - S/{subtotal_item:.2f}\n"
+
+            texto_whatsapp = (
+                f"=== COMPROBANTE DE COMPRA ===\n"
+                f"🏪 Comercio: {uv['tenant']}\n"
+                f"📅 Fecha: {uv['fecha']}\n"
+                f"👤 Cliente: {uv['cliente_nom']}\n"
+                f"-----------------------------------------\n"
+                f"{lineas_productos}"
+                f"-----------------------------------------\n"
+                f"💰 Subtotal: S/{total_sin_descuento:.2f}\n"
+                f"🎁 Descuento Aplicado: -S/{float(uv['descuento']):.2f}\n"
+                f"💵 TOTAL PAGADO: S/{uv['total']:.2f}\n"
+                f"💳 Medio de Pago: {uv['pago']}\n\n"
+                f"¡Gracias por su preferencia! ✨"
+            )
+
+            html_ticket = f"""
+            <div id="ticket-saas-print" style="width: 280px; background-color: white; color: black; padding: 15px; font-family: 'Courier New', Courier, monospace; font-size: 12px; border: 1px dashed #000; margin: 0 auto;">
+                <div style="text-align: center; font-weight: bold; font-size: 14px; margin-bottom: 5px; text-transform: uppercase;">{uv['tenant']}</div>
+                <div style="text-align: center; margin-bottom: 10px;">*** COMPROBANTE DE COMPRA ***<br><small style="font-size:10px;">Control Interno Comercial</small></div>
+                <p style="margin: 3px 0;"><b>Fecha:</b> {uv['fecha']}</p>
+                <p style="margin: 3px 0;"><b>Cliente:</b> {uv['cliente_nom']}</p>
+                <div style="border-bottom: 1px dashed black; margin: 8px 0;"></div>
+                <table style="width: 100%; font-size: 12px; border-collapse: collapse;">
+            """
+            for it in uv["items"]:
+                subt = int(it['cantidad']) * float(it['precio_venta'])
+                html_ticket += f"""
+                <tr>
+                    <td style="padding: 2px 0;">{it['cantidad']}x {it['nombre']}</td>
+                    <td style="text-align: right; padding: 2px 0;">S/{subt:.2f}</td>
+                </tr>
+                """
+            html_ticket += f"""
+                </table>
+                <div style="border-bottom: 1px dashed black; margin: 8px 0;"></div>
+                <div style="display: table; width: 100%;">
+                    <div style="display: table-row;">
+                        <div style="display: table-cell; padding: 2px 0;">Subtotal:</div>
+                        <div style="display: table-cell; text-align: right; padding: 2px 0;">S/{total_sin_descuento:.2f}</div>
+                    </div>
+                    <div style="display: table-row; color: #c0392b;">
+                        <div style="display: table-cell; padding: 2px 0; font-weight: bold;">🎁 Descuento:</div>
+                        <div style="display: table-cell; text-align: right; padding: 2px 0; font-weight: bold;">-S/{float(uv['descuento']):.2f}</div>
+                    </div>
+                    <div style="display: table-row; font-size: 14px; font-weight: bold;">
+                        <div style="display: table-cell; padding-top: 8px;">TOTAL COBRADO:</div>
+                        <div style="display: table-cell; text-align: right; padding-top: 8px; font-size: 15px;">S/{uv['total']:.2f}</div>
+                    </div>
+                </div>
+                <div style="border-bottom: 1px dashed black; margin: 8px 0;"></div>
+                <p style="margin: 3px 0; text-align: center;"><b>Forma de Pago:</b> {uv['pago']}</p>
+                <div style="text-align: center; margin-top: 15px; font-weight: bold;">¡GRACIAS POR SU COMPRA!</div>
+            </div>
+            """
+
+            col_comp, col_acciones = st.columns([1.1, 1.0])
+            with col_comp:
+                st.markdown("<div style='background-color:#f9f9f9; padding:10px; border-radius:5px;'>", unsafe_allow_html=True)
+                st.html(html_ticket)
+                st.markdown("</div>", unsafe_allow_html=True)
+
+            with col_acciones:
+                st.markdown("#### ⚡ Acciones del Comprobante")
+
+                js_print = """
+                <button onclick="var w = window.open(); w.document.write(document.getElementById('ticket-saas-print').outerHTML); w.document.close(); w.focus(); setTimeout(function(){w.print(); w.close();}, 500);"
+                style="width: 100%; background-color: #34495e; color: white; border: none; padding: 10px; font-weight: bold; border-radius: 5px; cursor: pointer; margin-bottom: 10px;">
+                    🖨️ Imprimir Formato Ticket (80mm)
+                </button>
+                """
+                st.components.v1.html(js_print, height=50)
+
+                texto_url = urllib.parse.quote(texto_whatsapp)
+
+                if uv["cliente_cel"]!= "":
+                    url_wa = f"https://wa.me/51{uv['cliente_cel']}?text={texto_url}"
+                else:
+                    url_wa = f"https://wa.me/?text={texto_url}"
+
+                st.markdown(f"""
+                <a href="{url_wa}" target="_blank" style="text-decoration: none;">
+                    <button style="width: 100%; background-color: #25d366; color: white; border: none; padding: 10px; font-weight: bold; border-radius: 5px; cursor: pointer; margin-bottom: 10px;">
+                        📱 Enviar por WhatsApp Digital
+                    </button>
+                </a>
+                """, unsafe_allow_html=True)
+
+                df_items = pd.DataFrame([{
+                    "Producto": it["nombre"],
+                    "Cantidad": it["cantidad"],
+                    "Precio Unitario": float(it["precio_venta"]),
+                    "Total Item": int(it["cantidad"]) * float(it["precio_venta"])
+                } for it in uv["items"]])
+
+                csv_data = df_items.to_csv(index=False).encode('utf-8')
+                st.download_button(
+                    label="📊 Descargar Detalle en Excel (CSV)",
+                    data=csv_data,
+                    file_name=f"ticket_{uv['fecha'].replace(' ', '_').replace(':', '-')}.csv",
+                    mime="text/csv",
+                    use_container_width=True
+                )
+
+                if st.button("Limpiar y Nueva Venta", use_container_width=True):
+                    st.session_state.ultima_venta = None
+                    st.rerun()
+
+elif menu == "Reportes":
+    st.title("📊 Centro de Analítica - NEXUS")
+
+    ventas_raw = obtener_ventas()
+    productos_raw = obtener_productos()
+
+    if not ventas_raw:
+        st.info("💡 No hay ventas registradas.")
+    else:
+        df = pd.DataFrame(ventas_raw)
+
+        df['fecha_dt'] = pd.to_datetime(df['fecha']).dt.tz_localize(None) - pd.Timedelta(hours=5)
+        df['Fecha_Corta'] = df['fecha_dt'].dt.date
+        df['Hora'] = df['fecha_dt'].dt.strftime('%H:%M:%S')
+
+        fecha_hoy = (datetime.now() - timedelta(hours=5)).date()
+        fecha_busqueda = st.date_input("Selecciona el día:", value=fecha_hoy)
+
+        df_filtrado = df[df['Fecha_Corta'] == fecha_busqueda].copy()
+        df_filtrado = df_filtrado.sort_values(by='fecha_dt', ascending=False)
+
+        fecha_semana_pasada = fecha_busqueda - timedelta(days=7)
+        df_pasada = df[df['Fecha_Corta'] == fecha_semana_pasada].copy()
+
+        efectivo = 0.0
+        yape = 0.0
+        plin = 0.0
+        ganancia_hoy = 0.0
+        ganancia_pasada = 0.0
+        total_ventas_dia = 0.0
+
+        if df_filtrado.empty:
+            st.warning(f"No hay ventas para {fecha_busqueda}.")
+        else:
+            mapa_productos = {p['producto_id']: p['nombre'] for p in productos_raw} if productos_raw else {}
+            df_filtrado['Producto'] = df_filtrado['producto_id'].map(mapa_productos).fillna(df_filtrado['producto_id'])
+
+            if 'pago' not in df_filtrado.columns: df_filtrado['pago'] = 'efectivo'
+            df_filtrado['pago'] = df_filtrado['pago'].fillna('efectivo')
+            df_filtrado['pago_norm'] = df_filtrado['pago'].astype(str).str.replace('💵', '').str.replace('📱', '').str.replace('💳', '').str.replace('🔮', '').str.strip().str.lower()
+            df_filtrado['pago_norm'] = df_filtrado['pago_norm'].apply(lambda x: x if x in ['yape', 'plin'] else 'efectivo')
+
+            cols = ['total_venta', 'precio_venta', 'precio_compra', 'cantidad']
+
+            for col in cols:
+                df_filtrado[col] = pd.to_numeric(df_filtrado[col], errors='coerce').fillna(0)
+                if col in df_pasada.columns:
+                    df_pasada[col] = pd.to_numeric(df_pasada[col], errors='coerce').fillna(0)
+
+            df_filtrado['ganancia_real'] = (df_filtrado['precio_venta'] - df_filtrado['precio_compra']) * df_filtrado['cantidad']
+            ganancia_hoy = df_filtrado['ganancia_real'].sum()
+
+            df_pasada['ganancia_real'] = (df_pasada['precio_venta'] - df_pasada['precio_compra']) * df_pasada['cantidad']
+            ganancia_pasada = df_pasada['ganancia_real'].sum()
+
+            yape = df_filtrado[df_filtrado['pago_norm'] == 'yape']['total_venta'].sum()
+            plin = df_filtrado[df_filtrado['pago_norm'] == 'plin']['total_venta'].sum()
+            efectivo = df_filtrado[df_filtrado['pago_norm'] == 'efectivo']['total_venta'].sum()
+            total_ventas_dia = efectivo + yape + plin
+
+        st.markdown("""
+            <style>
+            div[data-testid="metric-container"] { background-color: #1e293b; padding: 20px; border-radius: 10px; border: 1px solid #475569; }
+            div[data-testid="metric-container"] label { font-size: 1.2rem!important; }
+            div[data-testid="metric-container"] [data-testid="stMetricValue"] { font-size: 2.5rem!important; color: #38bdf8!important; }
+            </style>
+        """, unsafe_allow_html=True)
+
+        st.markdown("### 📊 Resumen del Día")
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("💰 Total Ventas", f"S/{total_ventas_dia:.2f}")
+        c2.metric("💵 Efectivo", f"S/{efectivo:.2f}")
+        c3.metric("📱 Yape", f"S/{yape:.2f}")
+        c4.metric("🟣 Plin", f"S/{plin:.2f}")
+
+        delta_val = ganancia_hoy - ganancia_pasada
+        st.metric("📝 Ganancia Real (Hoy)", f"S/{ganancia_hoy:.2f}", delta=f"{delta_val:.2f} vs hace 7 días")
+
+        st.write("---")
+        st.subheader("📊 Análisis Visual del Día")
+
+        if not df_filtrado.empty:
+            col_graf1, col_graf2 = st.columns(2)
+
+            with col_graf1:
+                df_top = df_filtrado.groupby('Producto')['total_venta'].sum().reset_index().sort_values('total_venta', ascending=False).head(10)
+                fig_bar = px.bar(df_top, x='total_venta', y='Producto', orientation='h', title="Top 10 Productos")
+                st.plotly_chart(fig_bar, use_container_width=True)
+
+            def limpiar_pago(valor):
+                v = str(valor).lower().strip()
+                if 'efectivo' in v:
+                    return 'Efectivo'
+                elif 'yape' in v:
+                    return 'Yape'
+                elif 'plin' in v:
+                    return 'Plin'
+                else:
+                    return v.capitalize()
+
+            df_filtrado['pago_norm'] = df_filtrado['pago'].apply(limpiar_pago)
+
+            with col_graf2:
+                fig_pie = px.pie(df_filtrado, values='total_venta', names='pago_norm', title="Distribución de Pagos", hole=0.4)
+                st.plotly_chart(fig_pie, use_container_width=True)
+
+            if 'Hora' in df_filtrado.columns:
+                df_hora = df_filtrado.groupby('Hora')['total_venta'].sum().reset_index()
+                fig_line = px.area(df_hora, x='Hora', y='total_venta', title="Tendencia de Ventas", line_shape='spline')
+                st.plotly_chart(fig_line, use_container_width=True)
+
+            with st.expander("📊 Ver detalle de ventas (Maximizar/Minimizar)"):
+                columnas_a_mostrar = ['Hora', 'Producto', 'cantidad', 'total_venta', 'ganancia_real', 'pago']
+                st.dataframe(df_filtrado[columnas_a_mostrar], use_container_width=True)
+        else:
+            st.warning("No hay datos para mostrar gráficos ni detalles.")
+
+        if not df_filtrado.empty:
+            buffer = io.BytesIO()
+            with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
+                df_filtrado.to_excel(writer, sheet_name='Ventas_Auditoria', index=False)
+
+                workbook = writer.book
+                worksheet = writer.sheets['Ventas_Auditoria']
+                money_fmt = workbook.add_format({'num_format': 'S/ #,##0.00'})
+
+                total_sum = df_filtrado['total_venta'].sum()
+                row_idx = len(df_filtrado) + 1
+                worksheet.write(row_idx, 1, "TOTALES:")
+                worksheet.write(row_idx, 5, total_sum, money_fmt)
+
+            st.download_button(
+                label="📥 Descargar Reporte en Excel (Auditoría)",
+                data=buffer,
+                file_name=f"Reporte_NEXUS_{fecha_busqueda}.xlsx",
+                mime="application/vnd.ms-excel"
+            )
+        else:
+            st.warning("No hay ventas para generar el reporte.")
+
+elif menu == "⚙️ Ajustes":
+    mostrar_ajustes()
         
