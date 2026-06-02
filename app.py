@@ -373,10 +373,50 @@ def mostrar_ajustes():
     with tab_seguridad:
         st.subheader("Cambiar Contraseña")
         with st.form("form_cambio_clave"):
-            st.text_input("Contraseña Actual", type="password")
-            st.text_input("Nueva Contraseña", type="password")
-            st.text_input("Confirmar Nueva Contraseña", type="password")
-            st.form_submit_button("Actualizar Clave")
+            pass_actual = st.text_input("Contraseña Actual", type="password", key="pass_actual")
+            pass_nueva = st.text_input("Nueva Contraseña", type="password", key="pass_nueva")
+            pass_confirm = st.text_input("Confirmar Nueva Contraseña", type="password", key="pass_confirm")
+            
+            submit = st.form_submit_button("Actualizar Clave")
+
+            if submit:
+                user_id = st.session_state.user_data['usuario_id']
+                
+                # 1. Validar que no estén vacíos
+                if not pass_actual or not pass_nueva or not pass_confirm:
+                    st.error("Completa todos los campos")
+                
+                # 2. Validar que la actual sea correcta
+                elif hash_password(pass_actual) != st.session_state.user_data['password_hash']:
+                    st.error("❌ La contraseña actual es incorrecta")
+                
+                # 3. Validar que coincidan
+                elif pass_nueva != pass_confirm:
+                    st.error("❌ Las contraseñas nuevas no coinciden")
+                
+                # 4. Validar longitud mínima
+                elif len(pass_nueva) < 6:
+                    st.error("❌ La contraseña debe tener mínimo 6 caracteres")
+                
+                else:
+                    try:
+                        # 5. Actualizar en DynamoDB
+                        tabla_usuarios.update_item(
+                            Key={'usuario_id': user_id},
+                            UpdateExpression="SET password_hash = :p",
+                            ExpressionAttributeValues={':p': hash_password(pass_nueva)}
+                        )
+                        
+                        # 6. Actualizar session_state también
+                        st.session_state.user_data['password_hash'] = hash_password(pass_nueva)
+                        
+                        st.success("✅ Contraseña actualizada correctamente")
+                        st.balloons()
+                        time.sleep(1)
+                        st.rerun()
+                        
+                    except Exception as e:
+                        st.error(f"Error al actualizar: {e}")
 
     with tab_pagos:
         st.subheader("Renovación de Planes")
@@ -385,7 +425,7 @@ def mostrar_ajustes():
         col2.warning("### 🔵 Premium\nS/ 50 mensuales")
         st.markdown("---")
         st.write("Realiza el depósito vía **Yape/Plin** al: **914282688**")
-        st.write("Tecnico: **Alberto Ballarta**")
+        st.write("Titular: **Alberto Ballarta**")
 
         dni_actual = st.session_state.user_data.get('dni', '')
         dni_input = st.text_input("Ingresa tu DNI:", value=dni_actual)
@@ -394,7 +434,7 @@ def mostrar_ajustes():
         link_wa = f"https://wa.me/51914282688?text={mensaje.replace(' ', '%20')}"
 
         st.markdown(f'<a href="{link_wa}" target="_blank" style="background-color: #25d366; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">📲 Enviar comprobante al WhatsApp</a>', unsafe_allow_html=True)
-
+        
 # ======= 4. INTERFAZ DE INICIO =======
 if st.session_state.get("logged_in"):
     nombre_negocio = st.session_state.user_data.get('nombre_negocio', 'Tu Negocio')
