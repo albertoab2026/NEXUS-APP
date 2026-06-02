@@ -735,8 +735,19 @@ if menu == "Ventas":
                             st.rerun()
 
                 st.markdown("---")
-                descuento = st.number_input("🎁 Descuento (S/):", min_value=0.0, value=0.0)
+                descuento = st.number_input(
+                    "🎁 Descuento (S/):", 
+                    min_value=0.0, 
+                    max_value=float(total_venta_bruto),  # <- BLINDAJE
+                    value=0.0,
+                    step=0.10,
+                    help=f"Máximo S/{total_venta_bruto:.2f}"
+                )
+
                 total_venta_neto = round(total_venta_bruto - descuento, 2)
+                if total_venta_neto < 0:  # <- Blindaje extra
+                    total_venta_neto = 0
+
                 st.markdown(f"### Total a pagar: S/{total_venta_neto:.2f}")
 
                 metodo_pago = st.radio("Forma de Pago:", ["💵 Efectivo", "📱 Yape", "💳 Plin"], horizontal=True)
@@ -745,6 +756,11 @@ if menu == "Ventas":
 
                 if st.button("⚡ Finalizar y Registrar Venta", type="primary", use_container_width=True):
                     total_bruto = sum(float(item['precio_venta']) * int(item['cantidad']) for item in st.session_state.carrito)
+
+                # BLINDAJE ANTI-NEGATIVO
+                if descuento > total_venta_bruto:
+                    descuento = total_venta_bruto
+                    total_venta_neto = 0
                     
                     # 1. Calcular proporción de descuento
                     # Si el descuento es 0, el factor es 1 (no cambia precio)
