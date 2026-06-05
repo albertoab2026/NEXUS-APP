@@ -1,4 +1,6 @@
 import streamlit as st
+st.write("Versión Streamlit:", st._version_)
+import streamlit as st
 import boto3
 from boto3.dynamodb.conditions import Key
 import pandas as pd
@@ -11,6 +13,7 @@ from decimal import Decimal
 import urllib.parse
 import plotly.express as px
 import streamlit.components.v1 as components
+import html
 
 # ======= 1. CONFIG INICIAL =======
 st.set_page_config(page_title="NEXUS", page_icon="⚡", layout="wide")
@@ -894,8 +897,20 @@ if menu == "Ventas":
                 import html
                 html_ticket = html.unescape(html_ticket)
                 html_ticket = html_ticket.replace('&lt;', '<').replace('&gt;', '>')
+
+               # Limpiamos tags extra por si acaso
+                html_ticket = html_ticket.replace('<html>', '').replace('</html>', '')
+                html_ticket = html_ticket.replace('<body>', '').replace('</body>', '')
                 
-                st.markdown(f"<div id='ticket-saas-print' style='width:80mm...'>{html_ticket}</div>", unsafe_allow_html=True)
+                components.html(
+                    f"""
+                    <div id='ticket-saas-print' style='width:80mm; margin:auto; font-family:Courier; font-size:12px; background:white; padding:5px; border:1px dashed #ccc;'>
+                        {html_ticket}
+                    </div>
+                    """,
+                    height=600,
+                    scrolling=True
+                ) 
                 
             with col_acciones:
                 st.markdown("#### ⚡ Acciones del Comprobante")
