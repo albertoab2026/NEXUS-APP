@@ -735,7 +735,7 @@ if menu == "Ventas":
                             st.rerun()
 
                 st.markdown("---")
-                descuento = st.number_input("🎁 Descuento (S/):", min_value=0.0, value=0.0)
+                descuento = st.number_input("🎁 Descuento (S/):", min_value=0.0, value=0.0, format="%.2f")
                 total_venta_neto = round(total_venta_bruto - descuento, 2)
                 st.markdown(f"### Total a pagar: S/{total_venta_neto:.2f}")
 
