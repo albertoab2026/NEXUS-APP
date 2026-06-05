@@ -890,8 +890,8 @@ if menu == "Ventas":
             with col_comp:
                 st.markdown("<div style='background-color:#f9f9f9; padding:10px; border-radius:5px;'>", unsafe_allow_html=True)
                 
-                # IMPORTANTE: Envuelve el ticket con el ID que usa el JS
-                st.markdown(f"<div id='ticket-saas-print'>{html_ticket}</div>", unsafe_allow_html=True)
+                # Renderiza el HTML real, no como texto
+                st.components.v1.html(f"<div id='ticket-saas-print'>{html_ticket}</div>", height=400, scrolling=True)
                 
                 st.markdown("</div>", unsafe_allow_html=True)
             with col_acciones:
