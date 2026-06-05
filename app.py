@@ -869,7 +869,7 @@ if menu == "Ventas":
                 html_ticket += f"""
                 <tr>
                     <td style="padding: 2px 0;">{it['cantidad']}x {it['nombre']}</td>
-                    <td style="text-align: right; padding: 2px 0;">S/{subt:.2f}</td>
+                    st.markdown(f'<td style="text-align: right; padding: 2px 0;">S/{subt:.2f}</td>', unsafe_allow_html=True)
                 </tr>
                 """
             html_ticket += f"""
