@@ -889,16 +889,11 @@ if menu == "Ventas":
             col_comp, col_acciones = st.columns([1.1, 1.0])
             with col_comp:
                 st.markdown("<div style='background-color:#f9f9f9; padding:10px; border-radius:5px;'>", unsafe_allow_html=True)
-                
-                # DEBUG CORREGIDO
-                import html
-                st.write("*DEBUG CONTENIDO REAL:*")
-                st.code(html_ticket[:300])  # Esto sí muestra el HTML
-                
-                # Desescapa por si acaso
-                html_ticket = html.unescape(html_ticket)
-
                 st.markdown("</div>", unsafe_allow_html=True)
+                
+                import html
+                html_ticket = html.unescape(html_ticket)
+                html_ticket = html_ticket.replace('&lt;', '<').replace('&gt;', '>')
                 
                 st.markdown(f"<div id='ticket-saas-print' style='width:80mm...'>{html_ticket}</div>", unsafe_allow_html=True)
                 
