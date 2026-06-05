@@ -890,8 +890,8 @@ if menu == "Ventas":
             with col_comp:
                 st.markdown("<div style='background-color:#f9f9f9; padding:10px; border-radius:5px;'>", unsafe_allow_html=True)
                 
-                # Renderiza el HTML real, no como texto
-                st.components.v1.html(f"<div id='ticket-saas-print'>{html_ticket}</div>", height=400, scrolling=True)
+                # DIRECTO AL DOM, sin iframe. Así el JS sí lo encuentra
+                st.markdown(f"<div id='ticket-saas-print' style='width:80mm; margin:auto; font-family:Courier; font-size:12px; background:white; padding:5px;'>{html_ticket}</div>", unsafe_allow_html=True)
                 
                 st.markdown("</div>", unsafe_allow_html=True)
             with col_acciones:
@@ -900,20 +900,21 @@ if menu == "Ventas":
                 js_print = """
                 <button onclick="
                     var div = document.getElementById('ticket-saas-print');
-                    var w = window.open('', '', 'height=600,width=400');
-                    w.document.write('<html><head><title>Ticket 80mm</title>');
+                    if(!div){alert('Error: Ticket no encontrado'); return;}
+                    var w = window.open('', '_blank', 'width=320,height=600');
+                    w.document.write('<!DOCTYPE html><html><head><title>Ticket 80mm</title>');
                     w.document.write('<style>@media print{@page{size:80mm auto;margin:0;} body{width:80mm;font-family:Courier;font-size:12px;margin:0;padding:5px;}}</style>');
                     w.document.write('</head><body>');
                     w.document.write(div.innerHTML);
                     w.document.write('</body></html>');
                     w.document.close();
                     w.focus();
-                    setTimeout(function(){w.print(); w.close();}, 500);
+                    setTimeout(function(){w.print();}, 300);
                 " style="width: 100%; background-color: #34495e; color: white; border: none; padding: 10px; font-weight: bold; border-radius: 5px; cursor: pointer;">
                     🖨️ Imprimir Formato Ticket 80mm
                 </button>
                 """
-                st.components.v1.html(js_print, height=50)
+                st.markdown(js_print, unsafe_allow_html=True)            
                 texto_url = urllib.parse.quote(texto_whatsapp)
 
                 if uv["cliente_cel"]!= "":
