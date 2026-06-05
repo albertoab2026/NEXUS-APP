@@ -825,7 +825,6 @@ if menu == "Ventas":
             <style>
                 /* Quita el padding que Streamlit mete entre secciones */
                 .block-container {
-                    padding-top: 1rem !important;
                 }
                 div[data-testid="stVerticalBlock"] > div:nth-of-type(n+5) {
                     margin-top: -80px !important;
