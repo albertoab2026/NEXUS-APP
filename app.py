@@ -744,19 +744,24 @@ if menu == "Ventas":
                 w_cliente_celular = st.text_input("Celular:", key="w_cli_cel")
 
                 if st.button("⚡ Finalizar y Registrar Venta", type="primary", use_container_width=True):
-                    # 1. Calculamos el total bruto primero
+                    # 1. Calculamos el total bruto real del carrito
                     total_bruto = sum(float(item['precio_venta']) * int(item['cantidad']) for item in st.session_state.carrito)
                     
-                    # --- ESTA ES LA CORRECCIÓN NECESARIA ---
-                    # Si el descuento ingresado es mayor al total bruto, lo limitamos al total
-                    descuento_seguro = float(descuento) if float(descuento) <= total_bruto else total_bruto
-                    # ----------------------------------------
+                    # 2. BLINDAJE TOTAL: Validamos el descuento antes de usarlo
+                    # Si el descuento es mayor al total, lo fijamos en 0 (o en el total, a tu elección)
+                    # Aquí lo fijaremos en 0 para que no haga ninguna operación extraña
+                    desc_aplicado = float(descuento) if float(descuento) <= total_bruto else 0.0
                     
-                    # Ahora usamos 'descuento_seguro' en lugar de 'descuento' para todos los cálculos
-                    total_neto = total_bruto - descuento_seguro
+                    if float(descuento) > total_bruto:
+                        st.warning("⚠️ El descuento no puede ser mayor a la venta. Se aplicó descuento 0.")
                     
-                    # Calculamos el factor con el descuento seguro
-                    factor = (total_bruto - descuento_seguro) / total_bruto if total_bruto > 0 else 1
+                    # 3. Calculamos el total neto usando el descuento ya validado
+                    total_neto = total_bruto - desc_aplicado
+                    
+                    # 4. Cálculo del factor (usando desc_aplicado)
+                    factor = (total_bruto - desc_aplicado) / total_bruto if total_bruto > 0 else 1
+                    
+                    # ... (continúa con tu lógica de 'ok = True' y el for-loop)
                     
                     ok = True
                     items_guardar = []
