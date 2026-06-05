@@ -904,7 +904,6 @@ if menu == "Ventas":
             with col_acciones:
                 st.markdown("#### ⚡ Acciones del Comprobante")
                 
-                components.html(
                     components.html(
                         f"""
                         <div style="width:100%; text-align:left;">
