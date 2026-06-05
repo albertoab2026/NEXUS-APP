@@ -739,29 +739,28 @@ if menu == "Ventas":
                 metodo_pago = st.radio("Forma de Pago:", ["💵 Efectivo", "📱 Yape", "💳 Plin"], horizontal=True)
                 w_cliente_nombre = st.text_input("Nombre Cliente:", key="w_cli_nom")
                 w_cliente_celular = st.text_input("Celular:", key="w_cli_cel")
-
-                    # 1. Definir el total bruto
-                    total_bruto = sum(float(item['precio_venta']) * int(item['cantidad']) for item in st.session_state.carrito)
-
-                    # 2. PRIMERO dibuja el input
-                    descuento = st.number_input("💰 Descuento (S/):", min_value=0.0, max_value=total_bruto, value=0.0, format="%.2f", key="descuento_venta_final")
-                    # 4. Calcular el neto final usando descuento_valido
-                    total_venta_neto = max(0, round(total_bruto - descuento_valido, 2))
-                    st.markdown(f"### Total a pagar: S/{total_venta_neto:.2f}")
-
-                if st.button("⚡ Finalizar y Registrar Venta", type="primary", use_container_width=True):  
-                    
-                    # 3. VALIDACIÓN CRÍTICA: Forzamos el descuento a ser como máximo el total bruto
+                
+                # 1. Definir el total bruto - SIN TAB
+                total_bruto = sum(float(item['precio_venta']) * int(item['cantidad']) for item in st.session_state.carrito)
+                
+                # 2. PRIMERO dibuja el input - SIN TAB
+                descuento = st.number_input("💰 Descuento (S/):", min_value=0.0, max_value=total_bruto if total_bruto > 0 else 0.0, value=0.0, format="%.2f", key="descuento_venta_final")
+                total_venta_neto = max(0, round(total_bruto - descuento, 2))
+                st.markdown(f"### Total a pagar: S/{total_venta_neto:.2f}")
+                
+                if st.button("⚡ Finalizar y Registrar Venta", type="primary", use_container_width=True):
+                    # 3. VALIDACIÓN CRÍTICA - CON TAB
                     descuento_valido = float(descuento)
                     if descuento_valido > total_bruto:
                         descuento_valido = total_bruto
-                        st.warning(f"⚠️ El descuento se ajustó a S/{total_bruto:.2f} para evitar totales negativos.")  
+                        st.warning(f"⚠️ El descuento se ajustó a S/{total_bruto:.2f}")
+                    
+                    total_venta_neto = max(0, round(total_bruto - descuento_valido, 2))
                     
                     if total_venta_neto <= 0:
                         st.error("❌ No se puede registrar venta con total S/0.00")
                         st.stop()
                     
-                    # 5. Calcular el factor proporcional
                     factor = (total_bruto - descuento_valido) / total_bruto if total_bruto > 0 else 1
                     
                     ok = True
