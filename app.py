@@ -285,9 +285,25 @@ def registrar_venta(producto_id, cantidad, precio_venta, precio_compra, pago, cl
         fecha_utc = datetime.now(timezone.utc).isoformat()
         total_venta = float(precio_venta) * int(cantidad)
 
+        # 1. BLINDAJE: Resta stock de forma atómica en DynamoDB
+        # Si 2 usuarios venden a la vez, solo 1 pasa
+        tabla_productos.update_item(
+            Key={
+                'usuario_id': id_dueno,
+                'producto_id': producto_id
+            },
+            UpdateExpression="SET p_stock_disponible = p_stock_disponible - :cant",
+            ConditionExpression="p_stock_disponible >= :cant",  # <- AQUÍ ESTÁ EL BLINDAJE
+            ExpressionAttributeValues={
+                ':cant': int(cantidad)
+            },
+            ReturnValues="UPDATED_NEW"
+        )
+
+        # 2. Si el update de arriba pasó, recién guardas la venta
         tabla_ventas.put_item(Item={
             'usuario_id': id_dueno,
-            'Venta_id': str(uuid.uuid4()),
+            'venta_id': str(uuid.uuid4()),
             'producto_id': producto_id,
             'cantidad': int(cantidad),
             'total_venta': Decimal(str(total_venta)),
@@ -298,7 +314,16 @@ def registrar_venta(producto_id, cantidad, precio_venta, precio_compra, pago, cl
             'cliente': str(cliente),
             'celular': str(celular)
         })
+
         return True
+
+    except botocore.exceptions.ClientError as e:
+        if e.response['Error']['Code'] == 'ConditionalCheckFailedException':
+            st.error("❌ Stock insuficiente. Otra caja ya vendió este producto.")
+            return False
+        else:
+            st.error(f"Error en venta: {e}")
+            return False
     except Exception as e:
         st.error(f"Error en venta: {e}")
         return False
