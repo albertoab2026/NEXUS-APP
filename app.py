@@ -803,7 +803,7 @@ if menu == "Ventas":
                             "tenant": tenant_actual,
                             "fecha": fecha_formateada,
                             "items": items_guardar,
-                            "descuento": descuento,
+                            "descuento": descuento valido,
                             "total": total_venta_neto,        
                             "pago": metodo_pago,
                             "cliente_nom": w_cliente_nombre.strip() if w_cliente_nombre.strip() else "Consumidor Final",
