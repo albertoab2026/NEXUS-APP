@@ -904,44 +904,44 @@ if menu == "Ventas":
             with col_acciones:
                 st.markdown("#### ⚡ Acciones del Comprobante")
                 
-                    components.html(
-                        f"""
-                        <div style="width:100%; text-align:left;">
-                            <div id='ticket-saas-print' style='width:80mm; display:inline-block; margin:10px 0; font-family:Courier; font-size:12px; background:white; padding:5px; border:1px dashed #ccc;'>
-                                {html_ticket}
-                            </div>
-                            
-                            <br>
-                            
-                            <button onclick="imprimirTicket()" style="width:80mm; display:inline-block; margin:10px 0; background:#34495e; color:white; border:none; padding:10px; font-weight:bold; border-radius:5px; cursor:pointer;">
-                                🖨️ Imprimir Formato Ticket 80mm
-                            </button>
+                components.html(
+                    f"""
+                    <div style="width:100%; text-align:left;">
+                        <div id='ticket-saas-print' style='width:80mm; display:inline-block; margin:10px 0; font-family:Courier; font-size:12px; background:white; padding:5px; border:1px dashed #ccc;'>
+                            {html_ticket}
                         </div>
                         
-                        <script>
-                        function imprimirTicket(){{
-                            var div = document.getElementById('ticket-saas-print');
-                            var contenido = div.innerHTML;
-                            var iframe = document.createElement('iframe');
-                            iframe.style.position = 'absolute';
-                            iframe.style.width = '0';
-                            iframe.style.height = '0';
-                            iframe.style.border = 'none';
-                            document.body.appendChild(iframe);
-                            var doc = iframe.contentWindow.document;
-                            doc.open();
-                            doc.write('<html><head><title>Ticket 80mm</title><style>@media print{{@page{{size:80mm auto;margin:0;}} body{{width:80mm;font-family:Courier;font-size:12px;margin:0;padding:5px;}}}}</style></head><body>' + contenido + '</body></html>');
-                            doc.close();
-                            setTimeout(function(){{
-                                iframe.contentWindow.focus();
-                                iframe.contentWindow.print();
-                                document.body.removeChild(iframe);
-                            }}, 300);
-                        }}
-                        </script>
-                        """,
-                        height=600
-                    )
+                        <br>
+                        
+                        <button onclick="imprimirTicket()" style="width:80mm; display:inline-block; margin:10px 0; background:#34495e; color:white; border:none; padding:10px; font-weight:bold; border-radius:5px; cursor:pointer;">
+                            🖨️ Imprimir Formato Ticket 80mm
+                        </button>
+                    </div>
+                    
+                    <script>
+                    function imprimirTicket(){{
+                        var div = document.getElementById('ticket-saas-print');
+                        var contenido = div.innerHTML;
+                        var iframe = document.createElement('iframe');
+                        iframe.style.position = 'absolute';
+                        iframe.style.width = '0';
+                        iframe.style.height = '0';
+                        iframe.style.border = 'none';
+                        document.body.appendChild(iframe);
+                        var doc = iframe.contentWindow.document;
+                        doc.open();
+                        doc.write('<html><head><title>Ticket 80mm</title><style>@media print{{@page{{size:80mm auto;margin:0;}} body{{width:80mm;font-family:Courier;font-size:12px;margin:0;padding:5px;}}}}</style></head><body>' + contenido + '</body></html>');
+                        doc.close();
+                        setTimeout(function(){{
+                            iframe.contentWindow.focus();
+                            iframe.contentWindow.print();
+                            document.body.removeChild(iframe);
+                        }}, 300);
+                    }}
+                    </script>
+                    """,
+                    height=600
+                )
                 
                 texto_url = urllib.parse.quote(texto_whatsapp)
             
