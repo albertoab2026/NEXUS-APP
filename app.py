@@ -906,11 +906,12 @@ if menu == "Ventas":
                 
                 components.html(
                     f"""
-                    <div id='ticket-saas-print' style='width:80mm; margin:10px 0 10px 0; font-family:Courier; font-size:12px; background:white; padding:5px; border:1px dashed #ccc;'>
+                    <div id='ticket-saas-print' style='width:80mm; float:left; margin:10px 0; font-family:Courier; font-size:12px; background:white; padding:5px; border:1px dashed #ccc;'>
                         {html_ticket}
                     </div>
+                    <div style="clear:both;"></div>
                     
-                    <button onclick="imprimirTicket()" style="width:80mm; margin:10px auto; display:block; background:#34495e; color:white; border:none; padding:10px; font-weight:bold; border-radius:5px; cursor:pointer;">
+                    <button onclick="imprimirTicket()" style="width:80mm; float:left; margin:10px 0; display:block; background:#34495e; color:white; border:none; padding:10px; font-weight:bold; border-radius:5px; cursor:pointer;">
                         🖨️ Imprimir Formato Ticket 80mm
                     </button>
                     
