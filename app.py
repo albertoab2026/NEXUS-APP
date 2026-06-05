@@ -1034,14 +1034,6 @@ elif menu == "Reportes":
             efectivo = df_filtrado[df_filtrado['pago_norm'] == 'efectivo']['total_venta'].sum()
             total_ventas_dia = efectivo + yape + plin
 
-            css_metrics = """
-            <style>
-            div[data-testid="metric-container"] { background-color: #1e293b; padding: 20px; border-radius: 10px; border: 1px solid #334155; }
-            div[data-testid="metric-container"] [data-testid="stMetricValue"] { font-size: 40px; color: #38bdf8 }
-            </style>
-            """
-            st.markdown(css_metrics, unsafe_allow_html=True)
-
         st.markdown("### 📊 Resumen del Día")
         c1, c2, c3, c4 = st.columns(4)
         c1.metric("💰 Total Ventas", f"S/{total_ventas_dia:.2f}")
