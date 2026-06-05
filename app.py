@@ -915,11 +915,10 @@ if menu == "Ventas":
                     </button>
                     
                     <script>
-                    function imprimirTicket(){
+                    function imprimirTicket(){{
                         var div = document.getElementById('ticket-saas-print');
                         var contenido = div.innerHTML;
                         
-                        // Creamos un iframe temporal solo para imprimir
                         var iframe = document.createElement('iframe');
                         iframe.style.position = 'absolute';
                         iframe.style.width = '0';
@@ -929,23 +928,27 @@ if menu == "Ventas":
                         
                         var doc = iframe.contentWindow.document;
                         doc.open();
-                        doc.write('<html><head><title>Ticket 80mm</title><style>@media print{@page{size:80mm auto;margin:0;} body{width:80mm;font-family:Courier;font-size:12px;margin:0;padding:5px;}}</style></head><body>' + contenido + '</body></html>');
+                        doc.write('<html><head><title>Ticket 80mm</title><style>@media print{{@page{{size:80mm auto;margin:0;}} body{{width:80mm;font-family:Courier;font-size:12px;margin:0;padding:5px;}}}}</style></head><body>' + contenido + '</body></html>');
                         doc.close();
                         
-                        setTimeout(function(){
+                        setTimeout(function(){{
                             iframe.contentWindow.focus();
                             iframe.contentWindow.print();
                             document.body.removeChild(iframe);
-                        }, 300);
-                    }
-               
+                        }}, 300);
+                    }}
+                    </script>
+                    """,
+                    height=600
+                )
+                
                 texto_url = urllib.parse.quote(texto_whatsapp)
-
-                if uv["cliente_cel"]!= "":
+            
+                if uv["cliente_cel"] != "":
                     url_wa = f"https://wa.me/51{uv['cliente_cel']}?text={texto_url}"
                 else:
                     url_wa = f"https://wa.me/?text={texto_url}"
-
+            
                 st.markdown(f"""
                 <a href="{url_wa}" target="_blank" style="text-decoration: none;">
                     <button style="width: 100%; background-color: #25d366; color: white; border: none; padding: 10px; font-weight: bold; border-radius: 5px; cursor: pointer; margin-bottom: 10px;">
@@ -953,14 +956,14 @@ if menu == "Ventas":
                     </button>
                 </a>
                 """, unsafe_allow_html=True)
-
+            
                 df_items = pd.DataFrame([{
                     "Producto": it["nombre"],
                     "Cantidad": it["cantidad"],
                     "Precio Unitario": float(it["precio_venta"]),
                     "Total Item": int(it["cantidad"]) * float(it["precio_venta"])
                 } for it in uv["items"]])
-
+            
                 csv_data = df_items.to_csv(index=False).encode('utf-8')
                 st.download_button(
                     label="📊 Descargar Detalle en Excel (CSV)",
@@ -969,7 +972,7 @@ if menu == "Ventas":
                     mime="text/csv",
                     use_container_width=True
                 )
-
+            
                 if st.button("Limpiar y Nueva Venta", use_container_width=True):
                     st.session_state.ultima_venta = None
                     st.rerun()
