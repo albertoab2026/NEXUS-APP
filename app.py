@@ -821,17 +821,26 @@ if menu == "Ventas":
                         st.error("Error al registrar uno o más productos.")
 
                 # ESTA PARTE VA FUERA DEL BOTÓN, PARA QUE SE MUESTRE SIEMPRE QUE HAYA VENTA
-                if st.session_state.get('ultima_venta'):
+                if 'ultima_venta' in st.session_state and st.session_state.ultima_venta is not None:
                     st.markdown("---")
                     st.markdown("### 📄 Último Comprobante Generado")
+                    
                     uv = st.session_state.ultima_venta
-            lineas_productos = ""
-            total_sin_descuento = 0
-            for it in uv["items"]:
-                subtotal_item = int(it['cantidad']) * float(it['precio_venta'])
-                total_sin_descuento += subtotal_item
-                lineas_productos += f"{it['cantidad']}x {it['nombre']} (S/{float(it['precio_venta']):.2f}) - S/{subtotal_item:.2f}\n"
-
+                    
+                    # Verificamos que 'items' realmente exista dentro del diccionario
+                    if "items" in uv and isinstance(uv["items"], list):
+                        lineas_productos = ""
+                        total_sin_descuento = 0
+                        
+                        for it in uv["items"]:
+                            # Usamos .get() para evitar que el programa se rompa si falta algún dato en el producto
+                            cantidad = int(it.get('cantidad', 0))
+                            precio = float(it.get('precio_venta', 0))
+                            nombre = it.get('nombre', 'Producto')
+                            
+                            subtotal_item = cantidad * precio
+                            total_sin_descuento += subtotal_item
+                            lineas_productos += f"{cantidad}x {nombre} (S/{precio:.2f}) - S/{subtotal_item:.2f}\n"
             texto_whatsapp = (
                 f"=== COMPROBANTE DE COMPRA ===\n"
                 f"🏪 Comercio: {uv['tenant']}\n"
