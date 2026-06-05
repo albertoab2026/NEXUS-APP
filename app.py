@@ -890,15 +890,15 @@ if menu == "Ventas":
             with col_comp:
                 st.markdown("<div style='background-color:#f9f9f9; padding:10px; border-radius:5px;'>", unsafe_allow_html=True)
                 
-                # DEBUG: Pon esto aquí línea 893
+                # DEBUG CORREGIDO
                 import html
-                st.write("*DEBUG TIPO:*", type(html_ticket))
-                st.write("*DEBUG CONTENIDO:*", html_ticket[:150])
+                st.write("*DEBUG CONTENIDO REAL:*")
+                st.code(html_ticket[:300])  # Esto sí muestra el HTML
                 
-                # Si viene escapado, lo desescapas aquí línea 897
+                # Desescapa por si acaso
                 html_ticket = html.unescape(html_ticket)
                 
-                st.markdown(f"<div id='ticket-saas-print' style='width:80mm; margin:auto; font-family:Courier; font-size:12px; background:white; padding:5px;'>{html_ticket}</div>", unsafe_allow_html=True)
+                st.markdown(f"<div id='ticket-saas-print' style='width:80mm...'>{html_ticket}</div>", unsafe_allow_html=True)
                 
                 st.markdown("</div>", unsafe_allow_html=True)
             with col_acciones:
