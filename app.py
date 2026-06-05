@@ -897,10 +897,11 @@ if menu == "Ventas":
                 
                 # Desescapa por si acaso
                 html_ticket = html.unescape(html_ticket)
+
+                st.markdown("</div>", unsafe_allow_html=True)
                 
                 st.markdown(f"<div id='ticket-saas-print' style='width:80mm...'>{html_ticket}</div>", unsafe_allow_html=True)
                 
-                st.markdown("</div>", unsafe_allow_html=True)
             with col_acciones:
                 st.markdown("#### ⚡ Acciones del Comprobante")
                 
