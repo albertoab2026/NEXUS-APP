@@ -821,7 +821,17 @@ if menu == "Ventas":
                 st.info("🛒 El carrito está vacío. ¡Añade productos del catálogo!")
 
         if st.session_state.ultima_venta is not None:  
-            st.markdown("<div style='margin-top:-100px;'></div>", unsafe_allow_html=True)
+            st.markdown("<div style='margin-top:-50px;'></div>", unsafe_allow_html=True)
+            <style>
+                /* Quita el padding que Streamlit mete entre secciones */
+                .block-container {
+                    padding-top: 1rem !important;
+                }
+                div[data-testid="stVerticalBlock"] > div:nth-of-type(n+5) {
+                    margin-top: -80px !important;
+                }
+            </style>
+            """, unsafe_allow_html=True)
             st.markdown("### 📄 Último Comprobante Generado")
 
             uv = st.session_state.ultima_venta
