@@ -743,23 +743,24 @@ if menu == "Ventas":
                 if st.button("⚡ Finalizar y Registrar Venta", type="primary", use_container_width=True):
                     # 1. Definir el total bruto
                     total_bruto = sum(float(item['precio_venta']) * int(item['cantidad']) for item in st.session_state.carrito)
+
+                    # 2. PRIMERO dibuja el input
+                    descuento = st.number_input("💰 Descuento (S/):", min_value=0.0, max_value=total_bruto, value=0.0, format="%.2f", key="descuento_venta_final")
                     
-                    # 2. VALIDACIÓN CRÍTICA: Forzamos el descuento a ser como máximo el total bruto
-                    # Si el usuario pone un descuento mayor, lo igualamos al total bruto
+                    # 3. VALIDACIÓN CRÍTICA: Forzamos el descuento a ser como máximo el total bruto
                     descuento_valido = float(descuento)
                     if descuento_valido > total_bruto:
                         descuento_valido = total_bruto
                         st.warning(f"⚠️ El descuento se ajustó a S/{total_bruto:.2f} para evitar totales negativos.")
-                
-                    # 3. Calcular el neto final usando el descuento validado
-                    descuento = st.number_input("💰 Descuento (S/):", min_value=0.0, max_value=total_bruto, value=0.0, format="%.2f", key="descuento_venta_final")
-                    total_venta_neto = max(0, round(total_bruto - descuento, 2))
-
+                    
+                    # 4. Calcular el neto final usando descuento_valido
+                    total_venta_neto = max(0, round(total_bruto - descuento_valido, 2))
+                    
                     if total_venta_neto <= 0:
                         st.error("❌ No se puede registrar venta con total S/0.00")
                         st.stop()
                     
-                    # 4. Calcular el factor proporcional
+                    # 5. Calcular el factor proporcional
                     factor = (total_bruto - descuento_valido) / total_bruto if total_bruto > 0 else 1
                     
                     ok = True
