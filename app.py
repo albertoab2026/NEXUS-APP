@@ -904,7 +904,7 @@ if menu == "Ventas":
             with col_acciones:
                 st.markdown("#### ⚡ Acciones del Comprobante")
                 
-              components.html(
+                components.html(
                     f"""
                     <div id='ticket-saas-print' style='width:80mm; margin:10px auto; font-family:Courier; font-size:12px; background:white; padding:5px; border:1px dashed #ccc;'>
                         {html_ticket}
