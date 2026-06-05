@@ -735,8 +735,8 @@ if menu == "Ventas":
                             st.rerun()
 
                 st.markdown("---")
-                descuento = st.number_input("🎁 Descuento (S/):", min_value=0.0, value=0.0, format="%.2f")
-                total_venta_neto = round(total_venta_bruto - descuento, 2)
+                descuento = st.number_input("💰 Descuento (S/):", min_value=0.0, max_value=total_venta_bruto, value=0.0, format="%.2f")
+                total_venta_neto = max(0, round(total_venta_bruto - descuento, 2))
                 st.markdown(f"### Total a pagar: S/{total_venta_neto:.2f}")
 
                 metodo_pago = st.radio("Forma de Pago:", ["💵 Efectivo", "📱 Yape", "💳 Plin"], horizontal=True)
@@ -755,7 +755,12 @@ if menu == "Ventas":
                         st.warning(f"⚠️ El descuento se ajustó a S/{total_bruto:.2f} para evitar totales negativos.")
                 
                     # 3. Calcular el neto final usando el descuento validado
-                    total_neto = total_bruto - descuento_valido
+                    descuento = st.number_input("💰 Descuento (S/):", min_value=0.0, max_value=total_venta_bruto, value=0.0, format="%.2f")
+                    total_venta_neto = max(0, round(total_venta_bruto - descuento, 2))
+
+                    if total_neto <= 0:
+                        st.error("❌ No se puede registrar venta con total S/0.00")
+                        st.stop()
                     
                     # 4. Calcular el factor proporcional
                     factor = (total_bruto - descuento_valido) / total_bruto if total_bruto > 0 else 1
