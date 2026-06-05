@@ -744,24 +744,21 @@ if menu == "Ventas":
                 w_cliente_celular = st.text_input("Celular:", key="w_cli_cel")
 
                 if st.button("⚡ Finalizar y Registrar Venta", type="primary", use_container_width=True):
-                    # 1. Calculamos el total bruto real del carrito
+                    # 1. Definir el total bruto
                     total_bruto = sum(float(item['precio_venta']) * int(item['cantidad']) for item in st.session_state.carrito)
                     
-                    # 2. BLINDAJE TOTAL: Validamos el descuento antes de usarlo
-                    # Si el descuento es mayor al total, lo fijamos en 0 (o en el total, a tu elección)
-                    # Aquí lo fijaremos en 0 para que no haga ninguna operación extraña
-                    desc_aplicado = float(descuento) if float(descuento) <= total_bruto else 0.0
+                    # 2. VALIDACIÓN CRÍTICA: Forzamos el descuento a ser como máximo el total bruto
+                    # Si el usuario pone un descuento mayor, lo igualamos al total bruto
+                    descuento_valido = float(descuento)
+                    if descuento_valido > total_bruto:
+                        descuento_valido = total_bruto
+                        st.warning(f"⚠️ El descuento se ajustó a S/{total_bruto:.2f} para evitar totales negativos.")
+                
+                    # 3. Calcular el neto final usando el descuento validado
+                    total_neto = total_bruto - descuento_valido
                     
-                    if float(descuento) > total_bruto:
-                        st.warning("⚠️ El descuento no puede ser mayor a la venta. Se aplicó descuento 0.")
-                    
-                    # 3. Calculamos el total neto usando el descuento ya validado
-                    total_neto = total_bruto - desc_aplicado
-                    
-                    # 4. Cálculo del factor (usando desc_aplicado)
-                    factor = (total_bruto - desc_aplicado) / total_bruto if total_bruto > 0 else 1
-                    
-                    # ... (continúa con tu lógica de 'ok = True' y el for-loop)
+                    # 4. Calcular el factor proporcional
+                    factor = (total_bruto - descuento_valido) / total_bruto if total_bruto > 0 else 1
                     
                     ok = True
                     items_guardar = []
