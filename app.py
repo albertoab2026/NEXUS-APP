@@ -940,7 +940,7 @@ if menu == "Ventas":
                     }}
                     </script>
                     """,
-                    height=600
+                    height=500
                 )
                 
                 texto_url = urllib.parse.quote(texto_whatsapp)
