@@ -755,7 +755,7 @@ if menu == "Ventas":
                         st.warning(f"⚠️ El descuento se ajustó a S/{total_bruto:.2f} para evitar totales negativos.")
                 
                     # 3. Calcular el neto final usando el descuento validado
-                    descuento = st.number_input("💰 Descuento (S/):", min_value=0.0, max_value=total_venta_bruto, value=0.0, format="%.2f")
+                    descuento = st.number_input("💰 Descuento (S/):", min_value=0.0, max_value=total_bruto, value=0.0, format="%.2f", key="descuento_venta_final")
                     total_venta_neto = max(0, round(total_venta_bruto - descuento, 2))
 
                     if total_neto <= 0:
