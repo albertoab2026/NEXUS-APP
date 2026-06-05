@@ -281,54 +281,44 @@ def eliminar_producto(producto_id):
         return False
 
 def registrar_venta(producto_id, cantidad, precio_venta, precio_compra, pago, cliente, celular):
-    st.write("🔍 DEBUG 1: Entró a la función") 
-    
     try:
         id_dueno = st.session_state.user_data['usuario_id']
-        st.write(f"🔍 DEBUG 2: id_dueno={id_dueno}, producto_id={producto_id}, cant={cantidad}")
         
-        # PASO 1: UPDATE STOCK
-        st.write("🔍 DEBUG 3: Intentando update stock en NEXUS_PRODUCTOS...")
-        resp = tabla_productos.update_item(
+        # PASO 1: UPDATE STOCK - usando 'stock' como en tu tabla
+        tabla_productos.update_item(
             Key={
                 'id_del_dueno': id_dueno,
                 'producto_id': producto_id
             },
-            UpdateExpression="SET p_stock_disponible = p_stock_disponible - :cant",
-            ConditionExpression="p_stock_disponible >= :cant",
+            UpdateExpression="SET stock = stock - :cant",
+            ConditionExpression="stock >= :cant",
             ExpressionAttributeValues={':cant': int(cantidad)},
             ReturnValues="UPDATED_NEW"
         )
-        st.write(f"🔍 DEBUG 4: Stock OK. Nuevo stock={resp['Attributes']['p_stock_disponible']}")
         
         # PASO 2: GUARDAR VENTA
         total_venta = float(precio_venta) * int(cantidad)
-        fecha_utc = datetime.now(timezone.utc).isoformat()
-        
-        st.write("🔍 DEBUG 5: Guardando venta en NEXUS_VENTAS...")
         tabla_ventas.put_item(Item={
             'usuario_id': id_dueno,
-            'Venta_id': str(uuid.uuid4()),
+            'Venta_id': str(uuid.uuid4()), # V mayúscula
             'producto_id': producto_id,
             'cantidad': int(cantidad),
             'total_venta': Decimal(str(total_venta)),
             'precio_venta': Decimal(str(precio_venta)),
             'precio_compra': Decimal(str(precio_compra)),
-            'fecha': fecha_utc,
+            'fecha': datetime.now(timezone.utc).isoformat(),
             'pago': str(pago),
             'cliente': str(cliente),
             'celular': str(celular)
         })
-        st.success("✅ Venta registrada correctamente")
+        st.success("✅ Venta registrada")
         return True
 
     except botocore.exceptions.ClientError as e:
-        st.error(f"❌ ERROR DYNAMODB: {e.response['Error']['Code']}")
-        st.code(e.response['Error']['Message'])
-        return False
-    except Exception as e:
-        st.error("❌ ERROR GENERAL:")
-        st.code(traceback.format_exc()) # Esto te muestra la línea exacta que falla
+        if e.response['Error']['Code'] == 'ConditionalCheckFailedException':
+            st.error("❌ Stock insuficiente para vender")
+        else:
+            st.error(f"❌ Error: {e.response['Error']['Message']}")
         return False
 
 def procesar_carga_excel(df):
