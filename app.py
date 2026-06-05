@@ -1113,3 +1113,18 @@ elif menu == "Reportes":
 elif menu == "⚙️ Ajustes":
     mostrar_ajustes()
         
+st.divider()
+st.write("### BOTÓN DE PRUEBA FINAL")
+
+if st.button("VENDER INKA KOLA TEST"):
+    st.write("🔍 El botón SÍ funciona - entrando a función...")
+    
+    registrar_venta(
+        producto_id="INKA-001",
+        cantidad=1,
+        precio_venta=2.5,
+        precio_compra=1.8,
+        pago="Efectivo",
+        cliente="Test",
+        celular="999"
+    )
