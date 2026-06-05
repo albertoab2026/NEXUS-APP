@@ -735,10 +735,7 @@ if menu == "Ventas":
                             st.rerun()
 
                 st.markdown("---")
-                descuento = st.number_input("💰 Descuento (S/):", min_value=0.0, max_value=total_venta_bruto, value=0.0, format="%.2f")
-                total_venta_neto = max(0, round(total_venta_bruto - descuento, 2))
-                st.markdown(f"### Total a pagar: S/{total_venta_neto:.2f}")
-
+                
                 metodo_pago = st.radio("Forma de Pago:", ["💵 Efectivo", "📱 Yape", "💳 Plin"], horizontal=True)
                 w_cliente_nombre = st.text_input("Nombre Cliente:", key="w_cli_nom")
                 w_cliente_celular = st.text_input("Celular:", key="w_cli_cel")
