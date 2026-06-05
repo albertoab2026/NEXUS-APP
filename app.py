@@ -1,5 +1,4 @@
 import streamlit as st
-import html
 import boto3
 from boto3.dynamodb.conditions import Key
 import pandas as pd
@@ -820,16 +819,8 @@ if menu == "Ventas":
             else:
                 st.info("🛒 El carrito está vacío. ¡Añade productos del catálogo!")
 
-        if st.session_state.ultima_venta is not None:  
-            st.markdown("<div style='margin-top:-50px;'></div>", unsafe_allow_html=True)
-            <style>
-                /* Quita el padding que Streamlit mete entre secciones */
-                .block-container {
-                }
-                div[data-testid="stVerticalBlock"] > div:nth-of-type(n+5) {
-                }
-            </style>
-            """, unsafe_allow_html=True)
+        if st.session_state.ultima_venta is not None:
+            st.markdown("---")
             st.markdown("### 📄 Último Comprobante Generado")
 
             uv = st.session_state.ultima_venta
@@ -869,7 +860,7 @@ if menu == "Ventas":
                 html_ticket += f"""
                 <tr>
                     <td style="padding: 2px 0;">{it['cantidad']}x {it['nombre']}</td>
-                    
+                    <td style="text-align: right; padding: 2px 0;">S/{subt:.2f}</td>
                 </tr>
                 """
             html_ticket += f"""
@@ -898,81 +889,42 @@ if menu == "Ventas":
             col_comp, col_acciones = st.columns([1.1, 1.0])
             with col_comp:
                 st.markdown("<div style='background-color:#f9f9f9; padding:10px; border-radius:5px;'>", unsafe_allow_html=True)
+                st.html(html_ticket)
                 st.markdown("</div>", unsafe_allow_html=True)
-                
-                import html
-                html_ticket = html.unescape(html_ticket)
-                html_ticket = html_ticket.replace('&lt;', '<').replace('&gt;', '>')
 
-               # Limpiamos tags extra por si acaso
-                html_ticket = html_ticket.replace('<html>', '').replace('</html>', '')
-                html_ticket = html_ticket.replace('<body>', '').replace('</body>', '')
-                
-        
-                st.markdown("### ⚡ Acciones del Comprobante")
-                
-                components.html(
-                    
-                    f"""
-                    <div style="width:100%; text-align:center;">
-                        <div id='ticket-saas-print' style='width:80mm; display:inline-block; margin:10px 0; font-family:Courier; font-size:12px; background:white; padding:5px; border:1px dashed #ccc;'>
-                            {html_ticket}
-                        </div>
-                        
-                        <br>
-                        
-                        <button onclick="imprimirTicket()" style="width:80mm; display:inline-block; margin:10px 0; background:#34495e; color:white; border:none; padding:10px; font-weight:bold; border-radius:5px; cursor:pointer;">
-                            🖨️ Imprimir Formato Ticket 80mm
-                        </button>
-                    </div>
-                    
-                    <script>
-                    function imprimirTicket(){{
-                        var div = document.getElementById('ticket-saas-print');
-                        var contenido = div.innerHTML;
-                        var iframe = document.createElement('iframe');
-                        iframe.style.position = 'absolute';
-                        iframe.style.width = '0';
-                        iframe.style.height = '0';
-                        iframe.style.border = 'none';
-                        document.body.appendChild(iframe);
-                        var doc = iframe.contentWindow.document;
-                        doc.open();
-                        doc.write('<html><head><title>Ticket 80mm</title><style>@media print{{@page{{size:80mm auto;margin:0;}} body{{width:80mm;font-family:Courier;font-size:12px;margin:0;padding:5px;}}}}</style></head><body>' + contenido + '</body></html>');
-                        doc.close();
-                        setTimeout(function(){{
-                            iframe.contentWindow.focus();
-                            iframe.contentWindow.print();
-                            document.body.removeChild(iframe);
-                        }}, 300);
-                    }}
-                    </script>
-                    """,
-                    height=400
-                )
-                
+            with col_acciones:
+                st.markdown("#### ⚡ Acciones del Comprobante")
+
+                js_print = """
+                <button onclick="var w = window.open(); w.document.write(document.getElementById('ticket-saas-print').outerHTML); w.document.close(); w.focus(); setTimeout(function(){w.print(); w.close();}, 500);"
+                style="width: 100%; background-color: #34495e; color: white; border: none; padding: 10px; font-weight: bold; border-radius: 5px; cursor: pointer; margin-bottom: 10px;">
+                    🖨️ Imprimir Formato Ticket (80mm)
+                </button>
+                """
+                st.components.v1.html(js_print, height=50)
+
                 texto_url = urllib.parse.quote(texto_whatsapp)
-            
-                if uv["cliente_cel"] != "":
+
+                if uv["cliente_cel"]!= "":
                     url_wa = f"https://wa.me/51{uv['cliente_cel']}?text={texto_url}"
                 else:
                     url_wa = f"https://wa.me/?text={texto_url}"
-            
+
                 st.markdown(f"""
                 <a href="{url_wa}" target="_blank" style="text-decoration: none;">
                     <button style="width: 100%; background-color: #25d366; color: white; border: none; padding: 10px; font-weight: bold; border-radius: 5px; cursor: pointer; margin-bottom: 10px;">
-                         Enviar por WhatsApp Digital
+                        📱 Enviar por WhatsApp Digital
                     </button>
                 </a>
                 """, unsafe_allow_html=True)
-            
+
                 df_items = pd.DataFrame([{
                     "Producto": it["nombre"],
                     "Cantidad": it["cantidad"],
                     "Precio Unitario": float(it["precio_venta"]),
                     "Total Item": int(it["cantidad"]) * float(it["precio_venta"])
                 } for it in uv["items"]])
-            
+
                 csv_data = df_items.to_csv(index=False).encode('utf-8')
                 st.download_button(
                     label="📊 Descargar Detalle en Excel (CSV)",
@@ -981,7 +933,7 @@ if menu == "Ventas":
                     mime="text/csv",
                     use_container_width=True
                 )
-            
+
                 if st.button("Limpiar y Nueva Venta", use_container_width=True):
                     st.session_state.ultima_venta = None
                     st.rerun()
@@ -1045,6 +997,14 @@ elif menu == "Reportes":
             plin = df_filtrado[df_filtrado['pago_norm'] == 'plin']['total_venta'].sum()
             efectivo = df_filtrado[df_filtrado['pago_norm'] == 'efectivo']['total_venta'].sum()
             total_ventas_dia = efectivo + yape + plin
+
+        st.markdown("""
+            <style>
+            div[data-testid="metric-container"] { background-color: #1e293b; padding: 20px; border-radius: 10px; border: 1px solid #475569; }
+            div[data-testid="metric-container"] label { font-size: 1.2rem!important; }
+            div[data-testid="metric-container"] [data-testid="stMetricValue"] { font-size: 2.5rem!important; color: #38bdf8!important; }
+            </style>
+        """, unsafe_allow_html=True)
 
         st.markdown("### 📊 Resumen del Día")
         c1, c2, c3, c4 = st.columns(4)
