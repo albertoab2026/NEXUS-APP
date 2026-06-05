@@ -821,7 +821,7 @@ if menu == "Ventas":
                 st.info("🛒 El carrito está vacío. ¡Añade productos del catálogo!")
 
         if st.session_state.ultima_venta is not None:
-            st.markdown("---")
+            st.markdown("<hr style='margin:5px 0;'>", unsafe_allow_html=True)  
             st.markdown("### 📄 Último Comprobante Generado")
 
             uv = st.session_state.ultima_venta
