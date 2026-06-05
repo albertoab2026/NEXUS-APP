@@ -949,7 +949,7 @@ if menu == "Ventas":
                 st.markdown(f"""
                 <a href="{url_wa}" target="_blank" style="text-decoration: none;">
                     <button style="width: 100%; background-color: #25d366; color: white; border: none; padding: 10px; font-weight: bold; border-radius: 5px; cursor: pointer; margin-bottom: 10px;">
-                        📱 Enviar por WhatsApp Digital
+                         Enviar por WhatsApp Digital
                     </button>
                 </a>
                 """, unsafe_allow_html=True)
