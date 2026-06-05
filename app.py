@@ -755,79 +755,76 @@ if menu == "Ventas":
                 w_cliente_celular = st.text_input("Celular:", key="w_cli_cel")
 
                 if st.button("⚡ Finalizar y Registrar Venta", type="primary", use_container_width=True):
+                    # 1. CÁLCULO DE TOTALES (Usamos los nombres correctos)
                     total_bruto = sum(float(item['precio_venta']) * int(item['cantidad']) for item in st.session_state.carrito)
-
-                # BLINDAJE ANTI-NEGATIVO
-                if descuento > total_venta_bruto:
-                    descuento = total_venta_bruto
-                    total_venta_neto = 0
                     
-                    # 1. Calcular proporción de descuento
-                    # Si el descuento es 0, el factor es 1 (no cambia precio)
-                    # Si hay descuento, calculamos cuánto pagar por cada sol original
-                    factor = (total_bruto - descuento) / total_bruto if total_bruto > 0 else 1
+                    # Aseguramos que 'descuento' esté definido (si no, vale 0)
+                    desc_final = float(descuento) if 'descuento' in locals() else 0.0
+                    
+                    # BLINDAJE: El descuento no puede ser mayor al total
+                    if desc_final > total_bruto:
+                        desc_final = total_bruto
+                    
+                    total_neto = total_bruto - desc_final
+                    
+                    # 2. FACTOR DE DESCUENTO
+                    factor = (total_bruto - desc_final) / total_bruto if total_bruto > 0 else 1
                     
                     ok = True
                     items_guardar = []
                     
+                    # 3. REGISTRO EN BASE DE DATOS
                     for item in st.session_state.carrito:
-                        # 2. Calcular precio unitario final con el descuento aplicado
-                        precio_original = float(item['precio_venta'])
-                        precio_final = round(precio_original * factor, 2)
+                        precio_final = round(float(item['precio_venta']) * factor, 2)
                         
                         try:
-                            # 3. Registrar usando el precio_final ajustado
                             res = registrar_venta(
                                 producto_id=item['producto_id'],
                                 cantidad=int(item['cantidad']),
-                                precio_venta=precio_final, # <--- AQUÍ ESTÁ EL CAMBIO
+                                precio_venta=precio_final,
                                 precio_compra=float(item['precio_compra']),
                                 pago=metodo_pago,
                                 cliente=w_cliente_nombre.strip() if w_cliente_nombre.strip() else "Consumidor Final",
                                 celular=w_cliente_celular.strip()
                             )
                             if res:
+                                # Actualizar stock
                                 nuevo_stock = int(item['stock_max']) - int(item['cantidad'])
-                                actualizar_producto(
-                                    producto_id=item['producto_id'],
-                                    nuevo_precio=item['precio_venta'],
-                                    nuevo_stock=nuevo_stock
-                                )
+                                actualizar_producto(item['producto_id'], item['precio_venta'], nuevo_stock)
+                                items_guardar.append(item)
                             else:
                                 ok = False
                                 break
                         except Exception as e:
-                            st.error(f"Error al registrar: {e}")
+                            st.error(f"Error técnico: {e}")
                             ok = False
                             break
 
+                    # 4. FINALIZACIÓN Y RESET
                     if ok:
-                        hora_servidor = datetime.now()
-                        hora_peru = hora_servidor - timedelta(hours=5)
-                        fecha_formateada = hora_peru.strftime("%Y-%m-%d %H:%M:%S")
-
+                        hora_peru = datetime.now() - timedelta(hours=5)
                         st.session_state.ultima_venta = {
                             "tenant": tenant_actual,
-                            "fecha": fecha_formateada,
+                            "fecha": hora_peru.strftime("%Y-%m-%d %H:%M:%S"),
                             "items": items_guardar,
-                            "descuento": descuento,
-                            "total": total_venta_neto,        
+                            "descuento": desc_final,
+                            "total": total_neto,
                             "pago": metodo_pago,
-                            "cliente_nom": w_cliente_nombre.strip() if w_cliente_nombre.strip() else "Consumidor Final",
+                            "cliente_nom": w_cliente_nombre.strip() or "Consumidor Final",
                             "cliente_cel": w_cliente_celular.strip()
                         }
                         st.session_state.carrito = []
                         st.success("🎉 Venta procesada con éxito.")
                         st.balloons()
                         st.rerun()
-            else:
-                st.info("🛒 El carrito está vacío. ¡Añade productos del catálogo!")
+                    else:
+                        st.error("Error al registrar uno o más productos.")
 
-        if st.session_state.ultima_venta is not None:
-            st.markdown("---")
-            st.markdown("### 📄 Último Comprobante Generado")
-
-            uv = st.session_state.ultima_venta
+                # ESTA PARTE VA FUERA DEL BOTÓN, PARA QUE SE MUESTRE SIEMPRE QUE HAYA VENTA
+                if st.session_state.get('ultima_venta'):
+                    st.markdown("---")
+                    st.markdown("### 📄 Último Comprobante Generado")
+                    uv = st.session_state.ultima_venta
             lineas_productos = ""
             total_sin_descuento = 0
             for it in uv["items"]:
