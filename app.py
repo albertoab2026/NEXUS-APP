@@ -889,20 +889,31 @@ if menu == "Ventas":
             col_comp, col_acciones = st.columns([1.1, 1.0])
             with col_comp:
                 st.markdown("<div style='background-color:#f9f9f9; padding:10px; border-radius:5px;'>", unsafe_allow_html=True)
-                st.html(html_ticket)
+                
+                # IMPORTANTE: Envuelve el ticket con el ID que usa el JS
+                st.markdown(f"<div id='ticket-saas-print'>{html_ticket}</div>", unsafe_allow_html=True)
+                
                 st.markdown("</div>", unsafe_allow_html=True)
-
             with col_acciones:
                 st.markdown("#### ⚡ Acciones del Comprobante")
-
+                
                 js_print = """
-                <button onclick="var w = window.open(); w.document.write(document.getElementById('ticket-saas-print').outerHTML); w.document.close(); w.focus(); setTimeout(function(){w.print(); w.close();}, 500);"
-                style="width: 100%; background-color: #34495e; color: white; border: none; padding: 10px; font-weight: bold; border-radius: 5px; cursor: pointer; margin-bottom: 10px;">
-                    🖨️ Imprimir Formato Ticket (80mm)
+                <button onclick="
+                    var div = document.getElementById('ticket-saas-print');
+                    var w = window.open('', '', 'height=600,width=400');
+                    w.document.write('<html><head><title>Ticket 80mm</title>');
+                    w.document.write('<style>@media print{@page{size:80mm auto;margin:0;} body{width:80mm;font-family:Courier;font-size:12px;margin:0;padding:5px;}}</style>');
+                    w.document.write('</head><body>');
+                    w.document.write(div.innerHTML);
+                    w.document.write('</body></html>');
+                    w.document.close();
+                    w.focus();
+                    setTimeout(function(){w.print(); w.close();}, 500);
+                " style="width: 100%; background-color: #34495e; color: white; border: none; padding: 10px; font-weight: bold; border-radius: 5px; cursor: pointer;">
+                    🖨️ Imprimir Formato Ticket 80mm
                 </button>
                 """
                 st.components.v1.html(js_print, height=50)
-
                 texto_url = urllib.parse.quote(texto_whatsapp)
 
                 if uv["cliente_cel"]!= "":
