@@ -744,12 +744,16 @@ if menu == "Ventas":
                 w_cliente_celular = st.text_input("Celular:", key="w_cli_cel")
 
                 if st.button("⚡ Finalizar y Registrar Venta", type="primary", use_container_width=True):
+                    # 1. Calcular el total real que hay en el carrito
                     total_bruto = sum(float(item['precio_venta']) * int(item['cantidad']) for item in st.session_state.carrito)
                     
-                    # 1. Calcular proporción de descuento
-                    # Si el descuento es 0, el factor es 1 (no cambia precio)
-                    # Si hay descuento, calculamos cuánto pagar por cada sol original
-                    factor = (total_bruto - descuento) / total_bruto if total_bruto > 0 else 1
+                    # 2. VALIDACIÓN DE DESCUENTO (Aquí evitamos el negativo)
+                    # Si el descuento ingresado es mayor al total bruto, lo limitamos al total bruto
+                    descuento_seguro = float(descuento) if float(descuento) <= total_bruto else total_bruto
+                    
+                    # 3. Calcular factor proporcional
+                    # Si el total_bruto es 0 (carro vacío), factor = 1 para evitar error de división
+                    factor = (total_bruto - descuento_seguro) / total_bruto if total_bruto > 0 else 1
                     
                     ok = True
                     items_guardar = []
