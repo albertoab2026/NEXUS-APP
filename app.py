@@ -8,9 +8,6 @@ import uuid
 from datetime import datetime, timedelta, timezone
 import hashlib
 from decimal import Decimal
-import urllib.parse
-import plotly.express as px
-import streamlit.components.v1 as components
 
 # ======= 1. CONFIG INICIAL =======
 st.set_page_config(page_title="NEXUS", page_icon="⚡", layout="wide")
@@ -32,75 +29,35 @@ if 'user_data' not in st.session_state:
     st.session_state.user_data = {}
 if 'carrito' not in st.session_state:
     st.session_state.carrito = []
-if "buscar_ventas" not in st.session_state:
-    st.session_state["buscar_ventas"] = ""
-if "ultima_venta" not in st.session_state:
-    st.session_state.ultima_venta = None
-
-# ======= 1. CSS MAESTRO (TODO EN UNO) =======
-st.markdown("""
-<style>
-   .stApp { background-color: #0F172A!important; }
-
-   .header-container {
-        background: linear-gradient(135deg, #1e3a8a, #1e293b)!important;
-        padding: 30px!important;
-        border-radius: 20px!important;
-        border: 1px solid #334155!important;
-        text-align: center!important;
-        margin-bottom: 20px!important;
-    }
-
-   .regalo-bar {
-        background: #F59E0B!important;
-        color: #000!important;
-        padding: 15px!important;
-        border-radius: 12px!important;
-        text-align: center!important;
-        margin-bottom: 25px!important;
-        font-weight: 800!important;
-    }
-
-   .feature-grid {
-        display: grid!important;
-        grid-template-columns: 1fr 1fr!important;
-        gap: 20px!important;
-        margin-top: 30px!important;
-    }
-   .feature-card {
-        padding: 25px!important;
-        border-radius: 15px!important;
-        text-align: center!important;
-        color: white!important;
-        border: 1px solid rgba(255,255,255,0.1)!important;
-    }
-   .card-1 { background: #2563eb!important; }
-   .card-2 { background: #dc2626!important; }
-   .card-3 { background: #059669!important; }
-   .card-4 { background: #d97706!important; }
-</style>
-""", unsafe_allow_html=True)
 
 # ======= 1.5 VERIFICACIÓN DE ESTADO DE CUENTA =======
+# Esta es la única puerta de entrada. Si no está logueado, se salta todo esto.
 if st.session_state.get('logged_in'):
     user_data = st.session_state.get('user_data', {})
     fecha_fin_str = user_data.get('fecha_trial_fin', '2026-05-29')
     plan = user_data.get('plan', 'trial')
-
+    
     try:
         fecha_fin = datetime.strptime(fecha_fin_str[:10], '%Y-%m-%d')
         dias_restantes = (fecha_fin - datetime.now()).days + 1
     except:
-        dias_restantes = 0
+        dias_restantes = 0 # Valor seguro por si hay error de formato
 
+    # --- Lógica de bloqueo ---
     if dias_restantes < 0:
+        # 1. Definimos la URL de WhatsApp
         mensaje_wa = "Hola NEXUS, quiero renovar mi suscripción."
         link_wa = f"https://wa.me/51914282688?text={mensaje_wa.replace(' ', '%20')}"
-
+        
+        # 2. Renderizamos el HTML usando st.components.v1.html 
+        # Esta es la forma MÁS SEGURA de mostrar HTML sin que se vea como texto
+        import streamlit.components.v1 as components
+        
         html_code = f"""
         <div style="display: flex; flex-direction: column; align-items: center; text-align: center; color: white; font-family: sans-serif;">
             <h1 style="font-size: 3em;">⏳</h1>
             <h1 style="color: #ffffff; font-size: 2em;">Tu acceso ha finalizado</h1>
+            
             <div style="background-color: #1e293b; padding: 20px; border-radius: 15px; border: 1px solid #475569; margin: 20px 0; max-width: 400px;">
                 <h3 style="color: #60a5fa; margin-top: 0;">💳 Datos para la Renovación</h3>
                 <p style="margin: 5px 0;"><b>Yape / Plin:</b> +51914282688</p>
@@ -109,6 +66,7 @@ if st.session_state.get('logged_in'):
                     <i>Envía tu comprobante y DNI al WhatsApp tras realizar el pago.</i>
                 </p>
             </div>
+
             <a href="{link_wa}" target="_blank" style="background-color: #25d366; color: white; padding: 15px 30px; text-decoration: none; border-radius: 50px; font-weight: bold; font-size: 1.1em; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
                 📲 Enviar comprobante al WhatsApp
             </a>
@@ -116,12 +74,60 @@ if st.session_state.get('logged_in'):
         """
         components.html(html_code, height=500)
         st.stop()
-
+    
+    # --- Avisos preventivos ---
     elif dias_restantes <= 7:
         if plan == 'trial':
             st.warning(f"⚠️ Tu periodo de prueba vence en {dias_restantes} días.")
         elif plan == 'premium':
             st.info(f"ℹ️ Tu suscripción Premium renueva en {dias_restantes} días.")
+            
+# ======= 1. CSS MAESTRO (TODO EN UNO) =======
+st.markdown("""
+<style>
+    .stApp { background-color: #0F172A !important; }
+    
+    /* Contenedor del Título */
+    .header-container {
+        background: linear-gradient(135deg, #1e3a8a, #1e293b) !important;
+        padding: 30px !important;
+        border-radius: 20px !important;
+        border: 1px solid #334155 !important;
+        text-align: center !important;
+        margin-bottom: 20px !important;
+    }
+    
+    /* Barra Amarilla */
+    .regalo-bar {
+        background: #F59E0B !important;
+        color: #000 !important;
+        padding: 15px !important;
+        border-radius: 12px !important;
+        text-align: center !important;
+        margin-bottom: 25px !important;
+        font-weight: 800 !important;
+    }
+
+    /* Grid de 2x2 para tarjetas */
+    .feature-grid {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        gap: 20px !important;
+        margin-top: 30px !important;
+    }
+    .feature-card {
+        padding: 25px !important;
+        border-radius: 15px !important;
+        text-align: center !important;
+        color: white !important;
+        border: 1px solid rgba(255,255,255,0.1) !important;
+    }
+    .card-1 { background: #2563eb !important; }
+    .card-2 { background: #dc2626 !important; }
+    .card-3 { background: #059669 !important; }
+    .card-4 { background: #d97706 !important; }
+</style>
+""", unsafe_allow_html=True)
 
 # ======= 2. CONEXIÓN AWS =======
 AWS_ACCESS_KEY_ID = st.secrets["AWS_ACCESS_KEY_ID"]
@@ -145,36 +151,52 @@ def hash_password(password):
 
 def login(usuario_o_dni, password):
     try:
+        # 1. Intentar buscar por ID de usuario
         response = tabla_usuarios.get_item(Key={'usuario_id': usuario_o_dni})
         user = response.get('Item')
-
+        
+        # 2. Si no existe, buscar por DNI usando el índice
         if not user:
             response = tabla_usuarios.query(
-                IndexName='dni-index',
+                IndexName='dni-index', 
                 KeyConditionExpression=Key('dni').eq(usuario_o_dni)
             )
             if response['Items']:
                 user = response['Items'][0]
-
+        
+        # 3. Validaciones
         if user and user.get('password_hash') == hash_password(password):
+            
+            # --- Modificación: YA NO BLOQUEAMOS AQUÍ, solo dejamos pasar ---
+            # Solo verificamos si está activo, el bloqueo visual lo hará el aviso de la sección 1.5
+            if user.get('plan') != 'premium':
+                # Solo guardamos la fecha para que la sección 1.5 la use
+                pass
+            
+            # --- Validación de cuenta activa ---
             if user.get('activo', True):
                 return user
+        
         return None
+        
     except Exception as e:
         st.error(f"Error en el login: {e}")
         return None
 
 def registrar_dueno(dni, nombre, nombre_negocio, email, password, rubro, celular):
     try:
+        # 1. Validar DNI en tabla_trial (esto ya lo tienes bien)
         if 'Item' in tabla_trial.get_item(Key={'tipo_id': f'DNI-{dni}'}):
             st.error("❌ Este DNI ya usó los 7 días gratis")
             return False
 
+        # 2. Validar EMAIL y CELULAR en tabla_usuarios
+        # Hacemos un scan de la tabla usuarios para buscar duplicados
         response = tabla_usuarios.scan(
             FilterExpression="email = :e OR celular = :c",
             ExpressionAttributeValues={":e": email, ":c": celular}
         )
-
+        
         if response.get('Items'):
             for item in response['Items']:
                 if item['email'] == email:
@@ -184,9 +206,10 @@ def registrar_dueno(dni, nombre, nombre_negocio, email, password, rubro, celular
                     st.error("❌ Este celular ya tiene una cuenta asociada.")
                     return False
 
+        # 3. Si llega aquí, todo está limpio, procedemos a guardar
         timestamp = str(int(datetime.now().timestamp()))[-5:]
         usuario_id = f"DUENO{timestamp}"
-
+        
         tabla_usuarios.put_item(Item={
             'usuario_id': usuario_id,
             'id_del_dueno': usuario_id,
@@ -194,7 +217,7 @@ def registrar_dueno(dni, nombre, nombre_negocio, email, password, rubro, celular
             'nombre': nombre,
             'nombre_negocio': nombre_negocio,
             'email': email,
-            'celular': celular,
+            'celular': celular, # Guardamos el celular
             'password_hash': hash_password(password),
             'rol': 'dueno',
             'rubro': rubro,
@@ -203,9 +226,10 @@ def registrar_dueno(dni, nombre, nombre_negocio, email, password, rubro, celular
             'fecha_registro': datetime.now().isoformat(),
             'fecha_trial_fin': (datetime.now() + timedelta(days=7)).isoformat()
         })
-
+        
         tabla_trial.put_item(Item={'tipo_id': f'DNI-{dni}', 'fecha': datetime.now().isoformat()})
         return True
+
     except Exception as e:
         st.error(f"Error en registro: {e}")
         return False
@@ -248,71 +272,28 @@ def agregar_producto(nombre, precio_venta, precio_compra, stock, categoria):
 def borrar_producto(producto_id, id_dueno):
     try:
         tabla_productos.delete_item(
-            Key={'id_del_dueno': str(id_dueno), 'producto_id': str(producto_id)}
+            Key={
+                'id_del_dueno': str(id_dueno),
+                'producto_id': str(producto_id)
+            }
         )
         return True
     except Exception as e:
         st.error(f"Error al borrar: {e}")
         return False
 
-def actualizar_producto(producto_id, nuevo_precio, nuevo_stock):
-    try:
-        id_dueno = st.session_state.user_data['usuario_id']
-        tabla_productos.update_item(
-            Key={'id_del_dueno': str(id_dueno), 'producto_id': str(producto_id)},
-            UpdateExpression="SET precio_venta = :p, stock = :s",
-            ExpressionAttributeValues={':p': Decimal(str(nuevo_precio)), ':s': int(nuevo_stock)}
-        )
-        return True
-    except Exception as e:
-        st.error(f"Error actualizando: {e}")
-        return False
-
-def eliminar_producto(producto_id):
-    try:
-        id_dueno = st.session_state.user_data['usuario_id']
-        tabla_productos.delete_item(
-            Key={'id_del_dueno': str(id_dueno), 'producto_id': str(producto_id)}
-        )
-        return True
-    except Exception as e:
-        st.error(f"Error al eliminar en la base de datos: {e}")
-        return False
-
-def registrar_venta(producto_id, cantidad, precio_venta, precio_compra, pago, cliente, celular):
-    try:
-        id_dueno = st.session_state.user_data['usuario_id']
-        fecha_utc = datetime.now(timezone.utc).isoformat()
-        total_venta = float(precio_venta) * int(cantidad)
-
-        tabla_ventas.put_item(Item={
-            'usuario_id': id_dueno,
-            'Venta_id': str(uuid.uuid4()),
-            'producto_id': producto_id,
-            'cantidad': int(cantidad),
-            'total_venta': Decimal(str(total_venta)),
-            'precio_venta': Decimal(str(precio_venta)),
-            'precio_compra': Decimal(str(precio_compra)),
-            'fecha': fecha_utc,
-            'pago': str(pago),
-            'cliente': str(cliente),
-            'celular': str(celular)
-        })
-        return True
-    except Exception as e:
-        st.error(f"Error en venta: {e}")
-        return False
-
 def procesar_carga_excel(df):
     tamanio_bloque = 25
     total_filas = len(df)
-
+    
     try:
+        # Creamos una barra de progreso para que el cliente vea que avanza
         progreso_bar = st.progress(0)
-
+        
         for i in range(0, total_filas, tamanio_bloque):
+            # Obtiene el bloque de 25 filas
             bloque = df.iloc[i : i + tamanio_bloque]
-
+            
             for index, row in bloque.iterrows():
                 agregar_producto(
                     nombre=str(row['nombre']),
@@ -321,20 +302,22 @@ def procesar_carga_excel(df):
                     stock=int(row['stock']),
                     categoria=str(row['categoria'])
                 )
-
+            
+            # Actualiza la barra de progreso
             progreso = min((i + tamanio_bloque) / total_filas, 1.0)
             progreso_bar.progress(progreso)
-
+            
         st.success(f"✅ ¡Carga completada! Se procesaron {total_filas} productos.")
         return True
-
+        
     except Exception as e:
         st.error(f"Error detectado al procesar productos: {e}")
         st.warning("Consejo: Revisa que los nombres de las columnas en tu Excel sean: nombre, precio_venta, precio_compra, stock, categoria.")
         return False
-
+    
 def actualizar_inventario_masivo(df_editado):
     try:
+        # Añadimos un contador para saber cuántas filas está procesando
         contador = 0
         with st.spinner("Actualizando base de datos..."):
             for index, row in df_editado.iterrows():
@@ -353,90 +336,77 @@ def actualizar_inventario_masivo(df_editado):
                     }
                 )
                 contador += 1
-
+        
+        # SI LLEGA AQUÍ, EL MENSAJE DEBE SALIR
         if contador > 0:
             st.success("✅ ¡Inventario actualizado correctamente!")
             return True
         else:
             st.warning("⚠️ No se detectaron cambios en el inventario.")
             return False
-
+            
     except Exception as e:
+        # Esto te dirá exactamente por qué falla y no muestra el mensaje
         st.error(f"Error al actualizar en la base de datos: {e}")
         return False
-
-def mostrar_ajustes():
-    st.header("⚙️ Ajustes de Cuenta")
-
-    tab_seguridad, tab_pagos = st.tabs(["🔒 Seguridad", "💳 Planes y Pagos"])
-
-    with tab_seguridad:
-        st.subheader("Cambiar Contraseña")
-        with st.form("form_cambio_clave"):
-            pass_actual = st.text_input("Contraseña Actual", type="password", key="pass_actual")
-            pass_nueva = st.text_input("Nueva Contraseña", type="password", key="pass_nueva")
-            pass_confirm = st.text_input("Confirmar Nueva Contraseña", type="password", key="pass_confirm")
-            
-            submit = st.form_submit_button("Actualizar Clave")
-
-            if submit:
-                user_id = st.session_state.user_data['usuario_id']
-                
-                # 1. Validar que no estén vacíos
-                if not pass_actual or not pass_nueva or not pass_confirm:
-                    st.error("Completa todos los campos")
-                
-                # 2. Validar que la actual sea correcta
-                elif hash_password(pass_actual) != st.session_state.user_data['password_hash']:
-                    st.error("❌ La contraseña actual es incorrecta")
-                
-                # 3. Validar que coincidan
-                elif pass_nueva != pass_confirm:
-                    st.error("❌ Las contraseñas nuevas no coinciden")
-                
-                # 4. Validar longitud mínima
-                elif len(pass_nueva) < 6:
-                    st.error("❌ La contraseña debe tener mínimo 6 caracteres")
-                
-                else:
-                    try:
-                        # 5. Actualizar en DynamoDB
-                        tabla_usuarios.update_item(
-                            Key={'usuario_id': user_id},
-                            UpdateExpression="SET password_hash = :p",
-                            ExpressionAttributeValues={':p': hash_password(pass_nueva)}
-                        )
-                        
-                        # 6. Actualizar session_state también
-                        st.session_state.user_data['password_hash'] = hash_password(pass_nueva)
-                        
-                        st.success("✅ Contraseña actualizada correctamente")
-                        st.balloons()
-                        time.sleep(1)
-                        st.rerun()
-                        
-                    except Exception as e:
-                        st.error(f"Error al actualizar: {e}")
-
-    with tab_pagos:
-        st.subheader("Renovación de Planes")
-        col1, col2 = st.columns(2)
-        col1.info("### 🟢 Básico\nS/ 40 mensuales")
-        col2.warning("### 🔵 Premium\nS/ 50 mensuales")
-        st.markdown("---")
-        st.write("Realiza el depósito vía **Yape/Plin** al: **914282688**")
-        st.write("Titular: **Alberto Ballarta**")
-
-        dni_actual = st.session_state.user_data.get('dni', '')
-        dni_input = st.text_input("Ingresa tu DNI:", value=dni_actual)
-
-        mensaje = f"Hola Alberto, soy el cliente con DNI {dni_input} y deseo renovar mi plan."
-        link_wa = f"https://wa.me/51914282688?text={mensaje.replace(' ', '%20')}"
-
-        st.markdown(f'<a href="{link_wa}" target="_blank" style="background-color: #25d366; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">📲 Enviar comprobante al WhatsApp</a>', unsafe_allow_html=True)
         
-# ======= 4. INTERFAZ DE INICIO =======
+# Cambia la definición de la función así:
+def registrar_venta(producto_id, cantidad, precio_venta, precio_compra, pago, cliente, celular):
+    try:
+        id_dueno = st.session_state.user_data['usuario_id']
+        fecha_utc = datetime.now(timezone.utc).isoformat()
+        total_venta = float(precio_venta) * int(cantidad)
+        
+        # Guardamos el valor directamente
+        tabla_ventas.put_item(Item={
+            'usuario_id': id_dueno,
+            'Venta_id': str(uuid.uuid4()),
+            'producto_id': producto_id,
+            'cantidad': int(cantidad),
+            'total_venta': Decimal(str(total_venta)),
+            'precio_venta': Decimal(str(precio_venta)),
+            'precio_compra': Decimal(str(precio_compra)),
+            'fecha': fecha_utc,
+            'pago': str(pago),
+            'cliente': str(cliente),
+            'celular': str(celular)
+        })
+        return True
+    except Exception as e:
+        st.error(f"Error en venta: {e}")
+        return False
+
+def actualizar_producto(producto_id, nuevo_precio, nuevo_stock):
+    try:
+        id_dueno = st.session_state.user_data['usuario_id']  
+        tabla_productos.update_item(
+            Key={'id_del_dueno': str(id_dueno), 'producto_id': str(producto_id)},
+            UpdateExpression="SET precio_venta = :p, stock = :s",
+            ExpressionAttributeValues={':p': Decimal(str(nuevo_precio)), ':s': int(nuevo_stock)}
+        )
+        return True
+    except Exception as e:
+        st.error(f"Error actualizando: {e}")
+        return False
+
+def eliminar_producto(producto_id):
+    try:
+        id_dueno = st.session_state.user_data['usuario_id']  
+        tabla_productos.delete_item(
+            Key={
+                'id_del_dueno': str(id_dueno),
+                'producto_id': str(producto_id)
+            }
+        )
+        return True
+    except Exception as e:
+        st.error(f"Error al eliminar en la base de datos: {e}")
+        return False
+    
+# ======= 4. INTERFAZ DE INICIO (ESTRUCTURA COMPLETA) =======
+# 1. VERIFICACIÓN DE LOGUEO - BLOQUE COMPLETO
 if st.session_state.get("logged_in"):
+    # Si el usuario YA ingresó, mostramos el saludo personalizado
     nombre_negocio = st.session_state.user_data.get('nombre_negocio', 'Tu Negocio')
     st.markdown(f"""
         <div style="background-color: #1e3a8a; padding: 20px; border-radius: 10px; text-align: center;">
@@ -445,17 +415,19 @@ if st.session_state.get("logged_in"):
         </div>
     """, unsafe_allow_html=True)
 else:
+    # Si el usuario NO ha ingresado, mostramos la marca NEXUS
     st.markdown("""
         <div style="background-color: #1e3a8a; padding: 20px; border-radius: 10px; text-align: center;">
             <h1 style="color: white;">⚡ NEXUS</h1>
             <p style="color: #cbd5e1;">Gestión Nexus - Tu negocio bajo control</p>
         </div>
     """, unsafe_allow_html=True)
-
+        
+# --- BANNER INTELIGENTE ---
 if not st.session_state.get("logged_in", False):
     st.markdown("""
         <div style="background-color: #FFF3CD; border: 2px solid #FFC107; padding: 20px; border-radius: 10px; text-align: center; color: #856404; font-size: 20px; font-weight: bold; margin-bottom: 20px;">
-            🎁 ¡PRUEBA 7 DÍAS GRATIS! <br>
+            🎁 ¡PRUEBA 7 DÍAS GRATIS! <br> 
             <span style="font-size: 16px; font-weight: normal;">Regístrate ahora sin compromiso y empieza hoy mismo.</span>
         </div>
     """, unsafe_allow_html=True)
@@ -463,14 +435,15 @@ else:
     st.info("⚡ Estás en modo de prueba. ¡Disfruta de la gestión total de tu negocio!")
 
 if not st.session_state.logged_in:
+    # Contenedor centralizado para login/registro
     _, col_central, _ = st.columns([1, 2, 1])
-
+    
     with col_central:
         tab1, tab2 = st.tabs(["🔑 Iniciar Sesión", "✨ Registrarse"])
-
+        
         with tab1:
             usuario_input = st.text_input("Usuario o DNI", placeholder="Ej: 71234567", key="login_user")
-            password_input = st.text_input("Contraseña", type="password", placeholder="••••", key="login_pass")
+            password_input = st.text_input("Contraseña", type="password", placeholder="••••••••", key="login_pass")
             if st.button("Ingresar al Sistema", use_container_width=True):
                 user_validado = login(usuario_input, password_input)
                 if user_validado:
@@ -479,19 +452,23 @@ if not st.session_state.logged_in:
                     st.rerun()
                 else:
                     st.error("❌ Credenciales inválidas")
-
+        
         with tab2:
+            # Comprobamos si el registro ya fue exitoso
             if "registro_exitoso" in st.session_state and st.session_state.registro_exitoso:
                 st.success("¡Registro exitoso! Ya puedes iniciar sesión.")
                 st.balloons()
-
+                
+                # Botón para limpiar y volver a empezar
                 if st.button("Volver al inicio"):
                     for key in ["reg_dni", "reg_nombre", "reg_negocio", "reg_email", "reg_celular", "reg_pass"]:
                         if key in st.session_state:
                             del st.session_state[key]
                     del st.session_state.registro_exitoso
                     st.rerun()
+                    
             else:
+                # Si NO ha sido exitoso, mostramos el formulario
                 reg_dni = st.text_input("DNI del dueño", key="reg_dni")
                 reg_nombre = st.text_input("Nombre completo", key="reg_nombre")
                 reg_negocio = st.text_input("Nombre del negocio", key="reg_negocio")
@@ -499,20 +476,22 @@ if not st.session_state.logged_in:
                 reg_celular = st.text_input("Número de celular", key="reg_celular")
                 reg_rubro = st.selectbox("Rubro", list(CATEGORIAS_POR_RUBRO.keys()), key="reg_rubro")
                 reg_password = st.text_input("Contraseña", type="password", key="reg_pass")
-
+                
                 if st.button("Activar prueba gratis", use_container_width=True):
                     if reg_dni and reg_nombre and reg_email and reg_password and reg_celular:
                         if registrar_dueno(reg_dni, reg_nombre, reg_negocio, reg_email, reg_password, reg_rubro, reg_celular):
                             st.session_state.registro_exitoso = True
-                            st.rerun()
+                            st.rerun() # Esto recarga y entra al 'if' de arriba
                         else:
+                            # El error se muestra aquí, pero el formulario se mantiene
                             st.error("Error al registrar: intenta con otros datos.")
                     else:
                         st.warning("Por favor, completa todos los campos.")
 
+    # SECCIÓN DE TARJETAS (FUERA DE COLUMNAS PARA QUE MANTENGAN SU ANCHO)
     st.markdown("<div style='margin-top: 60px;'></div>", unsafe_allow_html=True)
     st.markdown("<h3 style='text-align:center; color:#94A3B8; font-size:20px;'>¿Cansado de perder plata en tu cuaderno?</h3>", unsafe_allow_html=True)
-
+    
     st.markdown("""
     <div class='feature-grid'>
         <div class='feature-card card-1'><div>📦</div><h3>Control Total</h3><p>Sabes qué vendes y qué falta en tiempo real.</p></div>
@@ -521,9 +500,9 @@ if not st.session_state.logged_in:
         <div class='feature-card card-4'><div>⚡</div><h3>Súper Económico</h3><p>Solo S/30 al mes. Sin contratos complicados.</p></div>
     </div>
     """, unsafe_allow_html=True)
-
+    
     st.stop()
-
+    
 # ======= 6. APP PRINCIPAL =======
 user = st.session_state.user_data
 
@@ -531,7 +510,7 @@ with st.sidebar:
     st.markdown(f"### 🏢 {user.get('nombre_negocio', 'NEXUS')}")
     st.markdown(f"**Plan:** {user.get('plan', 'trial').upper()}")
     st.markdown("---")
-    menu = st.sidebar.selectbox("Menú", ["Productos", "Ventas", "Reportes", "⚙️ Ajustes"])
+    menu = st.sidebar.selectbox("Menú", ["Productos", "Ventas", "Reportes"])
     st.markdown("---")
     if st.button("🚪 Cerrar Sesión", use_container_width=True):
         st.session_state.logged_in = False
@@ -539,71 +518,85 @@ with st.sidebar:
         st.session_state.carrito = []
         st.rerun()
 
+# --- PÁGINA PRODUCTOS (VERSIÓN PROFESIONAL) ---
 if menu == "Productos":
     st.title("📦 Gestión de Inventario")
 
+    # Subida de archivo Excel
     with st.expander("📂 Carga masiva desde Excel"):
         archivo = st.file_uploader("Sube tu archivo Excel", type=["xlsx", "xls"])
-
+        
         if archivo:
             df_excel = pd.read_excel(archivo)
             st.write("Vista previa de los datos:")
-            st.dataframe(df_excel.head())
-
+            st.dataframe(df_excel.head()) # Muestra las primeras filas para verificar
+            
             if st.button("🚀 Procesar Carga Masiva"):
+                # Simplemente llamamos a la función.
+                # La función ya tiene el spinner y el mensaje de éxito.
                 procesar_carga_excel(df_excel)
-                st.rerun()
-
+                st.rerun() # Esto es necesario para refrescar la tabla después de subir el archivo
+    
+    # 1. FORMULARIO SEGURO
     with st.expander("➕ Agregar Nuevo Producto"):
-        rubro = st.session_state.user_data.get('rubro', 'Otro')
-        opciones_base = CATEGORIAS_POR_RUBRO.get(rubro, ["General"])
-        opciones_lista = opciones_base + ["+ Agregar nueva categoría"]
-
-        seleccion_cat = st.selectbox("Selecciona categoría", opciones_lista, key="sel_cat")
-
-        cat_final = seleccion_cat
-        if seleccion_cat == "+ Agregar nueva categoría":
-            cat_final = st.text_input("Escribe el nombre de tu nueva categoría:", key="input_manual_unico")
-
-        with st.form("form_unico_producto", clear_on_submit=True):
-            nombre_nuevo = st.text_input("Nombre del producto")
-            pv_nuevo = st.number_input("Precio Venta", step=0.1)
-            pc_nuevo = st.number_input("Precio Compra", step=0.1)
-            stk_nuevo = st.number_input("Stock", step=1)
-
-            if st.form_submit_button("Guardar Producto Nuevo"):
-                if seleccion_cat == "+ Agregar nueva categoría" and not cat_final:
-                    st.error("Por favor, escribe el nombre de la nueva categoría.")
-                elif nombre_nuevo and cat_final:
-                    if agregar_producto(nombre_nuevo, pv_nuevo, pc_nuevo, stk_nuevo, cat_final):
-                        st.success("¡Producto agregado!")
-                        st.session_state["input_manual_unico"] = ""
-                        st.rerun()
-                else:
-                    st.error("Nombre y categoría son obligatorios")
-
+                    
+            # 1. Definimos las opciones
+            rubro = st.session_state.user_data.get('rubro', 'Otro')
+            opciones_base = CATEGORIAS_POR_RUBRO.get(rubro, ["General"])
+            opciones_lista = opciones_base + ["+ Agregar nueva categoría"]
+            
+            # Usamos una columna o un espacio para el selector
+            seleccion_cat = st.selectbox("Selecciona categoría", opciones_lista, key="sel_cat")
+            
+            cat_final = seleccion_cat
+            if seleccion_cat == "+ Agregar nueva categoría":
+                cat_final = st.text_input("Escribe el nombre de tu nueva categoría:", key="input_manual_unico")
+            
+            # 2. Ahora el formulario (sin lógica de categoría adentro)
+            with st.form("form_unico_producto", clear_on_submit=True):
+                nombre_nuevo = st.text_input("Nombre del producto")
+                pv_nuevo = st.number_input("Precio Venta", step=0.1)
+                pc_nuevo = st.number_input("Precio Compra", step=0.1)
+                stk_nuevo = st.number_input("Stock", step=1)
+                
+                # El botón está dentro del formulario, pero sabe qué es cat_final
+                if st.form_submit_button("Guardar Producto Nuevo"):
+                    # Validamos que si eligió "Agregar...", haya escrito algo
+                    if seleccion_cat == "+ Agregar nueva categoría" and not cat_final:
+                        st.error("Por favor, escribe el nombre de la nueva categoría.")
+                    elif nombre_nuevo and cat_final:
+                        if agregar_producto(nombre_nuevo, pv_nuevo, pc_nuevo, stk_nuevo, cat_final):
+                            st.success("¡Producto agregado!")
+                            st.session_state["input_manual_unico"] = "" # Limpiamos
+                            st.rerun()
+                    else:
+                        st.error("Nombre y categoría son obligatorios")
+                    
     st.subheader("Control de Inventario")
+    # 1. Obtener datos
     productos = obtener_productos()
 
     if productos:
-        df_inv = pd.DataFrame(productos)      
-
-# --- FILTROS ---
+        df_inv = pd.DataFrame(productos)
+        
+        # --- FILTROS ---
         col1, col2 = st.columns(2)
         with col1:
             busqueda_p = st.text_input("🔍 Buscar por nombre:", key="buscador_unico")
         with col2:
             categorias_unicas = sorted(df_inv['categoria'].unique().tolist())
             filtro_cat = st.selectbox("📂 Filtrar por Categoría:", ["Todas"] + categorias_unicas)
-
+            
+        # --- LÓGICA DE FILTRADO ---
         df_mostrar = df_inv.copy()
         if busqueda_p:
             df_mostrar = df_mostrar[df_mostrar['nombre'].str.contains(busqueda_p, case=False, na=False)]
-        if filtro_cat!= "Todas":
+        if filtro_cat != "Todas":
             df_mostrar = df_mostrar[df_mostrar['categoria'] == filtro_cat]
 
+        # --- AHORA LA TABLA ESTÁ DENTRO DEL IF ---
         columnas_a_mostrar = ['producto_id', 'nombre', 'precio_compra', 'precio_venta', 'stock', 'categoria']
-
+        
         df_editado = st.data_editor(
             df_mostrar[columnas_a_mostrar],
             key='editor_inventario',
@@ -616,40 +609,50 @@ if menu == "Productos":
             height=400
         )
 
+        # --- AQUÍ EMPIEZA LO QUE MOVIMOS FUERA DEL ELSE ---
         if st.button("💾 Guardar cambios masivos"):
             actualizar_inventario_masivo(df_editado)
             st.rerun()
 
         st.divider()
         st.subheader("🗑️ Eliminar Producto")
-
+        
         producto_a_borrar = st.selectbox(
             "Selecciona el producto a eliminar:",
             options=df_mostrar['nombre'].tolist(),
             key="selector_borrado"
         )
-
+        
         if st.button("❌ Confirmar Eliminación"):
             fila_prod = df_mostrar[df_mostrar['nombre'] == producto_a_borrar].iloc[0]
             if borrar_producto(fila_prod['producto_id'], st.session_state.user_data['usuario_id']):
                 st.success(f"¡{producto_a_borrar} eliminado correctamente!")
                 st.rerun()
-
+        
     else:
+        # El ELSE solo se queda con el aviso de que no hay productos
         st.info("Aún no hay productos registrados.")
-
+                               
+# --- PÁGINA VENTAS (Diseño Estilo SaaS Comercial) ---
 if menu == "Ventas":
     st.title("🛒 Terminal de Ventas")
-
+    
     productos = obtener_productos()
-    tenant_actual = st.session_state.user_data.get('nombre_negocio','MI NEGOCIO')
-
+    tenant_actual = st.session_state.get('tenant_id', 'MI LOCAL')
+    
     if not productos:
         st.info("💡 Aún no hay productos registrados en el inventario. Agrega algunos en la pestaña Productos.")
     else:
+        if "carrito" not in st.session_state:
+            st.session_state.carrito = []
+        if "buscar_ventas" not in st.session_state:
+            st.session_state["buscar_ventas"] = ""
+        if "ultima_venta" not in st.session_state:
+            st.session_state.ultima_venta = None
+
         categorias_disponibles = sorted(list(set(prod.get('categoria', 'General') for prod in productos)))
         opciones_categoria = ["📁 Todas las Categorías"] + [f"🏷️ {cat}" for cat in categorias_disponibles]
-
+        
         c_busq, c_cat = st.columns([2, 1])
         with c_busq:
             busqueda_v = st.text_input("🔍 Buscar producto por nombre:", value=st.session_state["buscar_ventas"], key="input_buscar_ventas")
@@ -657,14 +660,14 @@ if menu == "Ventas":
             categoria_seleccionada = st.selectbox("Filtrar por Categoría:", opciones_categoria)
 
         productos_mostrar = productos
-        if busqueda_v.strip()!= "":
+        if busqueda_v.strip() != "":
             productos_mostrar = [p for p in productos_mostrar if busqueda_v.lower() in p.get('nombre', '').lower()]
-        if categoria_seleccionada!= "📁 Todas las Categorías":
+        if categoria_seleccionada != "📁 Todas las Categorías":
             cat_pura = categoria_seleccionada.replace("🏷️ ", "")
             productos_mostrar = [p for p in productos_mostrar if p.get('categoria', 'General') == cat_pura]
 
         col_productos, col_carrito = st.columns([1.2, 1.0])
-
+        
         with col_productos:
             st.markdown("### 📦 Catálogo")
             if not productos_mostrar:
@@ -677,26 +680,29 @@ if menu == "Ventas":
                         p_nombre = prod.get('nombre', 'Producto sin nombre')
                         p_precio_venta = float(prod.get('precio_venta', 0.0))
                         p_precio_compra = float(prod.get('precio_compra', 0.0))
-
+                        
                         cantidad_en_carrito = sum(int(item['cantidad']) for item in st.session_state.carrito if item['producto_id'] == p_id)
                         p_stock_real = int(prod.get('stock', 0))
                         p_stock_disponible = p_stock_real - cantidad_en_carrito
-
+                        
                         with st.container(border=True):
                             c_info, c_cant, c_btn = st.columns([2.1, 1.1, 1.2])
                             with c_info:
                                 st.markdown(f"**{p_nombre}**")
-
+                                
+                                # Lógica del semáforo:
                                 if p_stock_disponible <= 0:
                                     st.markdown(f"🔴 **Agotado** · <span style='color:gray;'>S/{p_precio_venta:.2f}</span>", unsafe_allow_html=True)
                                 elif p_stock_disponible <= 5:
+                                    # Aquí aparece el amarillo para stock bajo (1 a 5 unidades)
                                     st.markdown(f"🟡 **Stock: {p_stock_disponible}** · **S/{p_precio_venta:.2f}**", unsafe_allow_html=True)
                                 else:
+                                    # Stock saludable (más de 5 unidades)
                                     st.markdown(f"🟢 **Stock: {p_stock_disponible}** · **S/{p_precio_venta:.2f}**", unsafe_allow_html=True)
-
+                            
                             with c_cant:
                                 qty = st.number_input("Cant", min_value=0, max_value=max(0, p_stock_disponible), key=f"qty_{p_id}", label_visibility="collapsed")
-
+                            
                             with c_btn:
                                 es_invalido = p_stock_disponible <= 0
                                 def agregar_al_carrito_saas(id_p, nom_p, pre_v, pre_c, cant_solicitada, stock_r):
@@ -718,14 +724,15 @@ if menu == "Ventas":
 
         with col_carrito:
             st.markdown("### 🧾 Resumen de Pedido")
-
+            
             if st.session_state.carrito:
                 total_venta_bruto = 0
-
+                
+                # Mostrar items en el carrito con botón de eliminar
                 for index, item in enumerate(st.session_state.carrito):
                     subtotal = float(item['precio_venta']) * int(item['cantidad'])
                     total_venta_bruto += subtotal
-
+                    
                     c1, c2 = st.columns([4, 1])
                     with c1:
                         st.markdown(f"**{item['nombre']}** - {item['cantidad']} x S/{item['precio_venta']:.2f}")
@@ -735,75 +742,51 @@ if menu == "Ventas":
                             st.rerun()
 
                 st.markdown("---")
-                descuento = st.number_input(
-                    "🎁 Descuento (S/):", 
-                    min_value=0.0, 
-                    max_value=float(total_venta_bruto),  # <- BLINDAJE
-                    value=0.0,
-                    step=0.10,
-                    help=f"Máximo S/{total_venta_bruto:.2f}"
-                )
-
+                descuento = st.number_input("🎁 Descuento (S/):", min_value=0.0, value=0.0)
                 total_venta_neto = round(total_venta_bruto - descuento, 2)
-                if total_venta_neto < 0:  # <- Blindaje extra
-                    total_venta_neto = 0
-
                 st.markdown(f"### Total a pagar: S/{total_venta_neto:.2f}")
-
+                
                 metodo_pago = st.radio("Forma de Pago:", ["💵 Efectivo", "📱 Yape", "💳 Plin"], horizontal=True)
                 w_cliente_nombre = st.text_input("Nombre Cliente:", key="w_cli_nom")
                 w_cliente_celular = st.text_input("Celular:", key="w_cli_cel")
 
                 if st.button("⚡ Finalizar y Registrar Venta", type="primary", use_container_width=True):
-                    total_bruto = sum(float(item['precio_venta']) * int(item['cantidad']) for item in st.session_state.carrito)
-
-                # BLINDAJE ANTI-NEGATIVO
-                if descuento > total_venta_bruto:
-                    descuento = total_venta_bruto
-                    total_venta_neto = 0
-                    
-                    # 1. Calcular proporción de descuento
-                    # Si el descuento es 0, el factor es 1 (no cambia precio)
-                    # Si hay descuento, calculamos cuánto pagar por cada sol original
-                    factor = (total_bruto - descuento) / total_bruto if total_bruto > 0 else 1
-                    
                     ok = True
-                    items_guardar = []
+                    items_guardar = [item.copy() for item in st.session_state.carrito]
                     
                     for item in st.session_state.carrito:
-                        # 2. Calcular precio unitario final con el descuento aplicado
-                        precio_original = float(item['precio_venta'])
-                        precio_final = round(precio_original * factor, 2)
-                        
                         try:
-                            # 3. Registrar usando el precio_final ajustado
                             res = registrar_venta(
                                 producto_id=item['producto_id'],
                                 cantidad=int(item['cantidad']),
-                                precio_venta=precio_final, # <--- AQUÍ ESTÁ EL CAMBIO
+                                precio_venta=float(item['precio_venta']),
                                 precio_compra=float(item['precio_compra']),
                                 pago=metodo_pago,
                                 cliente=w_cliente_nombre.strip() if w_cliente_nombre.strip() else "Consumidor Final",
                                 celular=w_cliente_celular.strip()
                             )
+                            # --- AQUÍ ESTÁ EL AJUSTE ---
                             if res:
                                 nuevo_stock = int(item['stock_max']) - int(item['cantidad'])
                                 actualizar_producto(
-                                    producto_id=item['producto_id'],
-                                    nuevo_precio=item['precio_venta'],
+                                    producto_id=item['producto_id'], 
+                                    nuevo_precio=item['precio_venta'], 
                                     nuevo_stock=nuevo_stock
                                 )
                             else:
                                 ok = False
                                 break
+                            # ---------------------------
+                            
                         except Exception as e:
                             st.error(f"Error al registrar: {e}")
                             ok = False
                             break
-
+                            
                     if ok:
-                        hora_servidor = datetime.now()
-                        hora_peru = hora_servidor - timedelta(hours=5)
+                        import datetime
+                        hora_servidor = datetime.datetime.now()
+                        hora_peru = hora_servidor - datetime.timedelta(hours=5)
                         fecha_formateada = hora_peru.strftime("%Y-%m-%d %H:%M:%S")
 
                         st.session_state.ultima_venta = {
@@ -811,7 +794,7 @@ if menu == "Ventas":
                             "fecha": fecha_formateada,
                             "items": items_guardar,
                             "descuento": descuento,
-                            "total": total_venta_neto,        
+                            "total": total_venta_neto,
                             "pago": metodo_pago,
                             "cliente_nom": w_cliente_nombre.strip() if w_cliente_nombre.strip() else "Consumidor Final",
                             "cliente_cel": w_cliente_celular.strip()
@@ -822,19 +805,24 @@ if menu == "Ventas":
                         st.rerun()
             else:
                 st.info("🛒 El carrito está vacío. ¡Añade productos del catálogo!")
-
+        # =====================================================================
+        # 🏢 SECCIÓN: COMPROBANTE DIGITAL AUTO-GENERADO CON DESCUENTO REFLEJADO
+        # =====================================================================
         if st.session_state.ultima_venta is not None:
             st.markdown("---")
             st.markdown("### 📄 Último Comprobante Generado")
-
+            
             uv = st.session_state.ultima_venta
+            
+            # Formateamos las líneas de productos para el texto plano de WhatsApp
             lineas_productos = ""
             total_sin_descuento = 0
             for it in uv["items"]:
                 subtotal_item = int(it['cantidad']) * float(it['precio_venta'])
                 total_sin_descuento += subtotal_item
                 lineas_productos += f"{it['cantidad']}x {it['nombre']} (S/{float(it['precio_venta']):.2f}) - S/{subtotal_item:.2f}\n"
-
+            
+            # Texto estructurado para WhatsApp con el descuento visible
             texto_whatsapp = (
                 f"=== COMPROBANTE DE COMPRA ===\n"
                 f"🏪 Comercio: {uv['tenant']}\n"
@@ -850,6 +838,7 @@ if menu == "Ventas":
                 f"¡Gracias por su preferencia! ✨"
             )
 
+            # Estructura del HTML del Ticket Térmico con el Nombre Comercial Dinámico
             html_ticket = f"""
             <div id="ticket-saas-print" style="width: 280px; background-color: white; color: black; padding: 15px; font-family: 'Courier New', Courier, monospace; font-size: 12px; border: 1px dashed #000; margin: 0 auto;">
                 <div style="text-align: center; font-weight: bold; font-size: 14px; margin-bottom: 5px; text-transform: uppercase;">{uv['tenant']}</div>
@@ -889,31 +878,35 @@ if menu == "Ventas":
                 <div style="text-align: center; margin-top: 15px; font-weight: bold;">¡GRACIAS POR SU COMPRA!</div>
             </div>
             """
-
+            
+            # Renderizamos el Comprobante en la pantalla
             col_comp, col_acciones = st.columns([1.1, 1.0])
             with col_comp:
                 st.markdown("<div style='background-color:#f9f9f9; padding:10px; border-radius:5px;'>", unsafe_allow_html=True)
                 st.html(html_ticket)
                 st.markdown("</div>", unsafe_allow_html=True)
-
+                
             with col_acciones:
                 st.markdown("#### ⚡ Acciones del Comprobante")
-
+                
+                # Botón de impresión física (JavaScript)
                 js_print = """
-                <button onclick="var w = window.open(); w.document.write(document.getElementById('ticket-saas-print').outerHTML); w.document.close(); w.focus(); setTimeout(function(){w.print(); w.close();}, 500);"
+                <button onclick="var w = window.open(); w.document.write(document.getElementById('ticket-saas-print').outerHTML); w.document.close(); w.focus(); setTimeout(function(){w.print(); w.close();}, 500);" 
                 style="width: 100%; background-color: #34495e; color: white; border: none; padding: 10px; font-weight: bold; border-radius: 5px; cursor: pointer; margin-bottom: 10px;">
                     🖨️ Imprimir Formato Ticket (80mm)
                 </button>
                 """
                 st.components.v1.html(js_print, height=50)
-
+                
+                # Enlace de WhatsApp dinámico
+                import urllib.parse
                 texto_url = urllib.parse.quote(texto_whatsapp)
-
-                if uv["cliente_cel"]!= "":
+                
+                if uv["cliente_cel"] != "":
                     url_wa = f"https://wa.me/51{uv['cliente_cel']}?text={texto_url}"
                 else:
                     url_wa = f"https://wa.me/?text={texto_url}"
-
+                    
                 st.markdown(f"""
                 <a href="{url_wa}" target="_blank" style="text-decoration: none;">
                     <button style="width: 100%; background-color: #25d366; color: white; border: none; padding: 10px; font-weight: bold; border-radius: 5px; cursor: pointer; margin-bottom: 10px;">
@@ -921,14 +914,16 @@ if menu == "Ventas":
                     </button>
                 </a>
                 """, unsafe_allow_html=True)
-
+                
+                # Botón de descarga de datos rápidos
+                import pandas as pd
                 df_items = pd.DataFrame([{
                     "Producto": it["nombre"],
                     "Cantidad": it["cantidad"],
                     "Precio Unitario": float(it["precio_venta"]),
                     "Total Item": int(it["cantidad"]) * float(it["precio_venta"])
                 } for it in uv["items"]])
-
+                
                 csv_data = df_items.to_csv(index=False).encode('utf-8')
                 st.download_button(
                     label="📊 Descargar Detalle en Excel (CSV)",
@@ -937,142 +932,173 @@ if menu == "Ventas":
                     mime="text/csv",
                     use_container_width=True
                 )
-
+                
                 if st.button("Limpiar y Nueva Venta", use_container_width=True):
                     st.session_state.ultima_venta = None
                     st.rerun()
-
+                    
+# --- PÁGINA REPORTES (Versión Comercial Blindada de Costo Cero) ---
 elif menu == "Reportes":
     st.title("📊 Centro de Analítica - NEXUS")
-
+    
     ventas_raw = obtener_ventas()
     productos_raw = obtener_productos()
-
+    
     if not ventas_raw:
         st.info("💡 No hay ventas registradas.")
     else:
+        import pandas as pd
         df = pd.DataFrame(ventas_raw)
-
+        
+        # 1. Asegurar formato de fecha y zona horaria (Perú)
         df['fecha_dt'] = pd.to_datetime(df['fecha']).dt.tz_localize(None) - pd.Timedelta(hours=5)
         df['Fecha_Corta'] = df['fecha_dt'].dt.date
         df['Hora'] = df['fecha_dt'].dt.strftime('%H:%M:%S')
-
+        
+        # Corrección de fecha: Forzamos la fecha de hoy en Perú
         fecha_hoy = (datetime.now() - timedelta(hours=5)).date()
         fecha_busqueda = st.date_input("Selecciona el día:", value=fecha_hoy)
-
+        
+        # Filtramos y ordenamos por hora (más reciente primero)
         df_filtrado = df[df['Fecha_Corta'] == fecha_busqueda].copy()
         df_filtrado = df_filtrado.sort_values(by='fecha_dt', ascending=False)
-
+        
+        # --- NUEVA LÓGICA DE COMPARATIVA ---
         fecha_semana_pasada = fecha_busqueda - timedelta(days=7)
         df_pasada = df[df['Fecha_Corta'] == fecha_semana_pasada].copy()
 
+        # --- NUEVA LÓGICA DE COMPARATIVA ---
+        fecha_semana_pasada = fecha_busqueda - timedelta(days=7)
+        df_pasada = df[df['Fecha_Corta'] == fecha_semana_pasada].copy()
+        
+        # --- INICIALIZACIÓN (Para que no falle los días sin ventas) ---
         efectivo = 0.0
         yape = 0.0
         plin = 0.0
         ganancia_hoy = 0.0
         ganancia_pasada = 0.0
         total_ventas_dia = 0.0
-
+        # -------------------------------------------------------------
+        
         if df_filtrado.empty:
             st.warning(f"No hay ventas para {fecha_busqueda}.")
         else:
+        # 2. Mapeo de productos
             mapa_productos = {p['producto_id']: p['nombre'] for p in productos_raw} if productos_raw else {}
             df_filtrado['Producto'] = df_filtrado['producto_id'].map(mapa_productos).fillna(df_filtrado['producto_id'])
-
+            
+            # 3. Gestión de pagos
             if 'pago' not in df_filtrado.columns: df_filtrado['pago'] = 'efectivo'
             df_filtrado['pago'] = df_filtrado['pago'].fillna('efectivo')
             df_filtrado['pago_norm'] = df_filtrado['pago'].astype(str).str.replace('💵', '').str.replace('📱', '').str.replace('💳', '').str.replace('🔮', '').str.strip().str.lower()
             df_filtrado['pago_norm'] = df_filtrado['pago_norm'].apply(lambda x: x if x in ['yape', 'plin'] else 'efectivo')
 
+            # 4. Cálculos financieros y Ganancia Real (Limpieza estricta)
             cols = ['total_venta', 'precio_venta', 'precio_compra', 'cantidad']
-
+            
+            # Convertimos todo a numérico, forzando a 0 si hay errores o vacíos
             for col in cols:
                 df_filtrado[col] = pd.to_numeric(df_filtrado[col], errors='coerce').fillna(0)
                 if col in df_pasada.columns:
                     df_pasada[col] = pd.to_numeric(df_pasada[col], errors='coerce').fillna(0)
-
+            
+            # Ahora que son números puros, realizamos la operación
             df_filtrado['ganancia_real'] = (df_filtrado['precio_venta'] - df_filtrado['precio_compra']) * df_filtrado['cantidad']
             ganancia_hoy = df_filtrado['ganancia_real'].sum()
-
+            
+            # Ganancia semana pasada
             df_pasada['ganancia_real'] = (df_pasada['precio_venta'] - df_pasada['precio_compra']) * df_pasada['cantidad']
             ganancia_pasada = df_pasada['ganancia_real'].sum()
-
+            
             yape = df_filtrado[df_filtrado['pago_norm'] == 'yape']['total_venta'].sum()
             plin = df_filtrado[df_filtrado['pago_norm'] == 'plin']['total_venta'].sum()
             efectivo = df_filtrado[df_filtrado['pago_norm'] == 'efectivo']['total_venta'].sum()
             total_ventas_dia = efectivo + yape + plin
-
+            
+        # --- 5. Visualización Mejorada con Métricas y Gráficos ---
         st.markdown("""
             <style>
             div[data-testid="metric-container"] { background-color: #1e293b; padding: 20px; border-radius: 10px; border: 1px solid #475569; }
-            div[data-testid="metric-container"] label { font-size: 1.2rem!important; }
-            div[data-testid="metric-container"] [data-testid="stMetricValue"] { font-size: 2.5rem!important; color: #38bdf8!important; }
+            div[data-testid="metric-container"] label { font-size: 1.2rem !important; }
+            div[data-testid="metric-container"] [data-testid="stMetricValue"] { font-size: 2.5rem !important; color: #38bdf8 !important; }
             </style>
         """, unsafe_allow_html=True)
-
+        
         st.markdown("### 📊 Resumen del Día")
         c1, c2, c3, c4 = st.columns(4)
         c1.metric("💰 Total Ventas", f"S/{total_ventas_dia:.2f}")
         c2.metric("💵 Efectivo", f"S/{efectivo:.2f}")
         c3.metric("📱 Yape", f"S/{yape:.2f}")
         c4.metric("🟣 Plin", f"S/{plin:.2f}")
-
+        
         delta_val = ganancia_hoy - ganancia_pasada
         st.metric("📝 Ganancia Real (Hoy)", f"S/{ganancia_hoy:.2f}", delta=f"{delta_val:.2f} vs hace 7 días")
-
+        
+        # --- SECCIÓN DE GRÁFICOS Y TABLA ---
+        import plotly.express as px
         st.write("---")
         st.subheader("📊 Análisis Visual del Día")
-
+        
         if not df_filtrado.empty:
             col_graf1, col_graf2 = st.columns(2)
-
+        
             with col_graf1:
+                # Ahora usamos 'Producto' (con P mayúscula) en lugar de 'producto_id'
                 df_top = df_filtrado.groupby('Producto')['total_venta'].sum().reset_index().sort_values('total_venta', ascending=False).head(10)
                 fig_bar = px.bar(df_top, x='total_venta', y='Producto', orientation='h', title="Top 10 Productos")
                 st.plotly_chart(fig_bar, use_container_width=True)
+                
+                # --- MAPEO FORZADO (INFALIBLE) ---
+                def limpiar_pago(valor):
+                    v = str(valor).lower().strip()
+                    if 'efectivo' in v:
+                        return 'Efectivo'
+                    elif 'yape' in v:
+                        return 'Yape'
+                    elif 'plin' in v:
+                        return 'Plin'
+                    else:
+                        return v.capitalize()
+                        
+            df_filtrado['pago_norm'] = df_filtrado['pago'].apply(limpiar_pago)            
 
-            def limpiar_pago(valor):
-                v = str(valor).lower().strip()
-                if 'efectivo' in v:
-                    return 'Efectivo'
-                elif 'yape' in v:
-                    return 'Yape'
-                elif 'plin' in v:
-                    return 'Plin'
-                else:
-                    return v.capitalize()
-
-            df_filtrado['pago_norm'] = df_filtrado['pago'].apply(limpiar_pago)
-
+            # --- Gráfico de Torta ---
             with col_graf2:
                 fig_pie = px.pie(df_filtrado, values='total_venta', names='pago_norm', title="Distribución de Pagos", hole=0.4)
                 st.plotly_chart(fig_pie, use_container_width=True)
-
+        
             if 'Hora' in df_filtrado.columns:
                 df_hora = df_filtrado.groupby('Hora')['total_venta'].sum().reset_index()
                 fig_line = px.area(df_hora, x='Hora', y='total_venta', title="Tendencia de Ventas", line_shape='spline')
                 st.plotly_chart(fig_line, use_container_width=True)
-
+        
+            # Asegúrate de actualizar también la tabla dentro del expansor
             with st.expander("📊 Ver detalle de ventas (Maximizar/Minimizar)"):
+                # Cambiamos 'producto_id' por 'Producto' aquí también
                 columnas_a_mostrar = ['Hora', 'Producto', 'cantidad', 'total_venta', 'ganancia_real', 'pago']
                 st.dataframe(df_filtrado[columnas_a_mostrar], use_container_width=True)
         else:
             st.warning("No hay datos para mostrar gráficos ni detalles.")
-
+    
+        # 6. Descarga a Excel (Versión Estable y Robusta)
+        import io
+        
         if not df_filtrado.empty:
             buffer = io.BytesIO()
             with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
+                # Escribimos los datos sin intentar ajustar el ancho manualmente
                 df_filtrado.to_excel(writer, sheet_name='Ventas_Auditoria', index=False)
-
+                
                 workbook = writer.book
                 worksheet = writer.sheets['Ventas_Auditoria']
                 money_fmt = workbook.add_format({'num_format': 'S/ #,##0.00'})
-
+                
+                # Escribir el total calculado
                 total_sum = df_filtrado['total_venta'].sum()
                 row_idx = len(df_filtrado) + 1
                 worksheet.write(row_idx, 1, "TOTALES:")
                 worksheet.write(row_idx, 5, total_sum, money_fmt)
-
+            
             st.download_button(
                 label="📥 Descargar Reporte en Excel (Auditoría)",
                 data=buffer,
@@ -1081,7 +1107,3 @@ elif menu == "Reportes":
             )
         else:
             st.warning("No hay ventas para generar el reporte.")
-
-elif menu == "⚙️ Ajustes":
-    mostrar_ajustes()
-        
