@@ -281,27 +281,31 @@ def eliminar_producto(producto_id):
         return False
 
 def registrar_venta(producto_id, cantidad, precio_venta, precio_compra, pago, cliente, celular):
+    st.write("🔍 DEBUG 1: Entró a la función") 
+    
     try:
         id_dueno = st.session_state.user_data['usuario_id']
-        fecha_utc = datetime.now(timezone.utc).isoformat()
-        total_venta = float(precio_venta) * int(cantidad)
-
-        # 1. BLINDAJE: Resta stock de forma atómica en DynamoDB
-        # Si 2 usuarios venden a la vez, solo 1 pasa
-        tabla_productos.update_item(
+        st.write(f"🔍 DEBUG 2: id_dueno={id_dueno}, producto_id={producto_id}, cant={cantidad}")
+        
+        # PASO 1: UPDATE STOCK
+        st.write("🔍 DEBUG 3: Intentando update stock en NEXUS_PRODUCTOS...")
+        resp = tabla_productos.update_item(
             Key={
                 'id_del_dueno': id_dueno,
                 'producto_id': producto_id
             },
             UpdateExpression="SET p_stock_disponible = p_stock_disponible - :cant",
-            ConditionExpression="p_stock_disponible >= :cant",  # <- AQUÍ ESTÁ EL BLINDAJE
-            ExpressionAttributeValues={
-                ':cant': int(cantidad)
-            },
+            ConditionExpression="p_stock_disponible >= :cant",
+            ExpressionAttributeValues={':cant': int(cantidad)},
             ReturnValues="UPDATED_NEW"
         )
-
-        # 2. Si el update de arriba pasó, recién guardas la venta
+        st.write(f"🔍 DEBUG 4: Stock OK. Nuevo stock={resp['Attributes']['p_stock_disponible']}")
+        
+        # PASO 2: GUARDAR VENTA
+        total_venta = float(precio_venta) * int(cantidad)
+        fecha_utc = datetime.now(timezone.utc).isoformat()
+        
+        st.write("🔍 DEBUG 5: Guardando venta en NEXUS_VENTAS...")
         tabla_ventas.put_item(Item={
             'usuario_id': id_dueno,
             'Venta_id': str(uuid.uuid4()),
@@ -315,18 +319,16 @@ def registrar_venta(producto_id, cantidad, precio_venta, precio_compra, pago, cl
             'cliente': str(cliente),
             'celular': str(celular)
         })
-
+        st.success("✅ Venta registrada correctamente")
         return True
 
     except botocore.exceptions.ClientError as e:
-        if e.response['Error']['Code'] == 'ConditionalCheckFailedException':
-            st.error("❌ Stock insuficiente. Otra caja ya vendió este producto.")
-            return False
-        else:
-            st.error(f"Error en venta: {e}")
-            return False
+        st.error(f"❌ ERROR DYNAMODB: {e.response['Error']['Code']}")
+        st.code(e.response['Error']['Message'])
+        return False
     except Exception as e:
-        st.error(f"Error en venta: {e}")
+        st.error("❌ ERROR GENERAL:")
+        st.code(traceback.format_exc()) # Esto te muestra la línea exacta que falla
         return False
 
 def procesar_carga_excel(df):
