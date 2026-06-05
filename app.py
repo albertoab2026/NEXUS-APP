@@ -740,21 +740,22 @@ if menu == "Ventas":
                 w_cliente_nombre = st.text_input("Nombre Cliente:", key="w_cli_nom")
                 w_cliente_celular = st.text_input("Celular:", key="w_cli_cel")
 
-                if st.button("⚡ Finalizar y Registrar Venta", type="primary", use_container_width=True):
                     # 1. Definir el total bruto
                     total_bruto = sum(float(item['precio_venta']) * int(item['cantidad']) for item in st.session_state.carrito)
 
                     # 2. PRIMERO dibuja el input
                     descuento = st.number_input("💰 Descuento (S/):", min_value=0.0, max_value=total_bruto, value=0.0, format="%.2f", key="descuento_venta_final")
+                    # 4. Calcular el neto final usando descuento_valido
+                    total_venta_neto = max(0, round(total_bruto - descuento_valido, 2))
+                    st.markdown(f"### Total a pagar: S/{total_venta_neto:.2f}")
+
+                if st.button("⚡ Finalizar y Registrar Venta", type="primary", use_container_width=True):  
                     
                     # 3. VALIDACIÓN CRÍTICA: Forzamos el descuento a ser como máximo el total bruto
                     descuento_valido = float(descuento)
                     if descuento_valido > total_bruto:
                         descuento_valido = total_bruto
-                        st.warning(f"⚠️ El descuento se ajustó a S/{total_bruto:.2f} para evitar totales negativos.")
-                    
-                    # 4. Calcular el neto final usando descuento_valido
-                    total_venta_neto = max(0, round(total_bruto - descuento_valido, 2))
+                        st.warning(f"⚠️ El descuento se ajustó a S/{total_bruto:.2f} para evitar totales negativos.")  
                     
                     if total_venta_neto <= 0:
                         st.error("❌ No se puede registrar venta con total S/0.00")
