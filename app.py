@@ -7,6 +7,7 @@ import time
 import uuid
 from datetime import datetime, timedelta, timezone
 import hashlib
+import botocore
 from decimal import Decimal
 import urllib.parse
 import plotly.express as px
@@ -289,7 +290,7 @@ def registrar_venta(producto_id, cantidad, precio_venta, precio_compra, pago, cl
         # Si 2 usuarios venden a la vez, solo 1 pasa
         tabla_productos.update_item(
             Key={
-                'usuario_id': id_dueno,
+                'id_del_dueno': id_dueno,
                 'producto_id': producto_id
             },
             UpdateExpression="SET p_stock_disponible = p_stock_disponible - :cant",
@@ -303,7 +304,7 @@ def registrar_venta(producto_id, cantidad, precio_venta, precio_compra, pago, cl
         # 2. Si el update de arriba pasó, recién guardas la venta
         tabla_ventas.put_item(Item={
             'usuario_id': id_dueno,
-            'venta_id': str(uuid.uuid4()),
+            'Venta_id': str(uuid.uuid4()),
             'producto_id': producto_id,
             'cantidad': int(cantidad),
             'total_venta': Decimal(str(total_venta)),
