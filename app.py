@@ -900,31 +900,45 @@ if menu == "Ventas":
                 html_ticket = html_ticket.replace('<html>', '').replace('</html>', '')
                 html_ticket = html_ticket.replace('<body>', '').replace('</body>', '')
                 
-                st.markdown(
-                    f"<div id='ticket-saas-print' style='width:80mm; margin:10px auto; font-family:Courier; font-size:12px; background:white; padding:5px; border:1px dashed #ccc;'>{html_ticket}</div>",
-                    unsafe_allow_html=True
-                )
+        
             with col_acciones:
                 st.markdown("#### ⚡ Acciones del Comprobante")
                 
-                js_print = """
-                <button onclick="
-                    var div = document.getElementById('ticket-saas-print');
-                    if(!div){alert('Error: Ticket no encontrado'); return;}
-                    var w = window.open('', '_blank', 'width=320,height=600');
-                    w.document.write('<!DOCTYPE html><html><head><title>Ticket 80mm</title>');
-                    w.document.write('<style>@media print{@page{size:80mm auto;margin:0;} body{width:80mm;font-family:Courier;font-size:12px;margin:0;padding:5px;}}</style>');
-                    w.document.write('</head><body>');
-                    w.document.write(div.innerHTML);
-                    w.document.write('</body></html>');
-                    w.document.close();
-                    w.focus();
-                    setTimeout(function(){w.print();}, 300);
-                " style="width: 100%; background-color: #34495e; color: white; border: none; padding: 10px; font-weight: bold; border-radius: 5px; cursor: pointer;">
-                    🖨️ Imprimir Formato Ticket 80mm
-                </button>
-                """
-                st.markdown(js_print, unsafe_allow_html=True)            
+              components.html(
+                    f"""
+                    <div id='ticket-saas-print' style='width:80mm; margin:10px auto; font-family:Courier; font-size:12px; background:white; padding:5px; border:1px dashed #ccc;'>
+                        {html_ticket}
+                    </div>
+                    
+                    <button onclick="imprimirTicket()" style="width:80mm; margin:10px auto; display:block; background:#34495e; color:white; border:none; padding:10px; font-weight:bold; border-radius:5px; cursor:pointer;">
+                        🖨️ Imprimir Formato Ticket 80mm
+                    </button>
+                    
+                    <script>
+                    function imprimirTicket(){
+                        var div = document.getElementById('ticket-saas-print');
+                        var contenido = div.innerHTML;
+                        
+                        // Creamos un iframe temporal solo para imprimir
+                        var iframe = document.createElement('iframe');
+                        iframe.style.position = 'absolute';
+                        iframe.style.width = '0';
+                        iframe.style.height = '0';
+                        iframe.style.border = 'none';
+                        document.body.appendChild(iframe);
+                        
+                        var doc = iframe.contentWindow.document;
+                        doc.open();
+                        doc.write('<html><head><title>Ticket 80mm</title><style>@media print{@page{size:80mm auto;margin:0;} body{width:80mm;font-family:Courier;font-size:12px;margin:0;padding:5px;}}</style></head><body>' + contenido + '</body></html>');
+                        doc.close();
+                        
+                        setTimeout(function(){
+                            iframe.contentWindow.focus();
+                            iframe.contentWindow.print();
+                            document.body.removeChild(iframe);
+                        }, 300);
+                    }
+               
                 texto_url = urllib.parse.quote(texto_whatsapp)
 
                 if uv["cliente_cel"]!= "":
