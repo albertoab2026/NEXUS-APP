@@ -7,7 +7,6 @@ import time
 import uuid
 from datetime import datetime, timedelta, timezone
 import hashlib
-import botocore
 from decimal import Decimal
 import urllib.parse
 import plotly.express as px
@@ -283,42 +282,25 @@ def eliminar_producto(producto_id):
 def registrar_venta(producto_id, cantidad, precio_venta, precio_compra, pago, cliente, celular):
     try:
         id_dueno = st.session_state.user_data['usuario_id']
-        
-        # PASO 1: UPDATE STOCK - usando 'stock' como en tu tabla
-        tabla_productos.update_item(
-            Key={
-                'id_del_dueno': id_dueno,
-                'producto_id': producto_id
-            },
-            UpdateExpression="SET stock = stock - :cant",
-            ConditionExpression="stock >= :cant",
-            ExpressionAttributeValues={':cant': int(cantidad)},
-            ReturnValues="UPDATED_NEW"
-        )
-        
-        # PASO 2: GUARDAR VENTA
+        fecha_utc = datetime.now(timezone.utc).isoformat()
         total_venta = float(precio_venta) * int(cantidad)
+
         tabla_ventas.put_item(Item={
             'usuario_id': id_dueno,
-            'Venta_id': str(uuid.uuid4()), # V mayúscula
+            'Venta_id': str(uuid.uuid4()),
             'producto_id': producto_id,
             'cantidad': int(cantidad),
             'total_venta': Decimal(str(total_venta)),
             'precio_venta': Decimal(str(precio_venta)),
             'precio_compra': Decimal(str(precio_compra)),
-            'fecha': datetime.now(timezone.utc).isoformat(),
+            'fecha': fecha_utc,
             'pago': str(pago),
             'cliente': str(cliente),
             'celular': str(celular)
         })
-        st.success("✅ Venta registrada")
         return True
-
-    except botocore.exceptions.ClientError as e:
-        if e.response['Error']['Code'] == 'ConditionalCheckFailedException':
-            st.error("❌ Stock insuficiente para vender")
-        else:
-            st.error(f"❌ Error: {e.response['Error']['Message']}")
+    except Exception as e:
+        st.error(f"Error en venta: {e}")
         return False
 
 def procesar_carga_excel(df):
@@ -1103,18 +1085,3 @@ elif menu == "Reportes":
 elif menu == "⚙️ Ajustes":
     mostrar_ajustes()
         
-st.divider()
-st.write("### BOTÓN DE PRUEBA FINAL")
-
-if st.button("VENDER INKA KOLA TEST"):
-    st.write("🔍 El botón SÍ funciona - entrando a función...")
-    
-    registrar_venta(
-        producto_id="INKA-001",
-        cantidad=1,
-        precio_venta=2.5,
-        precio_compra=1.8,
-        pago="Efectivo",
-        cliente="Test",
-        celular="999"
-    )
