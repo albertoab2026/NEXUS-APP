@@ -518,7 +518,7 @@ if not st.session_state.logged_in:
         <div class='feature-card card-1'><div>📦</div><h3>Control Total</h3><p>Sabes qué vendes y qué falta en tiempo real.</p></div>
         <div class='feature-card card-2'><div>💰</div><h3>Más Ganancia</h3><p>Mira al instante qué productos te dejan más plata.</p></div>
         <div class='feature-card card-3'><div>📱</div><h3>Desde tu Celular</h3><p>Diseñado para usarse rápido en pantallas móviles.</p></div>
-        <div class='feature-card card-4'><div>⚡</div><h3>Súper Económico</h3><p>Solo S/30 al mes. Sin contratos complicados.</p></div>
+        <div class='feature-card card-4'><div>⚡</div><h3>Súper Económico</h3><p>Solo S/40 y 50 al mes. Sin contratos complicados.</p></div>
     </div>
     """, unsafe_allow_html=True)
 
