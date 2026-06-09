@@ -874,15 +874,15 @@ if menu == "Ventas":
                     </div>
                     <div style="display: table-row; color: #c0392b;">
                         <div style="display: table-cell; padding: 2px 0; font-weight: bold;">🎁 Descuento:</div>
-                        <div style="display: table-cell; text-align: right; padding: 2px 0; font-weight: bold;">-S/{float(uv['descuento']):.2f}</div>
+                        <div style="display: table-cell; text-align: right; padding: 2px 0; font-weight: bold;">-S/{float(uv.get['descuento']):.2f}</div>
                     </div>
                     <div style="display: table-row; font-size: 14px; font-weight: bold;">
                         <div style="display: table-cell; padding-top: 8px;">TOTAL COBRADO:</div>
-                        <div style="display: table-cell; text-align: right; padding-top: 8px; font-size: 15px;">S/{uv['total']:.2f}</div>
+                        <div style="display: table-cell; text-align: right; padding-top: 8px; font-size: 15px;">S/{uv.get['total']:.2f}</div>
                     </div>
                 </div>
                 <div style="border-bottom: 1px dashed black; margin: 8px 0;"></div>
-                <p style="margin: 3px 0; text-align: center;"><b>Forma de Pago:</b> {uv['pago']}</p>
+                <p style="margin: 3px 0; text-align: center;"><b>Forma de Pago:</b> {uv.get['pago']}</p>
                 <div style="text-align: center; margin-top: 15px; font-weight: bold;">¡GRACIAS POR SU COMPRA!</div>
             </div>
             """
