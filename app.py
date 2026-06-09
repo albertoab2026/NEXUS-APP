@@ -878,7 +878,7 @@ if menu == "Ventas":
                     </div>
                     <div style="display: table-row; font-size: 14px; font-weight: bold;">
                         <div style="display: table-cell; padding-top: 8px;">TOTAL COBRADO:</div>
-                        <div style="display: table-cell; text-align: right; padding-top: 8px; font-size: 15px;">S/{uv.get['total']:.2f}</div>
+                        <div style="display: table-cell; text-align: right; padding-top: 8px; font-size: 15px;">S/{float(uv.get('total') or 0):.2f}
                     </div>
                 </div>
                 <div style="border-bottom: 1px dashed black; margin: 8px 0;"></div>
