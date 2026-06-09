@@ -898,19 +898,16 @@ if menu == "Ventas":
                 js_print = """
                 <script>
                 function imprimirTicket(){
-                    var div = document.getElementById('ticket-saas-print');
-                    var w = window.open('', '', 'width=300,height=600');
-                    
-                    w.document.open();
-                    w.document.write('<html><head><title>Ticket</title>');
-                    w.document.write('<style>body{width:80mm;font-family:Courier New;font-size:12px;margin:0;padding:8px}</style>');
-                    w.document.write('</head><body>');
-                    w.document.write(div.innerHTML);
-                    w.document.write('</body></html>');
-                    w.document.close();
-                    
-                    w.focus();
-                    setTimeout(function(){w.print(); w.close();}, 300);
+                    var contenido = document.getElementById('ticket-saas-print').innerHTML;
+                    var ventana = window.open('', '_self', '');
+                    ventana.document.write('<html><head><title>Ticket</title>');
+                    ventana.document.write('<style>@page{size:80mm auto;margin:0} body{width:80mm;font-family:Courier New;font-size:12px;margin:0;padding:5px}</style>');
+                    ventana.document.write('</head><body>');
+                    ventana.document.write(contenido);
+                    ventana.document.write('</body></html>');
+                    ventana.document.close();
+                    ventana.focus();
+                    setTimeout(function(){ventana.print(); window.location.reload();}, 500);
                 }
                 </script>
                 <button onclick="imprimirTicket()" style="width:100%;background:#34495e;color:white;border:none;padding:10px;font-weight:bold;border-radius:5px;cursor:pointer">🖨️ Imprimir Ticket 80mm</button>
