@@ -812,6 +812,17 @@ if menu == "Ventas":
                             "cliente_nom": w_cliente_nombre.strip() if w_cliente_nombre.strip() else "Consumidor Final",
                             "cliente_cel": w_cliente_celular.strip()
                         }
+                        
+                        # === GUARDAR ÚLTIMA VENTA ANTES DE LIMPIAR CARRITO ===
+                        uv = {
+                            "items": st.session_state.carrito.copy(),
+                            "fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                            "tenant": st.session_state.user_data.get('tenant', ''),
+                            "cliente_nom": w_cliente_nombre.strip() if w_cliente_nombre else "Consumidor Final",
+                            "cliente_cel": w_cliente_celular.strip()
+                        }
+                        st.session_state.ultima_venta = uv
+                        
                         st.session_state.carrito = []
                         st.success("🎉 Venta procesada con éxito.")
                         st.balloons()
@@ -926,25 +937,7 @@ if menu == "Ventas":
                 </a>
                 """, unsafe_allow_html=True)
 
-                df_items = pd.DataFrame([{
-                    "Producto": it["nombre"],
-                    "Cantidad": it["cantidad"],
-                    "Precio Unitario": float(it["precio_venta"]),
-                    "Total Item": int(it["cantidad"]) * float(it["precio_venta"])
-                } for it in uv["items"]])
-
-                csv_data = df_items.to_csv(index=False).encode('utf-8')
-                st.download_button(
-                    label="📊 Descargar Detalle en Excel (CSV)",
-                    data=csv_data,
-                    file_name=f"ticket_{uv['fecha'].replace(' ', '_').replace(':', '-')}.csv",
-                    mime="text/csv",
-                    use_container_width=True
-                )
-
-                if st.button("Limpiar y Nueva Venta", use_container_width=True):
-                    st.session_state.ultima_venta = None
-                    st.rerun()
+                
 
 elif menu == "Reportes":
     st.title("📊 Centro de Analítica - NEXUS")
