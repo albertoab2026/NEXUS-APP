@@ -896,10 +896,24 @@ if menu == "Ventas":
                 st.markdown("#### ⚡ Acciones del Comprobante")
 
                 js_print = """
-                <button onclick="var w = window.open(); w.document.write(document.getElementById('ticket-saas-print').outerHTML); w.document.close(); w.focus(); setTimeout(function(){w.print(); w.close();}, 500);"
-                style="width: 100%; background-color: #34495e; color: white; border: none; padding: 10px; font-weight: bold; border-radius: 5px; cursor: pointer; margin-bottom: 10px;">
-                    🖨️ Imprimir Formato Ticket (80mm)
-                </button>
+                <script>
+                function imprimirTicket(){
+                    var div = document.getElementById('ticket-saas-print');
+                    var w = window.open('', '', 'width=300,height=600');
+                    
+                    w.document.open();
+                    w.document.write('<html><head><title>Ticket</title>');
+                    w.document.write('<style>body{width:80mm;font-family:Courier New;font-size:12px;margin:0;padding:8px}</style>');
+                    w.document.write('</head><body>');
+                    w.document.write(div.innerHTML);
+                    w.document.write('</body></html>');
+                    w.document.close();
+                    
+                    w.focus();
+                    setTimeout(function(){w.print(); w.close();}, 300);
+                }
+                </script>
+                <button onclick="imprimirTicket()" style="width:100%;background:#34495e;color:white;border:none;padding:10px;font-weight:bold;border-radius:5px;cursor:pointer">🖨️ Imprimir Ticket 80mm</button>
                 """
                 st.components.v1.html(js_print, height=50)
 
