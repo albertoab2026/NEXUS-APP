@@ -882,7 +882,7 @@ if menu == "Ventas":
                     </div>
                 </div>
                 <div style="border-bottom: 1px dashed black; margin: 8px 0;"></div>
-                <p style="margin: 3px 0; text-align: center;"><b>Forma de Pago:</b> {uv.get['pago']}</p>
+                <p style="margin: 3px 0; text-align: center;"><b>Forma de Pago:</b> {uv.get('pago') or 'Efectivo'}
                 <div style="text-align: center; margin-top: 15px; font-weight: bold;">¡GRACIAS POR SU COMPRA!</div>
             </div>
             """
