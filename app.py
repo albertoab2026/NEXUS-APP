@@ -842,7 +842,7 @@ if menu == "Ventas":
                 f"-----------------------------------------\n"
                 f"💰 Subtotal: S/{total_sin_descuento:.2f}\n"
                 f"🧾 Descuento Aplicado: -S/{float(uv.get('descuento', 0)):.2f}\n"
-                f"💵 TOTAL PAGADO: S/{uv['total']:.2f}\n"
+                f"💰 TOTAL PAGADO: S/{uv.get('total', 0):.2f}\n"
                 f"💳 Medio de Pago: {uv['pago']}\n\n"
                 f"¡Gracias por su preferencia! ✨"
             )
