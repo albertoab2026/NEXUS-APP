@@ -847,7 +847,7 @@ if menu == "Ventas":
             )
 
             html_ticket = f"""
-            <div id="ticket-saas-print" style="background-color: white; color: black; padding: 5px; font-family: 'Courier New', Courier, monospace; font-size: 11px">
+            <div id="ticket-saas-print" style="width: 280px; background-color: white; color: black; padding: 15px; font-family: 'Courier New', Courier, monospace; font-size: 12px; border: 1px dashed #000; margin: 0 auto;">
                 <div style="text-align: center; font-weight: bold; font-size: 14px; margin-bottom: 5px; text-transform: uppercase;">{uv['tenant']}</div>
                 <div style="text-align: center; margin-bottom: 10px;">*** COMPROBANTE DE COMPRA ***<br><small style="font-size:10px;">Control Interno Comercial</small></div>
                 <p style="margin: 3px 0;"><b>Fecha:</b> {uv['fecha']}</p>
