@@ -895,22 +895,21 @@ if menu == "Ventas":
             with col_acciones:
                 st.markdown("#### ⚡ Acciones del Comprobante")
 
-                js_print = """
-                <script>
-                function imprimirTicket(ancho){
-                    var contenido = document.getElementById('ticket-saas-print').innerHTML;
-                    var ventana = window.open('', '_blank');
-                    
-                    ventana.document.write('<html><head><meta charset="UTF-8"><title>Ticket '+ancho+'mm</title>');
-                    ventana.document.write('<style>@page{size:'+ancho+'mm auto;margin:0} body{width:'+(ancho-4)+'mm;font-family:Courier New;font-size:11px;margin:2mm;padding:0;color:black;background:white} .center{text-align:center;font-weight:bold}</style>');
-                    ventana.document.write('</head><body>'+contenido+'<script>window.onload=function(){window.print()}<'+'/script></body></html>');
-                    ventana.document.close();
-                }
-                </script>
-                <button onclick="imprimirTicket(80)" style="width:100%;background:#34495e;color:white;border:none;padding:10px;font-weight:bold;border-radius:5px;cursor:pointer;margin-bottom:5px">🖨️ Ticket 80mm</button>
-                <button onclick="imprimirTicket(58)" style="width:100%;background:#5a6c7d;color:white;border:none;padding:10px;font-weight:bold;border-radius:5px;cursor:pointer">🖨️ Ticket 58mm</button>
-                """
-                st.components.v1.html(js_print, height=50)
+                if st.button("🖨️ Imprimir Ticket 80mm", use_container_width=True):
+                    # Inyectamos el JS de impresión justo en el momento en que se presiona
+                    components.html(f"""
+                        <script>
+                            // Obtenemos el contenido del ticket (asegúrate de que tu div tenga este id: ticket-saas-print)
+                            var contenido = window.parent.document.getElementById('ticket-saas-print').innerHTML;
+                            var ventana = window.open('', '_blank', 'width=300,height=600');
+                            ventana.document.write('<html><head><style>body{{font-family:Courier New; font-size:11px;}} .center{{text-align:center;}}</style></head><body>');
+                            ventana.document.write(contenido);
+                            ventana.document.write('</body></html>');
+                            ventana.document.close();
+                            ventana.focus();
+                            ventana.print();
+                        </script>
+                    """, height=0)
 
                 texto_url = urllib.parse.quote(texto_whatsapp)
 
