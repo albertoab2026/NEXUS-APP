@@ -827,7 +827,7 @@ if menu == "Ventas":
             uv = st.session_state.ultima_venta
             lineas_productos = ""
             total_sin_descuento = 0
-            for it in uv["items"]:
+            for it in uv.get("items", []):
                 subtotal_item = int(it['cantidad']) * float(it['precio_venta'])
                 total_sin_descuento += subtotal_item
                 lineas_productos += f"{it['cantidad']}x {it['nombre']} (S/{float(it['precio_venta']):.2f}) - S/{subtotal_item:.2f}\n"
@@ -836,14 +836,14 @@ if menu == "Ventas":
                 f"=== COMPROBANTE DE COMPRA ===\n"
                 f"🏪 Comercio: {uv['tenant']}\n"
                 f"📅 Fecha: {uv['fecha']}\n"
-                f"👤 Cliente: {uv['cliente_nom']}\n"
+                f"👤 Cliente: {uv.get('cliente_nom', 'Consumidor Final')}\n"
                 f"-----------------------------------------\n"
                 f"{lineas_productos}"
                 f"-----------------------------------------\n"
                 f"💰 Subtotal: S/{total_sin_descuento:.2f}\n"
                 f"🧾 Descuento Aplicado: -S/{float(uv.get('descuento', 0)):.2f}\n"
                 f"💰 TOTAL PAGADO: S/{uv.get('total', 0):.2f}\n"
-                f"💳 Medio de Pago: {uv['pago']}\n\n"
+                f"💳 Medio de Pago: {uv.get('pago', 'Efectivo')}\n\n"
                 f"¡Gracias por su preferencia! ✨"
             )
 
