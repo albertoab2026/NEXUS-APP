@@ -896,21 +896,15 @@ if menu == "Ventas":
                 st.markdown("#### ⚡ Acciones del Comprobante")
 
                 js_print = """
-                <script>
-                function imprimirTicket(){
-                    var contenido = document.getElementById('ticket-saas-print').innerHTML;
-                    var ventana = window.open('', '_self', '');
-                    ventana.document.write('<html><head><title>Ticket</title>');
-                    ventana.document.write('<style>@page{size:80mm auto;margin:0} body{width:80mm;font-family:Courier New;font-size:12px;margin:0;padding:5px}</style>');
-                    ventana.document.write('</head><body>');
-                    ventana.document.write(contenido);
-                    ventana.document.write('</body></html>');
-                    ventana.document.close();
-                    ventana.focus();
-                    setTimeout(function(){ventana.print(); window.location.reload();}, 500);
+                <style>
+                @media print {
+                    body * { visibility: hidden; }
+                    #ticket-saas-print, #ticket-saas-print * { visibility: visible; }
+                    #ticket-saas-print { position: absolute; left: 0; top: 0; width: 80mm; }
+                    @page { size: 80mm auto; margin: 0; }
                 }
-                </script>
-                <button onclick="imprimirTicket()" style="width:100%;background:#34495e;color:white;border:none;padding:10px;font-weight:bold;border-radius:5px;cursor:pointer">🖨️ Imprimir Ticket 80mm</button>
+                </style>
+                <button onclick="window.print()" style="width:100%;background:#34495e;color:white;border:none;padding:10px;font-weight:bold;border-radius:5px;cursor:pointer">🖨️ Imprimir Ticket 80mm</button>
                 """
                 st.components.v1.html(js_print, height=50)
 
