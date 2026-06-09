@@ -813,16 +813,6 @@ if menu == "Ventas":
                             "cliente_cel": w_cliente_celular.strip()
                         }
                         
-                        # === GUARDAR ÚLTIMA VENTA ANTES DE LIMPIAR CARRITO ===
-                        uv = {
-                            "items": st.session_state.carrito.copy(),
-                            "fecha": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                            "tenant": st.session_state.user_data.get('tenant', ''),
-                            "cliente_nom": w_cliente_nombre.strip() if w_cliente_nombre else "Consumidor Final",
-                            "cliente_cel": w_cliente_celular.strip()
-                        }
-                        st.session_state.ultima_venta = uv
-                        
                         st.session_state.carrito = []
                         st.success("🎉 Venta procesada con éxito.")
                         st.balloons()
@@ -851,7 +841,7 @@ if menu == "Ventas":
                 f"{lineas_productos}"
                 f"-----------------------------------------\n"
                 f"💰 Subtotal: S/{total_sin_descuento:.2f}\n"
-                f"🎁 Descuento Aplicado: -S/{float(uv['descuento']):.2f}\n"
+                f"🧾 Descuento Aplicado: -S/{float(uv.get('descuento', 0)):.2f}\n"
                 f"💵 TOTAL PAGADO: S/{uv['total']:.2f}\n"
                 f"💳 Medio de Pago: {uv['pago']}\n\n"
                 f"¡Gracias por su preferencia! ✨"
