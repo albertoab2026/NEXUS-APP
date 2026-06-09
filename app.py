@@ -870,7 +870,7 @@ if menu == "Ventas":
                 <div style="display: table; width: 100%;">
                     <div style="display: table-row;">
                         <div style="display: table-cell; padding: 2px 0;">Subtotal:</div>
-                        <div style="display: table-cell; text-align: right; padding: 2px 0;">S/{float(uv['total']) + float(uv['descuento']):.2f}</div>
+                        <div style="display: table-cell; text-align: right; padding: 2px 0;">S/{float(uv.get('total', 0)) + float(uv.get('descuento', 0)):.2f}
                     </div>
                     <div style="display: table-row; color: #c0392b;">
                         <div style="display: table-cell; padding: 2px 0; font-weight: bold;">🎁 Descuento:</div>
