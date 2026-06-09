@@ -896,15 +896,25 @@ if menu == "Ventas":
                 st.markdown("#### ⚡ Acciones del Comprobante")
 
                 js_print = """
-                <style>
-                @media print {
-                    body * { visibility: hidden; }
-                    #ticket-saas-print, #ticket-saas-print * { visibility: visible; }
-                    #ticket-saas-print { position: absolute; left: 0; top: 0; width: 80mm; }
-                    @page { size: 80mm auto; margin: 0; }
+                <script>
+                function imprimirTicket(){
+                    var contenido = document.getElementById('ticket-saas-print').innerHTML;
+                    
+                    var ventana = window.open('', '_blank', 'width=300,height=600');
+                    ventana.document.write('<html><head><meta charset="UTF-8"><title>Ticket</title>');
+                    ventana.document.write('<style>');
+                    ventana.document.write('@page{size:80mm auto;margin:2mm}');
+                    ventana.document.write('body{width:76mm;font-family:Courier New;font-size:11px;margin:0;padding:0;color:black;background:white}');
+                    ventana.document.write('.center{text-align:center;font-weight:bold}');
+                    ventana.document.write('</style>');
+                    ventana.document.write('</head><body>');
+                    ventana.document.write(contenido);
+                    ventana.document.write('<script>window.onload=function(){window.print();setTimeout(function(){window.close()},100)}<'+'/script>');
+                    ventana.document.write('</body></html>');
+                    ventana.document.close();
                 }
-                </style>
-                <button onclick="window.print()" style="width:100%;background:#34495e;color:white;border:none;padding:10px;font-weight:bold;border-radius:5px;cursor:pointer">🖨️ Imprimir Ticket 80mm</button>
+                </script>
+                <button onclick="imprimirTicket()" style="width:100%;background:#34495e;color:white;border:none;padding:10px;font-weight:bold;border-radius:5px;cursor:pointer;margin-bottom:10px">🖨️ Imprimir Ticket 80mm</button>
                 """
                 st.components.v1.html(js_print, height=50)
 
