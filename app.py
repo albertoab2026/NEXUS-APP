@@ -831,13 +831,24 @@ if menu == "Ventas":
             st.markdown("### 📄 Último Comprobante Generado")
 
             uv = st.session_state.ultima_venta
+        
+            # 834: Inicializamos variables de forma segura
             lineas_productos = ""
             total_sin_descuento = 0
-            for it in uv["items"]:
-                subtotal_item = int(it['cantidad']) * float(it['precio_venta'])
-                total_sin_descuento += subtotal_item
-                lineas_productos += f"{it['cantidad']}x {it['nombre']} (S/{float(it['precio_venta']):.2f}) - S/{subtotal_item:.2f}\n"
-
+            
+            # 836: Verificamos si realmente hay items antes de iterar
+            if "items" in uv and isinstance(uv["items"], list) and len(uv["items"]) > 0:
+                for it in uv["items"]:
+                    # Convertimos de forma segura
+                    cantidad = int(it.get('cantidad', 0))
+                    precio = float(it.get('precio_venta', 0))
+                    subtotal_item = cantidad * precio
+                    
+                    total_sin_descuento += subtotal_item
+                    lineas_productos += f"{cantidad}x {it.get('nombre', 'Producto')} (S/{precio:.2f}) = S/{subtotal_item:.2f}\n"
+            else:
+                lineas_productos = "No hay productos registrados.\n"
+                
             texto_whatsapp = (
                 f"=== COMPROBANTE DE COMPRA ===\n"
                 f"🏪 Comercio: {uv['tenant']}\n"
