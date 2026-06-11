@@ -832,25 +832,26 @@ if menu == "Ventas":
 
             # 1. Obtenemos la venta más reciente
             uv = st.session_state.ultima_venta
-            
-            # 2. Inicializamos variables para el texto
+        
+            # 2. Inicializamos variables de cálculo
             lineas_productos = ""
-            subtotal_calculado = 0
+            subtotal_real = 0.0
             
-            # 3. Recorremos los items de la venta actual de forma segura
-            if uv and "items" in uv and uv["items"]:
+            # 3. Recorremos los productos para listar y sumar el subtotal real
+            if uv and "items" in uv:
                 for it in uv["items"]:
-                    # Calculamos valores localmente para el ticket
-                    cantidad = float(it.get('cantidad', 0))
+                    # Calculamos el subtotal de esta línea
                     precio = float(it.get('precio_venta', 0))
-                    total_linea = cantidad * precio
-                    subtotal_calculado += total_linea
+                    cantidad = float(it.get('cantidad', 0))
+                    total_linea = precio * cantidad
                     
+                    # Sumamos al acumulador
+                    subtotal_real += total_linea
+                    
+                    # Formateamos la línea del producto
                     lineas_productos += f"• {it['nombre']} (x{int(cantidad)}): S/{total_linea:.2f}\n"
-            else:
-                lineas_productos = "No hay productos registrados.\n"
-    
-            # 4. Construimos el mensaje final con los datos recalculados
+            
+            # 4. Construimos el texto final con los valores correctos
             texto_whatsapp = (
                 f"=== COMPROBANTE DE COMPRA ===\n"
                 f"♦ Comercio: {uv.get('tenant', 'Bodega')}\n"
@@ -859,7 +860,7 @@ if menu == "Ventas":
                 f"-----------------------------\n"
                 f"{lineas_productos}"
                 f"-----------------------------\n"
-                f"♦ Subtotal: S/{subtotal_calculado:.2f}\n"
+                f"♦ Subtotal Real: S/{subtotal_real:.2f}\n"
                 f"♦ Descuento Aplicado: -S/{float(uv.get('descuento', 0)):.2f}\n"
                 f"♦ TOTAL PAGADO: S/{float(uv.get('total', 0)):.2f}\n"
                 f"♦ Medio de Pago: {uv.get('pago', 'Efectivo')}\n"
