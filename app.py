@@ -895,66 +895,50 @@ if menu == "Ventas":
             with col_acciones:
                 st.markdown("#### ⚡ Acciones del Comprobante")
 
-                if st.button("🖨️ Imprimir Ticket 80mm", use_container_width=True):
-                    # Inyectamos el JS de impresión justo en el momento en que se presiona
-                    components.html(f"""
-                        <script>
-                            // Obtenemos el contenido del ticket (asegúrate de que tu div tenga este id: ticket-saas-print)
-                            var contenido = window.parent.document.getElementById('ticket-saas-print').innerHTML;
-                            var ventana = window.open('', '_blank', 'width=300,height=600');
-                            ventana.document.write('<html><head><style>body{{font-family:Courier New; font-size:11px;}} .center{{text-align:center;}}</style></head><body>');
-                            ventana.document.write(contenido);
-                            ventana.document.write('</body></html>');
-                            ventana.document.close();
-                            ventana.focus();
-                            ventana.print();
-                        </script>
-                    """, height=0)
-
-                texto_url = urllib.parse.quote(texto_whatsapp)
-
-                if uv["cliente_cel"]!= "":
-                    url_wa = f"https://wa.me/51{uv['cliente_cel']}?text={texto_url}"
-                else:
-                    url_wa = f"https://wa.me/?text={texto_url}"
-
-                st.markdown(f"""
-                <a href="{url_wa}" target="_blank" style="text-decoration: none;">
-                    <button style="width: 100%; background-color: #25d366; color: white; border: none; padding: 10px; font-weight: bold; border-radius: 5px; cursor: pointer; margin-bottom: 10px;">
-                        📱 Enviar por WhatsApp Digital
-                    </button>
-                </a>
-                """, unsafe_allow_html=True)
-
-                # Definir variables de forma segura
-                uv = st.session_state.ultima_venta
-                df_items = None
+                # Verificamos si realmente existe la venta en el estado
+                if "ultima_venta" in st.session_state and st.session_state.ultima_venta:
+                    uv = st.session_state.ultima_venta
+                    
+                    # 1. BOTÓN IMPRIMIR
+                    if st.button("🖨️ Imprimir Ticket 80mm", use_container_width=True):
+                        components.html(f"""
+                            <script>
+                                var contenido = window.parent.document.getElementById('ticket-saas-print').innerHTML;
+                                var ventana = window.open('', '_blank', 'width=300,height=600');
+                                ventana.document.write('<html><head><style>body{{font-family:Courier New; font-size:11px;}}</style></head><body>' + contenido + '</body></html>');
+                                ventana.document.close();
+                                ventana.print();
+                            </script>
+                        """, height=0)
                 
-                # Intentar crear el DataFrame solo si hay datos
-                if uv and "items" in uv and len(uv["items"]) > 0:
-                    df_items = pd.DataFrame([
-                        {
-                            "Producto": it["nombre"],
-                            "Cantidad": it["cantidad"],
-                            "Precio Unitario": float(it["precio_venta"]),
-                            "Total Item": int(it["cantidad"]) * float(it["precio_venta"])
-                        } for it in uv["items"]
-                    ])
+                    # 2. BOTÓN EXCEL - Aquí forzamos la creación del DataFrame
+                    try:
+                        if "items" in uv and uv["items"]:
+                            df_items = pd.DataFrame(uv["items"])
+                            csv_data = df_items.to_csv(index=False).encode('utf-8')
+                            
+                            st.download_button(
+                                label="📊 Descargar Detalle en Excel (CSV)",
+                                data=csv_data,
+                                file_name=f"ticket_{str(uv.get('fecha', '')).replace(' ', '_').replace(':', '-')}.csv",
+                                mime="text/csv",
+                                use_container_width=True
+                            )
+                        else:
+                            st.warning("Los datos de la venta están incompletos (sin items).")
+                    except Exception as e:
+                        st.error(f"Error al generar Excel: {e}")
                 
-                # Mostrar el botón solo si tenemos datos válidos
-                if df_items is not None:
-                    csv_data = df_items.to_csv(index=False).encode('utf-8')
-                    st.download_button(
-                        label="📊 Descargar Detalle en Excel (CSV)",
-                        data=csv_data,
-                        file_name=f"ticket_{uv['fecha'].replace(' ', '_').replace(':', '-')}.csv",
-                        mime="text/csv",
-                        use_container_width=True
-                    )
+                    # 3. BOTÓN WHATSAPP
+                    # Asegúrate de que 'texto_whatsapp' esté definido antes de este bloque
+                    texto_url = urllib.parse.quote(texto_whatsapp)
+                    url_wa = f"https://wa.me/51{uv.get('cliente_cel', '')}?text={texto_url}"
+                    st.link_button("📱 Enviar por WhatsApp Digital", url=url_wa, use_container_width=True)
+                
                 else:
-                    st.info("No hay datos de items para descargar.")
-
-                # Mantener tu botón de limpiar original
+                    st.info("Realiza una venta para ver las acciones.")
+                
+                # 4. BOTÓN LIMPIAR (Fuera del if principal para que siempre aparezca)
                 if st.button("Limpiar y Nueva Venta", use_container_width=True):
                     st.session_state.ultima_venta = None
                     st.rerun()
