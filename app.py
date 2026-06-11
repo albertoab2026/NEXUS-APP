@@ -926,8 +926,11 @@ if menu == "Ventas":
                 </a>
                 """, unsafe_allow_html=True)
 
-                # Definimos uv antes de usarlo para asegurar que tenga datos
+                # 1. Obtenemos uv de forma segura
                 uv = st.session_state.ultima_venta
+                
+                # 2. Inicializamos df_items como None por defecto
+                df_items = None
                 
                 if uv and "items" in uv and len(uv["items"]) > 0:
                     df_items = pd.DataFrame([
@@ -938,9 +941,10 @@ if menu == "Ventas":
                             "Total Item": int(it["cantidad"]) * float(it["precio_venta"])
                         } for it in uv["items"]
                     ])
-                    
+                
+                # 3. Solo mostramos el botón si df_items fue creado exitosamente
+                if df_items is not None:
                     csv_data = df_items.to_csv(index=False).encode('utf-8')
-                    
                     st.download_button(
                         label="📊 Descargar Detalle en Excel (CSV)",
                         data=csv_data,
@@ -951,19 +955,11 @@ if menu == "Ventas":
                 else:
                     st.info("No hay datos de items para descargar.")
 
-                csv_data = df_items.to_csv(index=False).encode('utf-8')
-                st.download_button(
-                    label="📊 Descargar Detalle en Excel (CSV)",
-                    data=csv_data,
-                    file_name=f"ticket_{uv['fecha'].replace(' ', '_').replace(':', '-')}.csv",
-                    mime="text/csv",
-                    use_container_width=True
-                )
-
+                # 4. Botón de limpieza
                 if st.button("Limpiar y Nueva Venta", use_container_width=True):
                     st.session_state.ultima_venta = None
                     st.rerun()
-
+                    
 elif menu == "Reportes":
     st.title("📊 Centro de Analítica - NEXUS")
 
