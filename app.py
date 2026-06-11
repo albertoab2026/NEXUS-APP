@@ -909,18 +909,25 @@ if menu == "Ventas":
                     """, height=0)
             
                 # 2. BOTÓN EXCEL (Solo si uv existe)
-                if st.session_state.get("ultima_venta") is not None:
+                if "ultima_venta" in st.session_state and st.session_state.ultima_venta is not None:
                     uv = st.session_state.ultima_venta
-                    df_items = pd.DataFrame(uv["items"])
-                    csv_data = df_items.to_csv(index=False).encode('utf-8')
                     
-                    st.download_button(
-                        label="📥 Descargar Excel",
-                        data=csv_data,
-                        file_name=f"venta_{uv['fecha'].replace(':','-')}.csv",
-                        mime="text/csv",
-                        use_container_width=True
-                    )
+                    # Depuración: Verificamos si hay items antes de crear el df
+                    if len(uv.get("items", [])) > 0:
+                        df_items = pd.DataFrame(uv["items"])
+                        
+                        # Aseguramos que el CSV se cree con los datos reales
+                        csv_data = df_items.to_csv(index=False).encode('utf-8')
+                        
+                        st.download_button(
+                            label="📥 Descargar Excel",
+                            data=csv_data,
+                            file_name=f"venta_{uv['fecha'].replace(' ', '_').replace(':', '-')}.csv",
+                            mime="text/csv",
+                            use_container_width=True
+                        )
+                    else:
+                        st.warning("No hay productos en la venta para descargar.")
             
                     # 3. BOTÓN WHATSAPP
                     texto_url = urllib.parse.quote(texto_whatsapp)
