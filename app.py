@@ -764,19 +764,27 @@ if menu == "Ventas":
                     factor = (total_bruto - descuento_valido) / total_bruto if total_bruto > 0 else 1
                     
                     ok = True
-                    items_guardar = []
+                    items_guardar = []  # Inicializamos la lista vacía
                     
                     for item in st.session_state.carrito:
                         # 2. Calcular precio unitario final con el descuento aplicado
                         precio_original = float(item['precio_venta'])
                         precio_final = round(precio_original * factor, 2)
                         
+                        # --- AQUÍ ESTÁ EL CAMBIO: Agregamos el ítem a la lista ---
+                        items_guardar.append({
+                            "nombre": item['nombre'],
+                            "cantidad": item['cantidad'],
+                            "precio_venta": precio_final
+                        })
+                        # --------------------------------------------------------
+                        
                         try:
                             # 3. Registrar usando el precio_final ajustado
                             res = registrar_venta(
                                 producto_id=item['producto_id'],
                                 cantidad=int(item['cantidad']),
-                                precio_venta=precio_final, # <--- AQUÍ ESTÁ EL CAMBIO
+                                precio_venta=precio_final,
                                 precio_compra=float(item['precio_compra']),
                                 pago=metodo_pago,
                                 cliente=w_cliente_nombre.strip() if w_cliente_nombre.strip() else "Consumidor Final",
@@ -796,7 +804,6 @@ if menu == "Ventas":
                             st.error(f"Error al registrar: {e}")
                             ok = False
                             break
-
                     if ok:
                         hora_servidor = datetime.now()
                         hora_peru = hora_servidor - timedelta(hours=5)
