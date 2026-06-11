@@ -812,7 +812,6 @@ if menu == "Ventas":
                             "cliente_nom": w_cliente_nombre.strip() if w_cliente_nombre.strip() else "Consumidor Final",
                             "cliente_cel": w_cliente_celular.strip()
                         }
-                        
                         st.session_state.carrito = []
                         st.success("🎉 Venta procesada con éxito.")
                         st.balloons()
@@ -827,7 +826,7 @@ if menu == "Ventas":
             uv = st.session_state.ultima_venta
             lineas_productos = ""
             total_sin_descuento = 0
-            for it in uv.get("items", []):
+            for it in uv["items"]:
                 subtotal_item = int(it['cantidad']) * float(it['precio_venta'])
                 total_sin_descuento += subtotal_item
                 lineas_productos += f"{it['cantidad']}x {it['nombre']} (S/{float(it['precio_venta']):.2f}) - S/{subtotal_item:.2f}\n"
@@ -836,19 +835,19 @@ if menu == "Ventas":
                 f"=== COMPROBANTE DE COMPRA ===\n"
                 f"🏪 Comercio: {uv['tenant']}\n"
                 f"📅 Fecha: {uv['fecha']}\n"
-                f"👤 Cliente: {uv.get('cliente_nom', 'Consumidor Final')}\n"
+                f"👤 Cliente: {uv['cliente_nom']}\n"
                 f"-----------------------------------------\n"
                 f"{lineas_productos}"
                 f"-----------------------------------------\n"
                 f"💰 Subtotal: S/{total_sin_descuento:.2f}\n"
-                f"🧾 Descuento Aplicado: -S/{float(uv.get('descuento', 0)):.2f}\n"
-                f"💰 TOTAL PAGADO: S/{uv.get('total', 0):.2f}\n"
-                f"💳 Medio de Pago: {uv.get('pago', 'Efectivo')}\n\n"
+                f"🎁 Descuento Aplicado: -S/{float(uv['descuento']):.2f}\n"
+                f"💵 TOTAL PAGADO: S/{uv['total']:.2f}\n"
+                f"💳 Medio de Pago: {uv['pago']}\n\n"
                 f"¡Gracias por su preferencia! ✨"
             )
 
             html_ticket = f"""
-            <div id="ticket-saas-print" style="width: 250px; font-family: 'Courier New', Courier, monospace; font-size: 12px; background: white; color: black; padding: 10px; border: 1px solid #ccc; margin: auto;">
+            <div id="ticket-saas-print" style="width: 280px; background-color: white; color: black; padding: 15px; font-family: 'Courier New', Courier, monospace; font-size: 12px; border: 1px dashed #000; margin: 0 auto;">
                 <div style="text-align: center; font-weight: bold; font-size: 14px; margin-bottom: 5px; text-transform: uppercase;">{uv['tenant']}</div>
                 <div style="text-align: center; margin-bottom: 10px;">*** COMPROBANTE DE COMPRA ***<br><small style="font-size:10px;">Control Interno Comercial</small></div>
                 <p style="margin: 3px 0;"><b>Fecha:</b> {uv['fecha']}</p>
@@ -870,19 +869,19 @@ if menu == "Ventas":
                 <div style="display: table; width: 100%;">
                     <div style="display: table-row;">
                         <div style="display: table-cell; padding: 2px 0;">Subtotal:</div>
-                        <div style="display: table-cell; text-align: right; padding: 2px 0;">S/{float(uv.get('total', 0)) + float(uv.get('descuento', 0)):.2f}
+                        <div style="display: table-cell; text-align: right; padding: 2px 0;">S/{float(uv['total']) + float(uv['descuento']):.2f}</div>
                     </div>
                     <div style="display: table-row; color: #c0392b;">
                         <div style="display: table-cell; padding: 2px 0; font-weight: bold;">🎁 Descuento:</div>
-                        <div style="display: table-cell; text-align: right; padding: 2px 0; font-weight: bold;">-S/{float(uv.get('descuento') or 0):.2f}
+                        <div style="display: table-cell; text-align: right; padding: 2px 0; font-weight: bold;">-S/{float(uv['descuento']):.2f}</div>
                     </div>
                     <div style="display: table-row; font-size: 14px; font-weight: bold;">
                         <div style="display: table-cell; padding-top: 8px;">TOTAL COBRADO:</div>
-                        <div style="display: table-cell; text-align: right; padding-top: 8px; font-size: 15px;">S/{float(uv.get('total') or 0):.2f}
+                        <div style="display: table-cell; text-align: right; padding-top: 8px; font-size: 15px;">S/{uv['total']:.2f}</div>
                     </div>
                 </div>
                 <div style="border-bottom: 1px dashed black; margin: 8px 0;"></div>
-                <p style="margin: 3px 0; text-align: center;"><b>Forma de Pago:</b> {uv.get('pago') or 'Efectivo'}
+                <p style="margin: 3px 0; text-align: center;"><b>Forma de Pago:</b> {uv['pago']}</p>
                 <div style="text-align: center; margin-top: 15px; font-weight: bold;">¡GRACIAS POR SU COMPRA!</div>
             </div>
             """
@@ -895,48 +894,57 @@ if menu == "Ventas":
 
             with col_acciones:
                 st.markdown("#### ⚡ Acciones del Comprobante")
-            
-                # 1. BOTÓN IMPRIMIR
+
                 if st.button("🖨️ Imprimir Ticket 80mm", use_container_width=True):
+                    # Inyectamos el JS de impresión justo en el momento en que se presiona
                     components.html(f"""
                         <script>
+                            // Obtenemos el contenido del ticket (asegúrate de que tu div tenga este id: ticket-saas-print)
                             var contenido = window.parent.document.getElementById('ticket-saas-print').innerHTML;
                             var ventana = window.open('', '_blank', 'width=300,height=600');
-                            ventana.document.write('<html><head><style>body{{font-family:Courier New; font-size:11px;}}</style></head><body>' + contenido + '</body></html>');
+                            ventana.document.write('<html><head><style>body{{font-family:Courier New; font-size:11px;}} .center{{text-align:center;}}</style></head><body>');
+                            ventana.document.write(contenido);
+                            ventana.document.write('</body></html>');
                             ventana.document.close();
+                            ventana.focus();
                             ventana.print();
                         </script>
                     """, height=0)
-            
-                # 2. BOTÓN EXCEL (Solo si uv existe)
-                if "ultima_venta" in st.session_state and st.session_state.ultima_venta is not None:
-                    uv = st.session_state.ultima_venta
-                    
-                    # Depuración: Verificamos si hay items antes de crear el df
-                    if len(uv.get("items", [])) > 0:
-                        df_items = pd.DataFrame(uv["items"])
-                        
-                        # Aseguramos que el CSV se cree con los datos reales
-                        csv_data = df_items.to_csv(index=False).encode('utf-8')
-                        
-                        st.download_button(
-                            label="📥 Descargar Excel",
-                            data=csv_data,
-                            file_name=f"venta_{uv['fecha'].replace(' ', '_').replace(':', '-')}.csv",
-                            mime="text/csv",
-                            use_container_width=True
-                        )
-                    else:
-                        st.warning("No hay productos en la venta para descargar.")
-            
-                    # 3. BOTÓN WHATSAPP
-                    texto_url = urllib.parse.quote(texto_whatsapp)
-                    wa_numero = f"51{uv['cliente_cel']}" if uv.get("cliente_cel") else ""
-                    url_wa = f"https://wa.me/{wa_numero}?text={texto_url}"
-                    
-                    st.link_button("📱 Enviar por WhatsApp", url=url_wa, use_container_width=True)
 
-                
+                texto_url = urllib.parse.quote(texto_whatsapp)
+
+                if uv["cliente_cel"]!= "":
+                    url_wa = f"https://wa.me/51{uv['cliente_cel']}?text={texto_url}"
+                else:
+                    url_wa = f"https://wa.me/?text={texto_url}"
+
+                st.markdown(f"""
+                <a href="{url_wa}" target="_blank" style="text-decoration: none;">
+                    <button style="width: 100%; background-color: #25d366; color: white; border: none; padding: 10px; font-weight: bold; border-radius: 5px; cursor: pointer; margin-bottom: 10px;">
+                        📱 Enviar por WhatsApp Digital
+                    </button>
+                </a>
+                """, unsafe_allow_html=True)
+
+                df_items = pd.DataFrame([{
+                    "Producto": it["nombre"],
+                    "Cantidad": it["cantidad"],
+                    "Precio Unitario": float(it["precio_venta"]),
+                    "Total Item": int(it["cantidad"]) * float(it["precio_venta"])
+                } for it in uv["items"]])
+
+                csv_data = df_items.to_csv(index=False).encode('utf-8')
+                st.download_button(
+                    label="📊 Descargar Detalle en Excel (CSV)",
+                    data=csv_data,
+                    file_name=f"ticket_{uv['fecha'].replace(' ', '_').replace(':', '-')}.csv",
+                    mime="text/csv",
+                    use_container_width=True
+                )
+
+                if st.button("Limpiar y Nueva Venta", use_container_width=True):
+                    st.session_state.ultima_venta = None
+                    st.rerun()
 
 elif menu == "Reportes":
     st.title("📊 Centro de Analítica - NEXUS")
