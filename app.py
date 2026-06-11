@@ -916,8 +916,6 @@ if menu == "Ventas":
             with col_acciones:
                 st.markdown("#### ⚡ Acciones del Comprobante")
                 
-                st.write("Debug - Contenido de ultima_venta:", st.session_state.ultima_venta)
-                
                 # Verificamos si realmente existe la venta en el estado
                 if "ultima_venta" in st.session_state and st.session_state.ultima_venta:
                     uv = st.session_state.ultima_venta
