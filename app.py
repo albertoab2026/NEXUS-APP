@@ -926,12 +926,11 @@ if menu == "Ventas":
                 </a>
                 """, unsafe_allow_html=True)
 
-                # 1. Obtenemos uv de forma segura
+                # Definir variables de forma segura
                 uv = st.session_state.ultima_venta
-                
-                # 2. Inicializamos df_items como None por defecto
                 df_items = None
                 
+                # Intentar crear el DataFrame solo si hay datos
                 if uv and "items" in uv and len(uv["items"]) > 0:
                     df_items = pd.DataFrame([
                         {
@@ -942,7 +941,7 @@ if menu == "Ventas":
                         } for it in uv["items"]
                     ])
                 
-                # 3. Solo mostramos el botón si df_items fue creado exitosamente
+                # Mostrar el botón solo si tenemos datos válidos
                 if df_items is not None:
                     csv_data = df_items.to_csv(index=False).encode('utf-8')
                     st.download_button(
@@ -955,7 +954,7 @@ if menu == "Ventas":
                 else:
                     st.info("No hay datos de items para descargar.")
 
-                # 4. Botón de limpieza
+                # Mantener tu botón de limpiar original
                 if st.button("Limpiar y Nueva Venta", use_container_width=True):
                     st.session_state.ultima_venta = None
                     st.rerun()
