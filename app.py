@@ -831,40 +831,40 @@ if menu == "Ventas":
             st.markdown("### 📄 Último Comprobante Generado")
 
             # 1. Obtenemos la venta más reciente
-        uv = st.session_state.ultima_venta
-        
-        # 2. Inicializamos variables para el texto
-        lineas_productos = ""
-        subtotal_calculado = 0
-        
-        # 3. Recorremos los items de la venta actual de forma segura
-        if uv and "items" in uv and uv["items"]:
-            for it in uv["items"]:
-                # Calculamos valores localmente para el ticket
-                cantidad = float(it.get('cantidad', 0))
-                precio = float(it.get('precio_venta', 0))
-                total_linea = cantidad * precio
-                subtotal_calculado += total_linea
-                
-                lineas_productos += f"• {it['nombre']} (x{int(cantidad)}): S/{total_linea:.2f}\n"
-        else:
-            lineas_productos = "No hay productos registrados.\n"
-
-        # 4. Construimos el mensaje final con los datos recalculados
-        texto_whatsapp = (
-            f"=== COMPROBANTE DE COMPRA ===\n"
-            f"♦ Comercio: {uv.get('tenant', 'Bodega')}\n"
-            f"♦ Fecha: {uv.get('fecha', '')}\n"
-            f"♦ Cliente: {uv.get('cliente_nom', 'Consumidor Final')}\n"
-            f"-----------------------------\n"
-            f"{lineas_productos}"
-            f"-----------------------------\n"
-            f"♦ Subtotal: S/{subtotal_calculado:.2f}\n"
-            f"♦ Descuento Aplicado: -S/{float(uv.get('descuento', 0)):.2f}\n"
-            f"♦ TOTAL PAGADO: S/{float(uv.get('total', 0)):.2f}\n"
-            f"♦ Medio de Pago: {uv.get('pago', 'Efectivo')}\n"
-            f"¡Gracias por su preferencia! ♦"
-        )
+            uv = st.session_state.ultima_venta
+            
+            # 2. Inicializamos variables para el texto
+            lineas_productos = ""
+            subtotal_calculado = 0
+            
+            # 3. Recorremos los items de la venta actual de forma segura
+            if uv and "items" in uv and uv["items"]:
+                for it in uv["items"]:
+                    # Calculamos valores localmente para el ticket
+                    cantidad = float(it.get('cantidad', 0))
+                    precio = float(it.get('precio_venta', 0))
+                    total_linea = cantidad * precio
+                    subtotal_calculado += total_linea
+                    
+                    lineas_productos += f"• {it['nombre']} (x{int(cantidad)}): S/{total_linea:.2f}\n"
+            else:
+                lineas_productos = "No hay productos registrados.\n"
+    
+            # 4. Construimos el mensaje final con los datos recalculados
+            texto_whatsapp = (
+                f"=== COMPROBANTE DE COMPRA ===\n"
+                f"♦ Comercio: {uv.get('tenant', 'Bodega')}\n"
+                f"♦ Fecha: {uv.get('fecha', '')}\n"
+                f"♦ Cliente: {uv.get('cliente_nom', 'Consumidor Final')}\n"
+                f"-----------------------------\n"
+                f"{lineas_productos}"
+                f"-----------------------------\n"
+                f"♦ Subtotal: S/{subtotal_calculado:.2f}\n"
+                f"♦ Descuento Aplicado: -S/{float(uv.get('descuento', 0)):.2f}\n"
+                f"♦ TOTAL PAGADO: S/{float(uv.get('total', 0)):.2f}\n"
+                f"♦ Medio de Pago: {uv.get('pago', 'Efectivo')}\n"
+                f"¡Gracias por su preferencia! ♦"
+            )
 
             html_ticket = f"""
             <div id="ticket-saas-print" style="width: 280px; background-color: white; color: black; padding: 15px; font-family: 'Courier New', Courier, monospace; font-size: 12px; border: 1px dashed #000; margin: 0 auto;">
