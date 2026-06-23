@@ -936,7 +936,7 @@ if menu == "Ventas":
                     try:
                         if "items" in uv and uv["items"]:
                             df_items = pd.DataFrame(uv["items"])
-                            csv_data = df_items.to_csv(index=False).encode('utf-8')
+                            csv_data = df_items.to_csv(index=False, sep=';').encode('utf-8-sig')
                             
                             st.download_button(
                                 label="📊 Descargar Detalle en Excel (CSV)",
