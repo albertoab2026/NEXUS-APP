@@ -19,7 +19,7 @@ st.set_page_config(
     layout="wide"
 )
 # === CONFIGURACIÓN DE ENTORNO ===
-​ENTORNO = "DEV"
+ENTORNO = "DEV"
 SUFIJO = "_PRUEBA" if ENTORNO == "DEV" else ""
 TABLA_TENANTS = "NEXUS_TENANTS" + SUFIJO
 if ENTORNO == "DEV":
