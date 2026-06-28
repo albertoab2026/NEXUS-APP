@@ -232,8 +232,10 @@ def registrar_cierre_manual_dynamo(usuario_id):
     """Actualiza la fecha y hora del último cierre en el perfil del Tenant"""
     try:
         ahora_utc = datetime.now(timezone.utc).isoformat()
-        # Buscamos la tabla exacta que vimos en tu captura de AWS
-        tabla_usuarios = boto3.resource('dynamodb').Table('NEXUS_USUARIOS')
+        # Le añadimos la región exacta que vimos en tu consola de AWS (us-east-1)
+        dynamodb_resource = boto3.resource('dynamodb', region_name='us-east-1')
+        tabla_usuarios = dyanmodb_resource.Table('NEXUS_USUARIOS')
+        
         tabla_usuarios.update_item(
             Key={'usuario_id': str(usuario_id)},
             UpdateExpression="SET ultimo_cierre = :u",
