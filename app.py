@@ -971,23 +971,51 @@ elif menu == "Reportes":
     productos_raw = obtener_productos()
 
     if not ventas_raw:
-        st.info("💡 No hay ventas registradas.")
+        st.info("💡 No hay ventas registradas en el sistema.")
     else:
+        # Convertimos a DataFrame base
         df = pd.DataFrame(ventas_raw)
 
+        # --- NORMALIZACIÓN DE FECHAS ---
+        # Convertimos la fecha UTC de DynamoDB, removemos zona horaria y restamos 5 horas para Perú
         df['fecha_dt'] = pd.to_datetime(df['fecha']).dt.tz_localize(None) - pd.Timedelta(hours=5)
         df['Fecha_Corta'] = df['fecha_dt'].dt.date
         df['Hora'] = df['fecha_dt'].dt.strftime('%H:%M:%S')
 
-        fecha_hoy = (datetime.now() - timedelta(hours=5)).date()
-        fecha_busqueda = st.date_input("Selecciona el día:", value=fecha_hoy)
+        # --- SELECTOR DE FILTRO: TURNO MANUAL VS CALENDARIO ---
+        st.markdown("### 🔍 Criterio de Búsqueda")
+        tipo_filtro = st.radio(
+            "Selecciona el modo de visualización para tu analítica:",
+            ["Turno Actual (Desde el último cierre manual)", "Historial por Fecha (Calendario)"],
+            horizontal=True
+        )
 
-        df_filtrado = df[df['Fecha_Corta'] == fecha_busqueda].copy()
+        if tipo_filtro == "Turno Actual (Desde el último cierre manual)":
+            # Obtenemos el último cierre guardado en la sesión (UTC)
+            ultimo_cierre_str = st.session_state.user_data.get('ultimo_cierre', (datetime.now(timezone.utc) - timedelta(days=1)).isoformat())
+            # Lo pasamos a datetime naive y le restamos 5 horas para equipararlo con df['fecha_dt']
+            ultimo_cierre_dt = datetime.fromisoformat(ultimo_cierre_str).replace(tzinfo=None) - timedelta(hours=5)
+            
+            # Filtramos todo lo estrictamente posterior a ese cierre
+            df_filtrado = df[df['fecha_dt'] > ultimo_cierre_dt].copy()
+            st.info(f"⚡ Mostrando ventas del turno actual. Caja abierta desde: **{ultimo_cierre_dt.strftime('%d/%m/%Y %H:%M:%S')}**")
+            
+            # Para la comparativa de ganancia, usamos el mismo día de la semana pasada de forma referencial
+            fecha_referencia = (datetime.now() - timedelta(hours=5)).date() - timedelta(days=7)
+            df_pasada = df[df['Fecha_Corta'] == fecha_referencia].copy()
+        else:
+            # Modo tradicional por calendario
+            fecha_hoy = (datetime.now() - timedelta(hours=5)).date()
+            fecha_busqueda = st.date_input("Selecciona el día a auditar:", value=fecha_hoy)
+            
+            df_filtrado = df[df['Fecha_Corta'] == fecha_busqueda].copy()
+            fecha_semana_pasada = fecha_busqueda - timedelta(days=7)
+            df_pasada = df[df['Fecha_Corta'] == fecha_semana_pasada].copy()
+
+        # Ordenamos las ventas cronológicamente (más recientes primero)
         df_filtrado = df_filtrado.sort_values(by='fecha_dt', ascending=False)
 
-        fecha_semana_pasada = fecha_busqueda - timedelta(days=7)
-        df_pasada = df[df['Fecha_Corta'] == fecha_semana_pasada].copy()
-
+        # Inicializamos acumuladores
         efectivo = 0.0
         yape = 0.0
         plin = 0.0
@@ -996,95 +1024,110 @@ elif menu == "Reportes":
         total_ventas_dia = 0.0
 
         if df_filtrado.empty:
-            st.warning(f"No hay ventas para {fecha_busqueda}.")
+            st.warning("⚠️ No se encontraron ventas registradas para el criterio seleccionado.")
         else:
+            # Mapeo de nombres de productos
             mapa_productos = {p['producto_id']: p['nombre'] for p in productos_raw} if productos_raw else {}
-            df_filtrado['Producto'] = df_filtrado['producto_id'].map(mapa_productos).fillna(df_filtrado['producto_id'])
+            
+            # Controlamos si la estructura viene de una venta unitaria o un carrito consolidado
+            if 'producto_id' in df_filtrado.columns:
+                df_filtrado['Producto'] = df_filtrado['producto_id'].map(mapa_productos).fillna(df_filtrado['producto_id'])
+            else:
+                df_filtrado['Producto'] = "Carrito Consolidado"
 
-            if 'pago' not in df_filtrado.columns: df_filtrado['pago'] = 'efectivo'
+            # Normalización del método de pago
+            if 'pago' not in df_filtrado.columns: 
+                df_filtrado['pago'] = 'efectivo'
             df_filtrado['pago'] = df_filtrado['pago'].fillna('efectivo')
+            
             df_filtrado['pago_norm'] = df_filtrado['pago'].astype(str).str.replace('💵', '').str.replace('📱', '').str.replace('💳', '').str.replace('🔮', '').str.strip().str.lower()
             df_filtrado['pago_norm'] = df_filtrado['pago_norm'].apply(lambda x: x if x in ['yape', 'plin'] else 'efectivo')
 
-            cols = ['total_venta', 'precio_venta', 'precio_compra', 'cantidad']
-
-            for col in cols:
-                df_filtrado[col] = pd.to_numeric(df_filtrado[col], errors='coerce').fillna(0)
+            # Sanitización de columnas numéricas
+            cols_numericas = ['total_venta', 'precio_venta', 'precio_compra', 'cantidad']
+            for col in cols_numericas:
+                if col in df_filtrado.columns:
+                    df_filtrado[col] = pd.to_numeric(df_filtrado[col], errors='coerce').fillna(0)
+                else:
+                    df_filtrado[col] = 0.0
+                
                 if col in df_pasada.columns:
                     df_pasada[col] = pd.to_numeric(df_pasada[col], errors='coerce').fillna(0)
 
+            # Cálculo de Ganancias Reales
             df_filtrado['ganancia_real'] = (df_filtrado['precio_venta'] - df_filtrado['precio_compra']) * df_filtrado['cantidad']
             ganancia_hoy = df_filtrado['ganancia_real'].sum()
 
-            df_pasada['ganancia_real'] = (df_pasada['precio_venta'] - df_pasada['precio_compra']) * df_pasada['cantidad']
-            ganancia_pasada = df_pasada['ganancia_real'].sum()
+            if not df_pasada.empty and 'precio_venta' in df_pasada.columns and 'precio_compra' in df_pasada.columns:
+                df_pasada['ganancia_real'] = (df_pasada['precio_venta'] - df_pasada['precio_compra']) * df_pasada['cantidad']
+                ganancia_pasada = df_pasada['ganancia_real'].sum()
 
+            # Distribución de montos por pasarela de pago
             yape = df_filtrado[df_filtrado['pago_norm'] == 'yape']['total_venta'].sum()
             plin = df_filtrado[df_filtrado['pago_norm'] == 'plin']['total_venta'].sum()
             efectivo = df_filtrado[df_filtrado['pago_norm'] == 'efectivo']['total_venta'].sum()
             total_ventas_dia = efectivo + yape + plin
 
-        st.markdown("""
-            <style>
-            div[data-testid="metric-container"] { background-color: #1e293b; padding: 20px; border-radius: 10px; border: 1px solid #475569; }
-            div[data-testid="metric-container"] label { font-size: 1.2rem!important; }
-            div[data-testid="metric-container"] [data-testid="stMetricValue"] { font-size: 2.5rem!important; color: #38bdf8!important; }
-            </style>
-        """, unsafe_allow_html=True)
+            # --- RENDERIZADO DE INTERFAZ ---
+            st.markdown("""
+                <style>
+                div[data-testid="metric-container"] { background-color: #1e293b; padding: 20px; border-radius: 10px; border: 1px solid #475569; }
+                div[data-testid="metric-container"] label { font-size: 1.2rem!important; }
+                div[data-testid="metric-container"] [data-testid="stMetricValue"] { font-size: 2.5rem!important; color: #38bdf8!important; }
+                </style>
+            """, unsafe_allow_html=True)
 
-        st.markdown("### 📊 Resumen del Día")
-        c1, c2, c3, c4 = st.columns(4)
-        c1.metric("💰 Total Ventas", f"S/{total_ventas_dia:.2f}")
-        c2.metric("💵 Efectivo", f"S/{efectivo:.2f}")
-        c3.metric("📱 Yape", f"S/{yape:.2f}")
-        c4.metric("🟣 Plin", f"S/{plin:.2f}")
+            st.markdown("### 📊 Resumen Financiero")
+            c1, c2, c3, c4 = st.columns(4)
+            c1.metric("💰 Total Ventas", f"S/{total_ventas_dia:.2f}")
+            c2.metric("💵 Efectivo", f"S/{efectivo:.2f}")
+            c3.metric("📱 Yape", f"S/{yape:.2f}")
+            c4.metric("🟣 Plin", f"S/{plin:.2f}")
 
-        delta_val = ganancia_hoy - ganancia_pasada
-        st.metric("📝 Ganancia Real (Hoy)", f"S/{ganancia_hoy:.2f}", delta=f"{delta_val:.2f} vs hace 7 días")
+            delta_val = ganancia_hoy - ganancia_pasada
+            st.metric("📝 Ganancia Real", f"S/{ganancia_hoy:.2f}", delta=f"{delta_val:.2f} vs periodo comparativo")
 
-        st.write("---")
-        st.subheader("📊 Análisis Visual del Día")
+            st.write("---")
+            st.subheader("📊 Análisis Visual del Periodo")
 
-        if not df_filtrado.empty:
+            # Construcción de Gráficas con Plotly
             col_graf1, col_graf2 = st.columns(2)
 
             with col_graf1:
                 df_top = df_filtrado.groupby('Producto')['total_venta'].sum().reset_index().sort_values('total_venta', ascending=False).head(10)
-                fig_bar = px.bar(df_top, x='total_venta', y='Producto', orientation='h', title="Top 10 Productos")
+                fig_bar = px.bar(df_top, x='total_venta', y='Producto', orientation='h', title="Top 10 Productos Más Vendidos")
                 st.plotly_chart(fig_bar, use_container_width=True)
 
             def limpiar_pago(valor):
                 v = str(valor).lower().strip()
-                if 'efectivo' in v:
-                    return 'Efectivo'
-                elif 'yape' in v:
-                    return 'Yape'
-                elif 'plin' in v:
-                    return 'Plin'
-                else:
-                    return v.capitalize()
+                if 'efectivo' in v: return 'Efectivo'
+                elif 'yape' in v: return 'Yape'
+                elif 'plin' in v: return 'Plin'
+                else: return v.capitalize()
 
-            df_filtrado['pago_norm'] = df_filtrado['pago'].apply(limpiar_pago)
+            df_filtrado['pago_norm_display'] = df_filtrado['pago'].apply(limpiar_pago)
 
             with col_graf2:
-                fig_pie = px.pie(df_filtrado, values='total_venta', names='pago_norm', title="Distribución de Pagos", hole=0.4)
+                fig_pie = px.pie(df_filtrado, values='total_venta', names='pago_norm_display', title="Distribución de Métodos de Pago", hole=0.4)
                 st.plotly_chart(fig_pie, use_container_width=True)
 
             if 'Hora' in df_filtrado.columns:
                 df_hora = df_filtrado.groupby('Hora')['total_venta'].sum().reset_index()
-                fig_line = px.area(df_hora, x='Hora', y='total_venta', title="Tendencia de Ventas", line_shape='spline')
+                fig_line = px.area(df_hora, x='Hora', y='total_venta', title="Tendencia Horaria de Ventas", line_shape='spline')
                 st.plotly_chart(fig_line, use_container_width=True)
 
-            with st.expander("📊 Ver detalle de ventas (Maximizar/Minimizar)"):
-                columnas_a_mostrar = ['Hora', 'Producto', 'cantidad', 'total_venta', 'ganancia_real', 'pago']
+            # Tabla expandible con auditoría detallada
+            with st.expander("📊 Ver detalle de transacciones (Maximizar/Minimizar)"):
+                columnas_disponibles = df_filtrado.columns.tolist()
+                columnas_a_mostrar = [c for c in ['Hora', 'Producto', 'cantidad', 'total_venta', 'ganancia_real', 'pago'] if c in columnas_disponibles]
                 st.dataframe(df_filtrado[columnas_a_mostrar], use_container_width=True)
-        else:
-            st.warning("No hay datos para mostrar gráficos ni detalles.")
 
-        if not df_filtrado.empty:
+            # --- GENERACIÓN DE REPORTE EXCEL (XLSXWRITER) ---
             buffer = io.BytesIO()
             with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
-                df_filtrado.to_excel(writer, sheet_name='Ventas_Auditoria', index=False)
+                # Quitamos columnas temporales de visualización antes de exportar
+                columnas_export = [c for c in df_filtrado.columns if c not in ['pago_norm_display']]
+                df_filtrado[columnas_export].to_excel(writer, sheet_name='Ventas_Auditoria', index=False)
 
                 workbook = writer.book
                 worksheet = writer.sheets['Ventas_Auditoria']
@@ -1093,16 +1136,20 @@ elif menu == "Reportes":
                 total_sum = df_filtrado['total_venta'].sum()
                 row_idx = len(df_filtrado) + 1
                 worksheet.write(row_idx, 1, "TOTALES:")
-                worksheet.write(row_idx, 5, total_sum, money_fmt)
+                
+                # Buscamos el índice de la columna 'total_venta' para pintarlo en el lugar correcto
+                if 'total_venta' in columnas_export:
+                    col_num_idx = columnas_export.index('total_venta')
+                    worksheet.write(row_idx, col_num_idx, total_sum, money_fmt)
+
+            nombre_archivo = "Reporte_Turno_Actual.xlsx" if tipo_filtro.startswith("Turno") else f"Reporte_NEXUS_{fecha_busqueda}.xlsx"
 
             st.download_button(
                 label="📥 Descargar Reporte en Excel (Auditoría)",
-                data=buffer,
-                file_name=f"Reporte_NEXUS_{fecha_busqueda}.xlsx",
+                data=buffer.getvalue(),
+                file_name=nombre_archivo,
                 mime="application/vnd.ms-excel"
             )
-        else:
-            st.warning("No hay ventas para generar el reporte.")
 
 elif menu == "⚙️ Ajustes":
     mostrar_ajustes()
