@@ -228,6 +228,24 @@ def obtener_ventas():
         st.error(f"Error cargando ventas: {e}")
         return []
 
+def registrar_cierre_manual_dynamo(usuario_id):
+    """Actualiza la fecha y hora del último cierre en el perfil del Tenant"""
+    try:
+        ahora_utc = datetime.now(timezone.utc).isoformat()
+        # Buscamos la tabla exacta que vimos en tu captura de AWS
+        tabla_usuarios = boto3.resource('dynamodb').Table('NEXUS_USUARIOS')
+        tabla_usuarios.update_item(
+            Key={'usuario_id': str(usuario_id)},
+            UpdateExpression="SET ultimo_cierre = :u",
+            ExpressionAttributeValues={':u': ahora_utc}
+        )
+        # Actualizamos la sesión activa de Streamlit
+        st.session_state.user_data['ultimo_cierre'] = ahora_utc
+        return True
+    except Exception as e:
+        st.error(f"Error al guardar el cierre en DynamoDB: {e}")
+        return False
+
 def agregar_producto(nombre, precio_venta, precio_compra, stock, categoria):
     try:
         id_dueno = st.session_state.user_data['usuario_id']
@@ -640,6 +658,44 @@ if menu == "Productos":
 
 if menu == "Ventas":
     st.title("🛒 Terminal de Ventas")
+
+    user_id = st.session_state.user_data['usuario_id']
+    ultimo_cierre_str = st.session_state.user_data.get('ultimo_cierre', (datetime.now(timezone.utc) - timedelta(days=1)).isoformat())
+    ultimo_cierre_dt = datetime.fromisoformat(ultimo_cierre_str)
+
+    # --- PANEL DE CONTROL DE CAJA MANUAL ---
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("### 💰 Control de Caja")
+    
+    ventas_totales = obtener_ventas()
+    ventas_turno = []
+    for v in ventas_totales:
+        fecha_v_dt = datetime.fromisoformat(v['fecha'])
+        if fecha_v_dt > ultimo_cierre_dt:
+            ventas_turno.append(v)
+            
+    total_efectivo = sum(float(v['total_venta']) for v in ventas_turno if "Efectivo" in v.get('pago', ''))
+    total_yape = sum(float(v['total_venta']) for v in ventas_turno if "Yape" in v.get('pago', ''))
+    total_plin = sum(float(v['total_venta']) for v in ventas_turno if "Plin" in v.get('pago', ''))
+    total_acumulado_turno = total_efectivo + total_yape + total_plin
+
+    cierre_peru = ultimo_cierre_dt - timedelta(hours=5)
+    st.sidebar.info(f"📆 **Caja abierta desde:**\n{cierre_peru.strftime('%d/%m/%Y %H:%M:%S')}")
+    
+    with st.sidebar.expander("📊 Totales del Turno Actual"):
+        st.write(f"💵 Efectivo: S/ {total_efectivo:.2f}")
+        st.write(f"📱 Yape: S/ {total_yape:.2f}")
+        st.write(f"💳 Plin: S/ {total_plin:.2f}")
+        st.markdown("**---**")
+        st.markdown(f"### Total: S/ {total_acumulado_turno:.2f}")
+
+    if st.sidebar.button("🔴 CERRAR CAJA MANUAL", type="primary", use_container_width=True):
+        if registrar_cierre_manual_dynamo(user_id):
+            st.success("🎉 ¡Caja cerrada con éxito! Turno reiniciado.")
+            st.balloons()
+            time.sleep(1.5)
+            st.rerun()
+
 
     productos = obtener_productos()
     tenant_actual = st.session_state.user_data.get('nombre_negocio','MI NEGOCIO')
