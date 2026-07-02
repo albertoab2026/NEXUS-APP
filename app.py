@@ -1,23 +1,20 @@
 import streamlit as st
-import pandas as pd
 import boto3
-from datetime import datetime, timedelta
-import pytz
-from boto3.dynamodb.conditions import Attr, Key
-from fpdf import FPDF
-import time
-import re
-import urllib.parse
-from decimal import Decimal, ROUND_HALF_UP
+from boto3.dynamodb.conditions import Key
+import pandas as pd
 import io
+import time
 import uuid
-import pytesseract
+from datetime import datetime, timedelta, timezone
+import hashlib
+from decimal import Decimal
+import urllib.parse
+import plotly.express as px
+import streamlit.components.v1 as components
 
-st.set_page_config(
-    page_title="NEXUS",
-    page_icon="🔥",
-    layout="wide"
-)
+# ======= 1. CONFIG INICIAL =======
+st.set_page_config(page_title="NEXUS", page_icon="⚡", layout="wide")
+
 # === CONFIGURACIÓN DE ENTORNO ===
 ENTORNO = "DEV"
 SUFIJO = "_PRUEBA" if ENTORNO == "DEV" else ""
@@ -26,1498 +23,1262 @@ if ENTORNO == "DEV":
     st.error("🔥 MODO PRUEBA - Datos ficticios")
 # === FIN ===
 
-# === NOMBRES DE TABLAS BASE ===
-TABLA_STOCK = 'SaaS_Stock' + SUFIJO
-TABLA_VENTAS = 'SaaS_Ventas' + SUFIJO
-TABLA_MOVS = 'SaaS_Movimientos' + SUFIJO
-TABLA_CIERRES = 'TABLA_CIERRE' + SUFIJO
-TABLA_TENANTS = "NEXUS_TENANTS" + SUFIJO
-TABLA_PAGOS = "SaaS_Pagos" + SUFIJO
-NUMERO_SOPORTE = "51914282688"
-YAPE_SOPORTE = "Alberto Ballarta"
-DESARROLLADOR = "Alberto Ballarta - Software Engineer"
+CATEGORIAS_POR_RUBRO = {
+    "Bodega": ["Abarrotes", "Bebidas", "Limpieza", "Golosinas", "Lácteos"],
+    "Farmacia": ["Medicinas", "Vitaminas", "Cuidado Personal", "Bebé"],
+    "Librería": ["Cuadernos", "Lapiceros", "Papelería", "Arte y Manualidades"],
+    "Ferretería": ["Herramientas", "Pinturas", "Electricidad", "Gasfitería"],
+    "Minimarket": ["Abarrotes", "Bebidas", "Limpieza", "Lácteos"],
+    "Almacén": ["Mayorista", "Distribución", "Inventario General"],
+    "Otro": ["General"]
+}
 
-tz_peru = pytz.timezone('America/Lima')
+# Session state seguro
+if 'logged_in' not in st.session_state:
+    st.session_state.logged_in = False
+if 'user_data' not in st.session_state:
+    st.session_state.user_data = {}
+if 'carrito' not in st.session_state:
+    st.session_state.carrito = []
+if "buscar_ventas" not in st.session_state:
+    st.session_state["buscar_ventas"] = ""
+if "ultima_venta" not in st.session_state:
+    st.session_state.ultima_venta = None
 
-# === CSS - PALETA ENTERPRISE ===
+# ======= 1. CSS MAESTRO (TODO EN UNO) =======
 st.markdown("""
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
-        * {font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;}
+<style>
+   .stApp { background-color: #0F172A!important; }
 
-    html, body, [class*="stApp"], [data-testid="stAppViewContainer"], [data-testid="stHeader"] {
-            color-scheme: light only!important;
-            forced-color-adjust: none!important;
-            -webkit-forced-color-adjust: none!important;
-        }
+   .header-container {
+        background: linear-gradient(135deg, #1e3a8a, #1e293b)!important;
+        padding: 30px!important;
+        border-radius: 20px!important;
+        border: 1px solid #334155!important;
+        text-align: center!important;
+        margin-bottom: 20px!important;
+    }
 
-.main {background: linear-gradient(135deg, #667eea 0%, #764ba2 100%)!important;}
+   .regalo-bar {
+        background: #F59E0B!important;
+        color: #000!important;
+        padding: 15px!important;
+        border-radius: 12px!important;
+        text-align: center!important;
+        margin-bottom: 25px!important;
+        font-weight: 800!important;
+    }
 
-.block-container {
-            background: #ffffff!important;
-            color: #0f172a!important;
-            border-radius: 24px;
-            padding: 3rem;
-            box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
-            border: 1px solid rgba(255,255,255,0.3);
-            margin-top: 2rem;
-            backdrop-filter: blur(10px);
-        }
-
-.block-container p,.block-container h1,.block-container h2,.block-container h3,
-.block-container h4,.block-container label,.block-container span,
-.stMarkdown,.stText,.stCaption {
-            color: #0f172a!important;
-        }
-
-    h1 {font-weight: 900!important; letter-spacing: -0.03em; font-size: 3rem!important;}
-    h2 {font-weight: 800!important; letter-spacing: -0.02em; font-size: 2rem!important;}
-    h3 {font-weight: 700!important; letter-spacing: -0.02em; font-size: 1.5rem!important;}
-
-    /* HERO LOGIN */
-.hero-login {
-            text-align: center;
-            padding: 60px 20px 40px 20px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 20px;
-            margin: -3rem -3rem 2rem -3rem;
-            color: white;
-        }
-.hero-login h1 {
-            font-size: 4rem!important;
-            font-weight: 900!important;
-            margin: 0;
-            color: white!important;
-            text-shadow: 0 4px 6px rgba(0,0,0,0.1);
-        }
-.hero-login p {
-            font-size: 1.25rem;
-            opacity: 0.95;
-            margin: 10px 0 0 0;
-            color: white!important;
-            font-weight: 500;
-        }
-.hero-badge {
-            display: inline-block;
-            background: rgba(255,255,255,0.2);
-            backdrop-filter: blur(10px);
-            padding: 8px 20px;
-            border-radius: 50px;
-            font-size: 0.9rem;
-            font-weight: 600;
-            margin-top: 15px;
-            border: 1px solid rgba(255,255,255,0.3);
-        }
-
-    /* MÉTRICAS */
-    div[data-testid="stMetric"] {
-            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)!important;
-            padding: 28px;
-            border-radius: 16px;
-            box-shadow: 0 10px 15px -3px rgba(59,130,246,0.3);
-            border: none;
-        }
-    div[data-testid="stMetric"] label {
-            color: rgba(255,255,255,0.9)!important;
-            font-weight: 600;
-            font-size: 13px;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-        }
-    div[data-testid="stMetric"] [data-testid="stMetricValue"] {
-            color: white!important;
-            font-size: 42px;
-            font-weight: 800;
-            letter-spacing: -0.03em;
-        }
-    div[data-testid="stMetric"] [data-testid="stMetricDelta"] {
-            color: #86efac!important;
-            font-size: 15px;
-            font-weight: 700;
-        }
-
-    /* BOTONES */
-.stButton>button {
-            border-radius: 10px;
-            font-weight: 700;
-            border: none;
-            background: #3b82f6!important;
-            color: white!important;
-            box-shadow: 0 1px 3px 0 rgba(0,0,0,0.1), 0 1px 2px 0 rgba(0,0,0,0.06);
-            height: 52px!important;
-            font-size: 16px!important;
-            letter-spacing: -0.01em;
-            transition: all 0.15s ease;
-        }
-.stButton>button:hover {
-            background: #2563eb!important;
-            box-shadow: 0 10px 15px -3px rgba(59,130,246,0.4);
-            transform: translateY(-2px);
-        }
-.stButton>button:active {
-            transform: translateY(0px);
-        }
-
-    button[kind="primary"] {
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%)!important;
-            box-shadow: 0 4px 6px -1px rgba(16,185,129,0.3)!important;
-        }
-    button[kind="primary"]:hover {
-            background: linear-gradient(135deg, #059669 0%, #047857 100%)!important;
-            box-shadow: 0 10px 15px -3px rgba(16,185,129,0.4)!important;
-        }
-
-    /* TABS */
-.stTabs [data-baseweb="tab-list"] {
-            gap: 6px;
-            background: #f1f5f9!important;
-            padding: 8px;
-            border-radius: 12px;
-            border: 1px solid #e2e8f0;
-        }
-.stTabs [data-baseweb="tab"] {
-            border-radius: 8px;
-            padding: 12px 24px;
-            font-weight: 600;
-            color: #64748b!important;
-            font-size: 15px;
-            transition: all 0.15s;
-        }
-.stTabs [data-baseweb="tab"]:hover {
-            color: #334155!important;
-            background: rgba(255,255,255,0.5);
-        }
-.stTabs [aria-selected="true"] {
-            background: white!important;
-            color: #0f172a!important;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-        }
-
-    /* BOTONES DE PAGO */
-    button[key="btn_yape"] {
-            background: linear-gradient(135deg, #720e9e 0%, #5a0b7a 100%)!important;
-            color: white!important;
-            font-size: 24px!important;
-            font-weight: 800!important;
-            height: 100px!important;
-            border: none!important;
-            border-radius: 16px!important;
-            box-shadow: 0 10px 15px -3px rgba(114,14,158,0.4)!important;
-        }
-    button[key="btn_plin"] {
-            background: linear-gradient(135deg, #00b9e5 0%, #0094b8 100%)!important;
-            color: white!important;
-            font-size: 24px!important;
-            font-weight: 800!important;
-            height: 100px!important;
-            border: none!important;
-            border-radius: 16px!important;
-            box-shadow: 0 10px 15px -3px rgba(0,185,229,0.4)!important;
-        }
-    button[key="btn_efectivo"] {
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%)!important;
-            color: white!important;
-            font-size: 24px!important;
-            font-weight: 800!important;
-            height: 100px!important;
-            border: none!important;
-            border-radius: 16px!important;
-            box-shadow: 0 10px 15px -3px rgba(16,185,129,0.4)!important;
-        }
-    button[key="btn_yape"]:hover, button[key="btn_plin"]:hover, button[key="btn_efectivo"]:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 20px 25px -5px rgba(0,0,0,0.3)!important;
-        }
-
-    /* INPUTS */
-.stSelectbox>div {
-            background: white!important;
-            border: 1px solid #cbd5e1!important;
-            border-radius: 10px!important;
-            font-weight: 500;
-            transition: all 0.15s;
-        }
-.stSelectbox>div:hover {
-            border-color: #94a3b8!important;
-        }
-.stSelectbox>div:focus-within {
-            border-color: #3b82f6!important;
-            box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
-        }
-.stSelectbox>div>div>div {color: #0f172a!important; font-weight: 500;}
-.stSelectbox svg {fill: #64748b!important;}
-
-    [data-baseweb="select"] {background-color: white!important;}
-    [data-baseweb="select"] > div {background-color: white!important; color: #0f172a!important;}
-    [data-baseweb="popover"] {
-            background-color: white!important;
-            border: 1px solid #e2e8f0;
-            border-radius: 12px;
-            box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 10px 10px -5px rgba(0,0,0,0.04);
-        }
-    [data-baseweb="menu"] {background-color: white!important; padding: 8px;}
-    [data-baseweb="menu"] li {
-            background-color: white!important;
-            color: #0f172a!important;
-            font-weight: 500;
-            border-radius: 8px;
-            margin: 2px 0;
-        }
-    [data-baseweb="menu"] li:hover {background-color: #f1f5f9!important;}
-
-.stTextInput>div>input,.stNumberInput>div>div>input,.stDateInput input {
-            border-radius: 10px;
-            border: 1px solid #cbd5e1!important;
-            padding: 14px 18px;
-            background: white!important;
-            color: #0f172a!important;
-            font-weight: 500;
-            font-size: 15px;
-            transition: all 0.15s;
-        }
-.stTextInput>div>input:hover,.stNumberInput>div>div>input:hover,.stDateInput input:hover {
-            border-color: #94a3b8!important;
-        }
-.stTextInput>div>input:focus,.stNumberInput>div>div>input:focus,.stDateInput input:focus {
-            border-color: #3b82f6!important;
-            box-shadow: 0 0 0 3px rgba(59,130,246,0.1);
-            outline: none;
-        }
-
-    [data-testid="stNumberInput"] {background: white!important;}
-    [data-testid="stNumberInput"] input {
-            background-color: white!important;
-            color: #0f172a!important;
-            font-weight: 500;
-        }
-    [data-testid="stNumberInput"] button {
-            background-color: #f8fafc!important;
-            color: #64748b!important;
-            border: 1px solid #e2e8f0;
-            border-radius: 6px;
-        }
-    [data-testid="stNumberInput"] button:hover {
-            background-color: #f1f5f9!important;
-            border-color: #cbd5e1;
-        }
-
-.stSelectbox label,.stTextInput label,.stNumberInput label,.stDateInput label,.stRadio label {
-            color: #334155!important;
-            font-weight: 600;
-            font-size: 14px;
-            margin-bottom: 8px;
-            display: block;
-        }
-
-    /* SIDEBAR */
-    [data-testid="stSidebar"] {
-            background: #0f172a!important;
-            border-right: 1px solid #1e293b;
-        }
-    [data-testid="stSidebar"] * {color: white!important;}
-    [data-testid="stSidebar"].stButton>button {
-            background: #3b82f6!important;
-            color: white!important;
-            font-weight: 600;
-            border: none;
-            box-shadow: 0 4px 6px -1px rgba(59,130,246,0.3);
-        }
-    [data-testid="stSidebar"].stButton>button:hover {
-            background: #2563eb!important;
-            box-shadow: 0 10px 15px -3px rgba(59,130,246,0.4);
-        }
-
-    /* EXPANDERS */
-    [data-testid="stExpander"] {
-            background-color: white!important;
-            border: 1px solid #e2e8f0!important;
-            border-radius: 14px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-        }
-    [data-testid="stExpander"] summary {
-            background: #f8fafc!important;
-            color: #0f172a!important;
-            font-weight: 600;
-            border-radius: 14px;
-            padding: 16px 20px;
-            border: none;
-            transition: all 0.15s;
-        }
-    [data-testid="stExpander"] summary:hover {
-            background: #f1f5f9!important;
-        }
-    [data-testid="stExpander"] > div {
-            background-color: white!important;
-            padding: 8px 20px 20px 20px;
-        }
-
-.streamlit-expanderHeader {
-            background: #f8fafc!important;
-            border-radius: 14px;
-            font-weight: 600;
-            color: #0f172a!important;
-            border: 1px solid #e2e8f0;
-        }
-
-    /* ALERTAS */
-.stAlert {
-            border-radius: 12px;
-            border-left: 4px solid;
-            font-weight: 500;
-            padding: 18px 20px;
-        }
-    div[data-testid="stAlert"][data-baseweb="notification"] {
-            background-color: #eff6ff;
-            border-left-color: #3b82f6;
-            color: #1e40af;
-        }
-
-    /* DATAFRAME */
-.stDataFrame {
-            border: 1px solid #e2e8f0!important;
-            border-radius: 14px;
-            overflow: hidden;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-        }
-.stDataFrame [data-testid="stTable"] {
-            font-size: 14px;
-            font-weight: 500;
-        }
-
-    /* CHECKBOX */
-.stCheckbox {
-            font-weight: 500;
-            color: #334155;
-        }
-
-    /* SUCCESS/ERROR/WARNING */
-.stSuccess {
-            background-color: #f0fdf4;
-            border-left: 4px solid #10b981;
-            color: #065f46;
-            border-radius: 12px;
-            padding: 16px 20px;
-            font-weight: 500;
-        }
-.stError {
-            background-color: #fef2f2;
-            border-left: 4px solid #ef4444;
-            color: #991b1b;
-            border-radius: 12px;
-            padding: 16px 20px;
-            font-weight: 500;
-        }
-.stWarning {
-            background-color: #fffbeb;
-            border-left: 4px solid #f59e0b;
-            color: #92400e;
-            border-radius: 12px;
-            padding: 16px 20px;
-            font-weight: 500;
-        }
-.stInfo {
-            background-color: #eff6ff;
-            border-left: 4px solid #3b82f6;
-            color: #1e40af;
-            border-radius: 12px;
-            padding: 16px 20px;
-            font-weight: 500;
-        }
-    </style>
+   .feature-grid {
+        display: grid!important;
+        grid-template-columns: 1fr 1fr!important;
+        gap: 20px!important;
+        margin-top: 30px!important;
+    }
+   .feature-card {
+        padding: 25px!important;
+        border-radius: 15px!important;
+        text-align: center!important;
+        color: white!important;
+        border: 1px solid rgba(255,255,255,0.1)!important;
+    }
+   .card-1 { background: #2563eb!important; }
+   .card-2 { background: #dc2626!important; }
+   .card-3 { background: #059669!important; }
+   .card-4 { background: #d97706!important; }
+</style>
 """, unsafe_allow_html=True)
 
-def to_decimal(f): return Decimal(str(f)).quantize(Decimal('0.01'), rounding=ROUND_HALF_UP)
-
-def obtener_tiempo_peru():
-    ahora = datetime.now(tz_peru)
-    return ahora.strftime("%d/%m/%Y"), ahora.strftime("%H:%M:%S"), ahora.strftime("%Y%m%d%H%M%S%f")
-
-# === AWS ===
-dynamodb = boto3.resource('dynamodb',
-    region_name=st.secrets["aws"]["aws_region"],
-    aws_access_key_id=st.secrets["aws"]["aws_access_key_id"],
-    aws_secret_access_key=st.secrets["aws"]["aws_secret_access_key"])
-tabla_stock = dynamodb.Table(TABLA_STOCK)
-tabla_ventas = dynamodb.Table(TABLA_VENTAS)
-tabla_movs = dynamodb.Table(TABLA_MOVS)
-tabla_cierres = dynamodb.Table(TABLA_CIERRES)
-tabla_tenants = dynamodb.Table(TABLA_TENANTS)
-tabla_pagos = dynamodb.Table(TABLA_PAGOS)
-# === FUNCIONES CORE ===
-def verificar_suscripcion(tid):
-    try:
-        t = tabla_tenants.get_item(Key={'TenantID': tid}).get('Item', {})
-        if t.get('EstadoPago') == 'SUSPENDIDO': return False, "SUSPENDIDO"
-        fc = datetime.strptime(t.get('ProximoCobro', '01/01/2000'), '%d/%m/%Y').date()
-        if fc < datetime.now(tz_peru).date() - timedelta(days=5): return False, f"VENCIDO {t.get('ProximoCobro')}"
-        return True, "ACTIVO"
-    except: return True, "ERROR"
-
-def contarProductosEnBD():
-    try: return tabla_stock.query(KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant), Select='COUNT').get('Count', 0)
-    except: return 9999
-
-@st.cache_data(ttl=10)
-def obtener_datos():
-    try:
-        res = tabla_stock.query(KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant), Limit=2000)
-        items = res.get('Items', [])
-        if not items: return pd.DataFrame(columns=['Producto', 'Precio_Compra', 'Precio', 'Stock'])
-        df = pd.DataFrame(items)
-        for col in ['Producto', 'Precio_Compra', 'Precio', 'Stock']:
-            if col not in df.columns: df[col] = 0 if col!='Producto' else ''
-        df['Stock'] = pd.to_numeric(df['Stock'], errors='coerce').fillna(0).astype(int)
-        df['Precio'] = pd.to_numeric(df['Precio'], errors='coerce').fillna(0.0)
-        df['Precio_Compra'] = pd.to_numeric(df['Precio_Compra'], errors='coerce').fillna(0.0)
-        df['Producto'] = df['Producto'].astype(str)
-        return df[['Producto', 'Precio_Compra', 'Precio', 'Stock']].sort_values('Producto')
-    except: return pd.DataFrame(columns=['Producto', 'Precio_Compra', 'Precio', 'Stock'])
-
-def registrar_kardex(prod, cant, tipo, total=0, pc=0, metodo=""):
-    f, h, uid = obtener_tiempo_peru()
-    tabla_movs.put_item(Item={
-        'TenantID': st.session_state.tenant, 'MovID': f"M-{uid}", 'Fecha': f, 'Hora': h,
-        'FechaISO': datetime.now(tz_peru).strftime("%Y-%m-%d"), 'Producto': prod, 'Cantidad': int(cant),
-        'Total': to_decimal(total), 'Precio_Compra': to_decimal(pc), 'Metodo': str(metodo), 'Tipo': tipo, 'Usuario': st.session_state.usuario
-    })
-
-def registrar_cierre(total, u_turno, tipo, u_cierre, fecha=None):
-    f, h, uid = obtener_tiempo_peru()
-    if fecha: f = fecha
-    tabla_cierres.put_item(Item={
-        'TenantID': st.session_state.tenant, 'CierreID': f"C-{uid}", 'Fecha': f, 'Hora': h,
-        'UsuarioTurno': u_turno, 'UsuarioCierre': u_cierre, 'Total': to_decimal(total), 'Tipo': tipo
-    })
-
-def obtener_limites_tenant():
-    item = tabla_tenants.get_item(Key={'TenantID': st.session_state.tenant}).get('Item', {})
-    if not item: st.error("Tenant no existe"); st.stop()
-    if item.get('EstadoPago') == 'SUSPENDIDO': st.error(f"⛔ SUSPENDIDO. WhatsApp +{NUMERO_SOPORTE}"); st.stop()
-    fc = datetime.strptime(item.get('ProximoCobro', '01/01/2000'), '%d/%m/%Y').date()
-    if fc < datetime.now(tz_peru).date() - timedelta(days=5): st.error(f"⛔ VENCIÓ {item.get('ProximoCobro')}"); st.stop()
-    max_p, max_s = int(item.get('MaxProductos', 0)), int(item.get('MaxStock', 0))
-    if max_p == 0: st.error("Configura MaxProductos"); st.stop()
-    
-            # === BLOQUEO 700 PRODUCTOS SOLO BALLARTA ===
-    if st.session_state.tenant == "BALLARTA" and contarProductosEnBD() >= 700:
-        st.error("⛔ Límite de 700 productos alcanzado. Elimina productos o upgradea tu plan al +51914282688")
-        st.stop()
-        
-    df_temp = obtener_datos()
-    stock_max = int(df_temp['Stock'].max()) if not df_temp.empty else 0
-    if contarProductosEnBD() > max_p or stock_max > max_s:
-        st.session_state.modo_lectura = True
-        st.session_state.mensaje_lectura = f"⚠️ MODO LECTURA: Pasado de límites"
-    else: st.session_state.modo_lectura = False
-    return max_p, max_s, item.get('Plan', 'SIN_PLAN'), item.get('PrecioMensual', 0)
-
-def tiene_whatsapp_habilitado():
-    try: return tabla_tenants.get_item(Key={'TenantID': st.session_state.tenant}).get('Item', {}).get('WhatsApp', False) or PLAN_ACTUAL in ["PRO", "PREMIUM"]
-    except: return PLAN_ACTUAL in ["PRO", "PREMIUM"]
-
-# === PARCHE: SISTEMA VENCIMIENTO INTELIGENTE ===
-def sistema_vencimiento_inteligente():
-    """Avisos de vencimiento + 5 días de gracia + bloqueo total"""
+# ======= 1.5 VERIFICACIÓN DE ESTADO DE CUENTA =======
+if st.session_state.get('logged_in'):
+    user_data = st.session_state.get('user_data', {})
+    fecha_fin_str = user_data.get('fecha_trial_fin', '2026-05-29')
+    plan = user_data.get('plan', 'trial')
 
     try:
-        t = tabla_tenants.get_item(Key={'TenantID': st.session_state.tenant}).get('Item', {})
-        if not t or 'ProximoCobro' not in t:
-            return
+        fecha_fin = datetime.strptime(fecha_fin_str[:10], '%Y-%m-%d')
+        dias_restantes = (fecha_fin - datetime.now()).days + 1
+    except:
+        dias_restantes = 0
 
-        # Acepta formato 20/04/2026 o 2026-04-20
-        fecha_str = str(t['ProximoCobro'])
-        if '/' in fecha_str:
-            fc = datetime.strptime(fecha_str, '%d/%m/%Y').date()
-        else:
-            fc = datetime.strptime(fecha_str, '%Y-%m-%d').date()
-            
-        hoy = datetime.now(tz_peru).date()
-        dias = (fc - hoy).days
+    if dias_restantes < 0:
+        mensaje_wa = "Hola NEXUS, quiero renovar mi suscripción."
+        link_wa = f"https://wa.me/51914282688?text={mensaje_wa.replace(' ', '%20')}"
 
-        if 1 <= dias <= 3:
-            st.warning(f"⚠️ Tu plan vence en {dias} días el {fecha_str}. Renueva al +{NUMERO_SOPORTE}")
-
-        elif dias == 0:
-            st.error(f"🚨 Tu plan vence HOY {fecha_str}. Tienes 5 días de gracia. Renueva ya al +{NUMERO_SOPORTE}")
-
-        elif -5 < dias < 0:
-            dias_gracia = 5 + dias
-            st.error(f"🚨 PERÍODO DE GRACIA: Te quedan {dias_gracia} días. Renueva al +{NUMERO_SOPORTE}")
-            
-        # === ESTO ES LO NUEVO: BLOQUEO TOTAL DESPUÉS DE 5 DÍAS ===
-        elif dias <= -5:
-            st.markdown(f"""
-            <style>
-            .block-container {{padding: 0 !important;}}
-            [data-testid="stHeader"] {{display: none;}}
-            #MainMenu {{visibility: hidden;}}
-            footer {{visibility: hidden;}}
-            </style>
-            <div style="position:fixed; top:0; left:0; width:100vw; height:100vh; 
-                        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                        display:flex; align-items:center; justify-content:center; z-index:9999;">
-                <div style="background:white; padding:50px; border-radius:20px; text-align:center; 
-                            box-shadow:0 20px 60px rgba(0,0,0,0.3); max-width:400px;">
-                    <div style="font-size:70px; margin-bottom:20px;">🔒</div>
-                    <h1 style="color:#764ba2; margin:0 0 10px 0;">Suscripción Vencida</h1>
-                    <p style="color:#666; font-size:18px;">Tu acceso expiró el <b>{fecha_str}</b></p>
-                    <p style="color:#666; margin:20px 0;">Renueva tu plan para continuar</p>
-                    <a href="https://wa.me/{NUMERO_SOPORTE}?text=Hola, quiero renovar NEXUS" 
-                       target="_blank"
-                       style="display:inline-block; background:#25D366; color:white; padding:15px 35px; 
-                              border-radius:50px; text-decoration:none; font-weight:bold; font-size:18px;">
-                        💬 WhatsApp Soporte
-                    </a>
-                </div>
+        html_code = f"""
+        <div style="display: flex; flex-direction: column; align-items: center; text-align: center; color: white; font-family: sans-serif;">
+            <h1 style="font-size: 3em;">⏳</h1>
+            <h1 style="color: #ffffff; font-size: 2em;">Tu acceso ha finalizado</h1>
+            <div style="background-color: #1e293b; padding: 20px; border-radius: 15px; border: 1px solid #475569; margin: 20px 0; max-width: 400px;">
+                <h3 style="color: #60a5fa; margin-top: 0;">💳 Datos para la Renovación</h3>
+                <p style="margin: 5px 0;"><b>Yape / Plin:</b> +51914282688</p>
+                <p style="margin: 5px 0;"><b>Titular:</b> Alberto Ballarta</p>
+                <p style="font-size: 0.9em; color: #94a3b8; margin-top: 10px;">
+                    <i>Envía tu comprobante y DNI al WhatsApp tras realizar el pago.</i>
+                </p>
             </div>
-            """, unsafe_allow_html=True)
-            st.stop()
-            
+            <a href="{link_wa}" target="_blank" style="background-color: #25d366; color: white; padding: 15px 30px; text-decoration: none; border-radius: 50px; font-weight: bold; font-size: 1.1em; box-shadow: 0 4px 6px rgba(0,0,0,0.3);">
+                📲 Enviar comprobante al WhatsApp
+            </a>
+        </div>
+        """
+        components.html(html_code, height=500)
+        st.stop()
+
+    elif dias_restantes <= 7:
+        if plan == 'trial':
+            st.warning(f"⚠️ Tu periodo de prueba vence en {dias_restantes} días.")
+        elif plan == 'premium':
+            st.info(f"ℹ️ Tu suscripción Premium renueva en {dias_restantes} días.")
+
+# ======= 2. CONEXIÓN AWS =======
+AWS_ACCESS_KEY_ID = st.secrets["AWS_ACCESS_KEY_ID"]
+AWS_SECRET_ACCESS_KEY = st.secrets["AWS_SECRET_ACCESS_KEY"]
+AWS_REGION = st.secrets["AWS_REGION"]
+
+@st.cache_resource
+def init_dynamodb():
+    return boto3.resource('dynamodb', aws_access_key_id=AWS_ACCESS_KEY_ID,
+                          aws_secret_access_key=AWS_SECRET_ACCESS_KEY, region_name=AWS_REGION)
+
+dynamodb = init_dynamodb()
+tabla_usuarios = dynamodb.Table('NEXUS_USUARIOS')
+tabla_productos = dynamodb.Table('NEXUS_PRODUCTOS')
+tabla_ventas = dynamodb.Table('NEXUS_VENTAS')
+tabla_trial = dynamodb.Table('NEXUS_TRIAL_USADOS')
+
+# ======= 3. FUNCIONES CORE =======
+def hash_password(password):
+    return hashlib.sha256(password.encode()).hexdigest()
+
+def login(usuario_o_dni, password):
+    try:
+        response = tabla_usuarios.get_item(Key={'usuario_id': usuario_o_dni})
+        user = response.get('Item')
+
+        if not user:
+            response = tabla_usuarios.query(
+                IndexName='dni-index',
+                KeyConditionExpression=Key('dni').eq(usuario_o_dni)
+            )
+            if response['Items']:
+                user = response['Items'][0]
+
+        if user and user.get('password_hash') == hash_password(password):
+            if user.get('activo', True):
+                return user
+        return None
     except Exception as e:
-        pass
+        st.error(f"Error en el login: {e}")
+        return None
 
-# === ESTADO ===
-for k in ['auth','rol','tenant','usuario','carrito','boleta','confirmar','modo_lectura','intentos_login','bloqueo_hasta','metodo_pago']:
-    if k not in st.session_state:
-        if k in ['carrito']: st.session_state[k] = []
-        elif k in ['auth','confirmar','modo_lectura']: st.session_state[k] = False
-        elif k in ['intentos_login']: st.session_state[k] = 0
-        elif k in ['bloqueo_hasta']: st.session_state[k] = None
-        elif k == 'metodo_pago': st.session_state[k] = "💵 EFECTIVO"
-        else: st.session_state[k] = None
+def registrar_dueno(dni, nombre, nombre_negocio, email, password, rubro, celular):
+    try:
+        if 'Item' in tabla_trial.get_item(Key={'tipo_id': f'DNI-{dni}'}):
+            st.error("❌ Este DNI ya usó los 7 días gratis")
+            return False
 
-# === LOGIN CON SEGURIDAD + HERO PREMIUM ===
-if not st.session_state.auth:
-    if st.session_state.bloqueo_hasta and datetime.now() < st.session_state.bloqueo_hasta:
-        tiempo_restante = (st.session_state.bloqueo_hasta - datetime.now()).seconds
-        st.error(f"🔒 BLOQUEADO POR SEGURIDAD")
-        st.warning(f"⏱️ Espera {tiempo_restante} segundos para intentar de nuevo")
-        st.progress(1 - (tiempo_restante / 300))
-        time.sleep(1)
-        st.rerun()
+        response = tabla_usuarios.scan(
+            FilterExpression="email = :e OR celular = :c",
+            ExpressionAttributeValues={":e": email, ":c": celular}
+        )
 
-    # LOGO CON FALLBACK
-    import os
-    logo_path = "assets/logo.png"
-    if os.path.exists(logo_path):
-        col_logo1, col_logo2, col_logo3 = st.columns([1,2,1])
-        with col_logo2:
-            st.image(logo_path, width=200)
+        if response.get('Items'):
+            for item in response['Items']:
+                if item['email'] == email:
+                    st.error("❌ Este email ya está registrado.")
+                    return False
+                if item.get('celular') == celular:
+                    st.error("❌ Este celular ya tiene una cuenta asociada.")
+                    return False
 
-    # HERO SECTION PREMIUM
+        timestamp = str(int(datetime.now().timestamp()))[-5:]
+        usuario_id = f"DUENO{timestamp}"
+
+        tabla_usuarios.put_item(Item={
+            'usuario_id': usuario_id,
+            'id_del_dueno': usuario_id,
+            'dni': dni,
+            'nombre': nombre,
+            'nombre_negocio': nombre_negocio,
+            'email': email,
+            'celular': celular,
+            'password_hash': hash_password(password),
+            'rol': 'dueno',
+            'rubro': rubro,
+            'plan': 'trial',
+            'activo': True,
+            'fecha_registro': datetime.now().isoformat(),
+            'fecha_trial_fin': (datetime.now() + timedelta(days=7)).isoformat()
+        })
+
+        tabla_trial.put_item(Item={'tipo_id': f'DNI-{dni}', 'fecha': datetime.now().isoformat()})
+        return True
+    except Exception as e:
+        st.error(f"Error en registro: {e}")
+        return False
+
+def obtener_productos():
+    try:
+        id_dueno = st.session_state.user_data['usuario_id']
+        response = tabla_productos.query(KeyConditionExpression=Key('id_del_dueno').eq(id_dueno))
+        return response.get('Items', [])
+    except Exception as e:
+        st.error(f"Error cargando productos: {e}")
+        return []
+
+def obtener_ventas():
+    try:
+        id_dueno = st.session_state.user_data['usuario_id']
+        response = tabla_ventas.query(KeyConditionExpression=Key('usuario_id').eq(id_dueno))
+        return response.get('Items', [])
+    except Exception as e:
+        st.error(f"Error cargando ventas: {e}")
+        return []
+
+def registrar_cierre_manual_dynamo(usuario_id):
+    """Actualiza la fecha y hora del último cierre en el perfil del Tenant"""
+    try:
+        ahora_utc = datetime.now(timezone.utc).isoformat()
+        # Aquí ya está corregido el nombre para que coincida exacto abajo
+        dynamodb_resource = boto3.resource('dynamodb', region_name='us-east-1')
+        tabla_usuarios = dynamodb_resource.Table('NEXUS_USUARIOS')
+        
+        tabla_usuarios.update_item(
+            Key={'usuario_id': str(usuario_id)},
+            UpdateExpression="SET ultimo_cierre = :u",
+            ExpressionAttributeValues={':u': ahora_utc}
+        )
+        # Actualizamos la sesión activa de Streamlit
+        st.session_state.user_data['ultimo_cierre'] = ahora_utc
+        return True
+    except Exception as e:
+        st.error(f"Error al guardar el cierre en DynamoDB: {e}")
+        return False
+
+def agregar_producto(nombre, precio_venta, precio_compra, stock, categoria):
+    try:
+        id_dueno = st.session_state.user_data['usuario_id']
+        tabla_productos.put_item(Item={
+            'id_del_dueno': str(id_dueno),
+            'producto_id': str(uuid.uuid4()),
+            'nombre': nombre,
+            'precio_venta': Decimal(str(precio_venta)),
+            'precio_compra': Decimal(str(precio_compra)),
+            'stock': int(stock),
+            'categoria': categoria
+        })
+        return True
+    except Exception as e:
+        st.error(f"Error: {e}")
+        return False
+
+def borrar_producto(producto_id, id_dueno):
+    try:
+        tabla_productos.delete_item(
+            Key={'id_del_dueno': str(id_dueno), 'producto_id': str(producto_id)}
+        )
+        return True
+    except Exception as e:
+        st.error(f"Error al borrar: {e}")
+        return False
+
+def actualizar_producto(producto_id, nuevo_precio, nuevo_stock):
+    try:
+        id_dueno = st.session_state.user_data['usuario_id']
+        tabla_productos.update_item(
+            Key={'id_del_dueno': str(id_dueno), 'producto_id': str(producto_id)},
+            UpdateExpression="SET precio_venta = :p, stock = :s",
+            ExpressionAttributeValues={':p': Decimal(str(nuevo_precio)), ':s': int(nuevo_stock)}
+        )
+        return True
+    except Exception as e:
+        st.error(f"Error actualizando: {e}")
+        return False
+
+def eliminar_producto(producto_id):
+    try:
+        id_dueno = st.session_state.user_data['usuario_id']
+        tabla_productos.delete_item(
+            Key={'id_del_dueno': str(id_dueno), 'producto_id': str(producto_id)}
+        )
+        return True
+    except Exception as e:
+        st.error(f"Error al eliminar en la base de datos: {e}")
+        return False
+
+def registrar_venta(producto_id, cantidad, precio_venta, precio_compra, pago, cliente, celular):
+    try:
+        id_dueno = st.session_state.user_data['usuario_id']
+        fecha_utc = datetime.now(timezone.utc).isoformat()
+        total_venta = float(precio_venta) * int(cantidad)
+
+        tabla_ventas.put_item(Item={
+            'usuario_id': id_dueno,
+            'Venta_id': str(uuid.uuid4()),
+            'producto_id': producto_id,
+            'cantidad': int(cantidad),
+            'total_venta': Decimal(str(total_venta)),
+            'precio_venta': Decimal(str(precio_venta)),
+            'precio_compra': Decimal(str(precio_compra)),
+            'fecha': fecha_utc,
+            'pago': str(pago),
+            'cliente': str(cliente),
+            'celular': str(celular)
+        })
+        return True
+    except Exception as e:
+        st.error(f"Error en venta: {e}")
+        return False
+
+def procesar_carga_excel(df):
+    tamanio_bloque = 25
+    total_filas = len(df)
+
+    try:
+        from decimal import Decimal
+        import uuid
+
+        # 1. Traemos los productos actuales del negocio
+        productos_actuales = obtener_productos()
+        
+        # Mapeamos lo existente por nombre en minúsculas para encontrar coincidencias al instante
+        inventario_existente = {}
+        if productos_actuales:
+            for p in productos_actuales:
+                nombre_normalizado = str(p.get('nombre', '')).strip().lower()
+                inventario_existente[nombre_normalizado] = {
+                    'producto_id': p.get('producto_id'),
+                    'stock_actual': int(p.get('stock', 0))
+                }
+
+        # Conectamos con DynamoDB
+        dynamodb_resource = boto3.resource('dynamodb', region_name='us-east-1')
+        tabla_productos = dynamodb_resource.Table('NEXUS_PRODUCTOS')
+        
+        usuario_id = st.session_state.user_data.get('usuario_id')
+        progreso_bar = st.progress(0)
+        
+        contador_nuevos = 0
+        contador_actualizados = 0
+
+        # 2. Procesamos el Excel por bloques respetando tu barra de progreso
+        for i in range(0, total_filas, tamanio_bloque):
+            bloque = df.iloc[i : i + tamanio_bloque]
+
+            for index, row in bloque.iterrows():
+                nombre_excel = str(row['nombre']).strip()
+                nombre_excel_lower = nombre_excel.lower()
+                
+                if not nombre_excel:
+                    continue
+
+                pv = float(row['precio_venta'])
+                pc = float(row['precio_compra'])
+                stock_excel = int(row['stock'])
+                categoria = str(row['categoria']).strip()
+
+                # 3. Control de Duplicados basándonos en tu consola de AWS
+                if nombre_excel_lower in inventario_existente:
+                    # ¡YA EXISTE! Sumamos el stock para evitar duplicar la fila
+                    prod_id_existente = inventario_existente[nombre_excel_lower]['producto_id']
+                    nuevo_stock = inventario_existente[nombre_excel_lower]['stock_actual'] + stock_excel
+                    
+                    # Actualizamos usando la clave compuesta exacta de tu consola: id_del_dueno + producto_id
+                    tabla_productos.update_item(
+                        Key={
+                            'id_del_dueno': str(usuario_id),
+                            'producto_id': str(prod_id_existente)
+                        },
+                        UpdateExpression="SET stock = :s, precio_compra = :pc, precio_venta = :pv, categoria = :c",
+                        ExpressionAttributeValues={
+                            ':s': nuevo_stock,
+                            ':pc': Decimal(str(pc)),
+                            ':pv': Decimal(str(pv)),
+                            ':c': categoria
+                        }
+                    )
+                    # Actualizamos la memoria por si el Excel viene con el mismo artículo repetido varias veces
+                    inventario_existente[nombre_excel_lower]['stock_actual'] = nuevo_stock
+                    contador_actualizados += 1
+                else:
+                    # ¡NUEVO! Si no existe, usamos tu función para meter el producto desde cero
+                    agregar_producto(
+                        nombre=nombre_excel,
+                        precio_venta=pv,
+                        precio_compra=pc,
+                        stock=stock_excel,
+                        categoria=categoria
+                    )
+                    contador_nuevos += 1
+
+            progreso = min((i + tamanio_bloque) / total_filas, 1.0)
+            progreso_bar.progress(progreso)
+
+        st.success(f"✅ ¡Carga completada! Creados: {contador_nuevos} nuevos | Actualizados (Stock sumado): {contador_actualizados} existentes.")
+        return True
+
+    except Exception as e:
+        st.error(f"Error detectado al procesar productos: {e}")
+        st.warning("Consejo: Revisa que los nombres de las columnas en tu Excel sean: nombre, precio_venta, precio_compra, stock, categoria.")
+        return False
+
+def actualizar_inventario_masivo(df_editado):
+    try:
+        contador = 0
+        with st.spinner("Actualizando base de datos..."):
+            for index, row in df_editado.iterrows():
+                tabla_productos.update_item(
+                    Key={
+                        'id_del_dueno': str(st.session_state.user_data['usuario_id']),
+                        'producto_id': str(row['producto_id'])
+                    },
+                    UpdateExpression="SET nombre = :n, precio_venta = :pv, precio_compra = :pc, stock = :s, categoria = :c",
+                    ExpressionAttributeValues={
+                        ':n': row['nombre'],
+                        ':pv': Decimal(str(row['precio_venta'])),
+                        ':pc': Decimal(str(row['precio_compra'])),
+                        ':s': int(row['stock']),
+                        ':c': row['categoria']
+                    }
+                )
+                contador += 1
+
+        if contador > 0:
+            st.success("✅ ¡Inventario actualizado correctamente!")
+            return True
+        else:
+            st.warning("⚠️ No se detectaron cambios en el inventario.")
+            return False
+
+    except Exception as e:
+        st.error(f"Error al actualizar en la base de datos: {e}")
+        return False
+
+def mostrar_ajustes():
+    st.header("⚙️ Ajustes de Cuenta")
+
+    tab_seguridad, tab_pagos = st.tabs(["🔒 Seguridad", "💳 Planes y Pagos"])
+
+    with tab_seguridad:
+        st.subheader("Cambiar Contraseña")
+        with st.form("form_cambio_clave"):
+            pass_actual = st.text_input("Contraseña Actual", type="password", key="pass_actual")
+            pass_nueva = st.text_input("Nueva Contraseña", type="password", key="pass_nueva")
+            pass_confirm = st.text_input("Confirmar Nueva Contraseña", type="password", key="pass_confirm")
+            
+            submit = st.form_submit_button("Actualizar Clave")
+
+            if submit:
+                user_id = st.session_state.user_data['usuario_id']
+                
+                # 1. Validar que no estén vacíos
+                if not pass_actual or not pass_nueva or not pass_confirm:
+                    st.error("Completa todos los campos")
+                
+                # 2. Validar que la actual sea correcta
+                elif hash_password(pass_actual) != st.session_state.user_data['password_hash']:
+                    st.error("❌ La contraseña actual es incorrecta")
+                
+                # 3. Validar que coincidan
+                elif pass_nueva != pass_confirm:
+                    st.error("❌ Las contraseñas nuevas no coinciden")
+                
+                # 4. Validar longitud mínima
+                elif len(pass_nueva) < 6:
+                    st.error("❌ La contraseña debe tener mínimo 6 caracteres")
+                
+                else:
+                    try:
+                        # 5. Actualizar en DynamoDB
+                        tabla_usuarios.update_item(
+                            Key={'usuario_id': user_id},
+                            UpdateExpression="SET password_hash = :p",
+                            ExpressionAttributeValues={':p': hash_password(pass_nueva)}
+                        )
+                        
+                        # 6. Actualizar session_state también
+                        st.session_state.user_data['password_hash'] = hash_password(pass_nueva)
+                        
+                        st.success("✅ Contraseña actualizada correctamente")
+                        st.balloons()
+                        time.sleep(1)
+                        st.rerun()
+                        
+                    except Exception as e:
+                        st.error(f"Error al actualizar: {e}")
+
+    with tab_pagos:
+        st.subheader("Renovación de Planes")
+        col1, col2 = st.columns(2)
+        col1.info("### 🟢 Básico\nS/ 40 mensuales")
+        col2.warning("### 🔵 Premium\nS/ 50 mensuales")
+        st.markdown("---")
+        st.write("Realiza el depósito vía **Yape/Plin** al: **914282688**")
+        st.write("Titular: **Alberto Ballarta**")
+
+        dni_actual = st.session_state.user_data.get('dni', '')
+        dni_input = st.text_input("Ingresa tu DNI:", value=dni_actual)
+
+        mensaje = f"Hola Alberto, soy el cliente con DNI {dni_input} y deseo renovar mi plan."
+        link_wa = f"https://wa.me/51914282688?text={mensaje.replace(' ', '%20')}"
+
+        st.markdown(f'<a href="{link_wa}" target="_blank" style="background-color: #25d366; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">📲 Enviar comprobante al WhatsApp</a>', unsafe_allow_html=True)
+        
+# ======= 4. INTERFAZ DE INICIO =======
+if st.session_state.get("logged_in"):
+    nombre_negocio = st.session_state.user_data.get('nombre_negocio', 'Tu Negocio')
+    st.markdown(f"""
+        <div style="background-color: #1e3a8a; padding: 20px; border-radius: 10px; text-align: center;">
+            <h1 style="color: white;">👋 ¡Bienvenido, {nombre_negocio}!</h1>
+            <p style="color: #cbd5e1;">Sistema de Gestión NEXUS - Tu negocio bajo control.</p>
+        </div>
+    """, unsafe_allow_html=True)
+else:
     st.markdown("""
-        <div class='hero-login'>
-            <h1>💎 NEXUS BALLARTA</h1>
-            <p>Sistema de Punto de Venta Empresarial</p>
-            <div class='hero-badge'>🚀 Tecnología de Alto Rendimiento</div>
+        <div style="background-color: #1e3a8a; padding: 20px; border-radius: 10px; text-align: center;">
+            <h1 style="color: white;">⚡ NEXUS</h1>
+            <p style="color: #cbd5e1;">Gestión Nexus - Tu negocio bajo control</p>
         </div>
     """, unsafe_allow_html=True)
 
-    col1, col2, col3 = st.columns([1,2,1])
-    with col2:
-        with st.container():
-            st.markdown("### 🔐 Acceso Seguro a tu Negocio")
-            tenants = [k for k in st.secrets if k not in ["tablas", "aws"] and not k.endswith("_emp")]
-            t_sel = st.selectbox("📍 Selecciona tu Negocio:", [t.replace("_", " ") for t in tenants], label_visibility="collapsed")
-            t_key = t_sel.replace(" ", "_")
+if not st.session_state.get("logged_in", False):
+    st.markdown("""
+        <div style="background-color: #FFF3CD; border: 2px solid #FFC107; padding: 20px; border-radius: 10px; text-align: center; color: #856404; font-size: 20px; font-weight: bold; margin-bottom: 20px;">
+            🎁 ¡PRUEBA 7 DÍAS GRATIS! <br>
+            <span style="font-size: 16px; font-weight: normal;">Regístrate ahora sin compromiso y empieza hoy mismo.</span>
+        </div>
+    """, unsafe_allow_html=True)
+else:
+    st.info("⚡ Estás en modo de prueba. ¡Disfruta de la gestión total de tu negocio!")
 
-            tab_dueno, tab_empleado = st.tabs(["👑 DUEÑO", "👤 EMPLEADO"])
+if not st.session_state.logged_in:
+    _, col_central, _ = st.columns([1, 2, 1])
 
-            with tab_dueno:
-                st.markdown("##### Acceso Administrador")
-                clave = st.text_input("🔑 Contraseña:", type="password", key="clave_dueno", placeholder="Ingresa tu contraseña").strip()[:30]
-                if st.session_state.intentos_login > 0:
-                    st.caption(f"⚠️ Intentos fallidos: {st.session_state.intentos_login}/5")
-                if st.button("🔓 INGRESAR COMO DUEÑO", use_container_width=True, type="primary"):
-                    if clave == str(st.secrets[t_key]["clave"]):
-                        st.session_state.update({'auth':True,'tenant':t_sel,'rol':'DUEÑO','usuario':'DUEÑO','intentos_login':0})
-                        st.success("✅ Bienvenido de vuelta")
-                        time.sleep(0.5)
-                        st.rerun()
-                    else:
-                        st.session_state.intentos_login += 1
-                        if st.session_state.intentos_login >= 5:
-                            st.session_state.bloqueo_hasta = datetime.now() + timedelta(minutes=5)
-                            st.error("🔒 BLOQUEADO POR 5 MINUTOS")
+    with col_central:
+        tab1, tab2 = st.tabs(["🔑 Iniciar Sesión", "✨ Registrarse"])
+
+        with tab1:
+            usuario_input = st.text_input("Usuario o DNI", placeholder="Ej: 71234567", key="login_user")
+            password_input = st.text_input("Contraseña", type="password", placeholder="••••", key="login_pass")
+            if st.button("Ingresar al Sistema", use_container_width=True):
+                user_validado = login(usuario_input, password_input)
+                if user_validado:
+                    st.session_state.logged_in = True
+                    st.session_state.user_data = user_validado
+                    st.rerun()
+                else:
+                    st.error("❌ Credenciales inválidas")
+
+        with tab2:
+            if "registro_exitoso" in st.session_state and st.session_state.registro_exitoso:
+                st.success("¡Registro exitoso! Ya puedes iniciar sesión.")
+                st.balloons()
+
+                if st.button("Volver al inicio"):
+                    for key in ["reg_dni", "reg_nombre", "reg_negocio", "reg_email", "reg_celular", "reg_pass"]:
+                        if key in st.session_state:
+                            del st.session_state[key]
+                    del st.session_state.registro_exitoso
+                    st.rerun()
+            else:
+                reg_dni = st.text_input("DNI del dueño", key="reg_dni")
+                reg_nombre = st.text_input("Nombre completo", key="reg_nombre")
+                reg_negocio = st.text_input("Nombre del negocio", key="reg_negocio")
+                reg_email = st.text_input("Email", key="reg_email")
+                reg_celular = st.text_input("Número de celular", key="reg_celular")
+                reg_rubro = st.selectbox("Rubro", list(CATEGORIAS_POR_RUBRO.keys()), key="reg_rubro")
+                reg_password = st.text_input("Contraseña", type="password", key="reg_pass")
+
+                if st.button("Activar prueba gratis", use_container_width=True):
+                    if reg_dni and reg_nombre and reg_email and reg_password and reg_celular:
+                        if registrar_dueno(reg_dni, reg_nombre, reg_negocio, reg_email, reg_password, reg_rubro, reg_celular):
+                            st.session_state.registro_exitoso = True
+                            st.rerun()
                         else:
-                            st.error(f"❌ Contraseña incorrecta. Te quedan {5 - st.session_state.intentos_login} intentos")
-                        time.sleep(2)
-                        st.rerun()
-
-            with tab_empleado:
-                st.markdown("##### Acceso Operativo")
-                nombre = st.text_input("👤 Tu nombre:", max_chars=20, key="nombre_emp", placeholder="Ej: JUAN").upper().strip()
-                clave_emp = st.text_input("🔑 Contraseña:", type="password", key="clave_emp", placeholder="Contraseña del equipo").strip()[:30]
-                if st.session_state.intentos_login > 0:
-                    st.caption(f"⚠️ Intentos fallidos: {st.session_state.intentos_login}/5")
-                if st.button("🧑‍💼 INGRESAR COMO EMPLEADO", use_container_width=True, type="primary"):
-                    if nombre and clave_emp == str(st.secrets[f"{t_key}_emp"]["clave"]):
-                        st.session_state.update({'auth':True,'tenant':t_sel,'rol':'EMPLEADO','usuario':nombre,'intentos_login':0})
-                        st.success(f"✅ Bienvenido {nombre}")
-                        time.sleep(0.5)
-                        st.rerun()
+                            st.error("Error al registrar: intenta con otros datos.")
                     else:
-                        st.session_state.intentos_login += 1
-                        if st.session_state.intentos_login >= 5:
-                            st.session_state.bloqueo_hasta = datetime.now() + timedelta(minutes=5)
-                            st.error("🔒 BLOQUEADO POR 5 MINUTOS")
-                        else:
-                            st.error(f"❌ Datos incorrectos. Te quedan {5 - st.session_state.intentos_login} intentos")
-                        time.sleep(2)
-                        st.rerun()
+                        st.warning("Por favor, completa todos los campos.")
 
-            st.write("")
-            st.caption("🔒 Conexión segura SSL | 💎 NEXUS v3.0 Enterprise")
-            st.caption("Soporte 24/7: +51 914 282 688")
+    st.markdown("<div style='margin-top: 60px;'></div>", unsafe_allow_html=True)
+    st.markdown("<h3 style='text-align:center; color:#94A3B8; font-size:20px;'>¿Cansado de perder plata en tu cuaderno?</h3>", unsafe_allow_html=True)
+
+    st.markdown("""
+    <div class='feature-grid'>
+        <div class='feature-card card-1'><div>📦</div><h3>Control Total</h3><p>Sabes qué vendes y qué falta en tiempo real.</p></div>
+        <div class='feature-card card-2'><div>💰</div><h3>Más Ganancia</h3><p>Mira al instante qué productos te dejan más plata.</p></div>
+        <div class='feature-card card-3'><div>📱</div><h3>Desde tu Celular</h3><p>Diseñado para usarse rápido en pantallas móviles.</p></div>
+        <div class='feature-card card-4'><div>⚡</div><h3>Súper Económico</h3><p>Solo S/40 y 50 al mes. Sin contratos complicados.</p></div>
+    </div>
+    """, unsafe_allow_html=True)
+
     st.stop()
 
-# === POST LOGIN ===
-sistema_vencimiento_inteligente()
-MAX_PRODUCTOS_TOTALES, MAX_STOCK_POR_PRODUCTO, PLAN_ACTUAL, PRECIO_ACTUAL = obtener_limites_tenant()
-df_inv = obtener_datos()
-if st.session_state.get('modo_lectura', False): st.warning(st.session_state.mensaje_lectura)
+# ======= 6. APP PRINCIPAL =======
+user = st.session_state.user_data
 
-# === TABS === EMPLEADO AHORA VE HISTORIAL
-tabs_list = ["🛒 VENTA", "📦 STOCK", "📊 REPORTES", "📋 HISTORIAL"]
-if st.session_state.rol == "DUEÑO" and not st.session_state.get('modo_lectura', False):
-    tabs_list += ["📥 CARGAR", "🛠️ MANT."]
-tabs = st.tabs(tabs_list)
-# === TAB VENTA ===
-with tabs[0]:
-    f_hoy, h_hoy, _ = obtener_tiempo_peru()
-    res_cierre = tabla_cierres.query(KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant), FilterExpression=Attr('Fecha').eq(f_hoy) & Attr('UsuarioTurno').eq(st.session_state.usuario))
-    ya_cerro = len(res_cierre.get('Items', [])) > 0
-    hora_cierre = max([c['Hora'] for c in res_cierre.get('Items', [])]) if ya_cerro else None
-
-    if ya_cerro:
-        st.warning(f"⚠️ YA CERRASTE CAJA HOY A LAS {hora_cierre}")
-        st.info("Las ventas que hagas ahora son POST-CIERRE. Se sumarán al reporte de mañana.")
-        if st.button("🔓 REABRIR CAJA - SOLO DUEÑO", use_container_width=True, key="btn_reabrir_caja") and st.session_state.rol == "DUEÑO":
-            for c in res_cierre.get('Items', []):
-                tabla_cierres.delete_item(Key={'TenantID': st.session_state.tenant, 'CierreID': c['CierreID']})
-            st.success("✅ Caja reabierta"); time.sleep(1); st.rerun()
-
-    if st.session_state.boleta:
-        b = st.session_state.boleta
-        st.success("✅ VENTA REALIZADA")
-        st.markdown(f"""<div style="background:white;color:black;padding:20px;border:2px solid #3b82f6;max-width:350px;margin:auto;font-family:monospace;border-radius:16px;box-shadow:0 10px 15px -3px rgba(59,130,246,0.3);">
-            <h3 style="text-align:center;margin:0;color:#3b82f6;">{st.session_state.tenant}</h3>
-            <p style="text-align:center;margin:0;">{b['fecha']} {b['hora']}</p><hr style="border-color:#3b82f6;">
-            {''.join([f'<div style="display:flex;justify-content:space-between;"><span>{i["Cantidad"]}x {i["Producto"]}</span><span>S/{float(i["Subtotal"]):.2f}</span></div>' for i in b['items']])}
-            <hr style="border-color:#3b82f6;"><div style="display:flex;justify-content:space-between;"><span>MÉTODO:</span><span>{b['metodo']}</span></div>
-            <div style="display:flex;justify-content:space-between;color:#ef4444;"><span>DESC:</span><span>- S/{float(b['rebaja']):.2f}</span></div>
-            <div style="display:flex;justify-content:space-between;font-size:18px;color:#3b82f6;"><b>NETO:</b><b>S/{float(b['t_neto']):.2f}</b></div>""", unsafe_allow_html=True)
-
-        pdf = FPDF(orientation='P', unit='mm', format=(80, 200))
-        pdf.add_page()
-        pdf.set_font('Courier', 'B', 12)
-        pdf.cell(0, 5, st.session_state.tenant, 0, 1, 'C')
-        pdf.set_font('Courier', '', 8)
-        pdf.cell(0, 4, f"{b['fecha']} {b['hora']}", 0, 1, 'C')
-        pdf.cell(0, 2, '-'*40, 0, 1, 'C')
-        for i in b['items']:
-            nombre = str(i['Producto'])[:15]
-            pdf.cell(40, 4, f"{i['Cantidad']}x {nombre}", 0, 0)
-            pdf.cell(0, 4, f"S/{float(i['Subtotal']):.2f}", 0, 1, 'R')
-        pdf.cell(0, 2, '-'*40, 0, 1, 'C')
-        metodo_pdf = str(b['metodo']).replace('🟣 ', '').replace('🔵 ', '').replace('💵 ', '')
-        pdf.cell(40, 4, f"METODO:", 0, 0)
-        pdf.cell(0, 4, metodo_pdf, 0, 1, 'R')
-        pdf.cell(40, 4, f"DESC:", 0, 0)
-        pdf.cell(0, 4, f"- S/{float(b['rebaja']):.2f}", 0, 1, 'R')
-        pdf.set_font('Courier', 'B', 10)
-        pdf.cell(40, 5, f"NETO:", 0, 0)
-        pdf.cell(0, 5, f"S/{float(b['t_neto']):.2f}", 0, 1, 'R')
-        pdf_output = pdf.output(dest='S').encode('latin-1')
-
-        df_boleta = pd.DataFrame(b['items'])
-        df_boleta['Fecha'] = b['fecha']
-        df_boleta['Hora'] = b['hora']
-        df_boleta['Metodo'] = b['metodo']
-        df_boleta['Descuento'] = float(b['rebaja'])
-        df_boleta['Total_Neto'] = float(b['t_neto'])
-        buf_excel = io.BytesIO()
-        with pd.ExcelWriter(buf_excel, engine='openpyxl') as w:
-            df_boleta[['Fecha', 'Hora', 'Producto', 'Cantidad', 'Precio', 'Subtotal', 'Metodo', 'Descuento', 'Total_Neto']].to_excel(w, index=False, sheet_name='Ticket')
-
-        col1, col2 = st.columns(2)
-        col1.download_button("📄 PDF 80mm", pdf_output, f"Ticket_{b['fecha'].replace('/','')}.pdf", "application/pdf", use_container_width=True, key="btn_pdf_boleta")
-        col2.download_button("📊 EXCEL", buf_excel.getvalue(), f"Ticket_{b['fecha'].replace('/','')}.xlsx", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True, key="btn_excel_boleta")
-
-        if tiene_whatsapp_habilitado():
-            texto = f"*TICKET - {st.session_state.tenant}*\n{b['fecha']} {b['hora']}\n---\n" + "\n".join([f"{i['Cantidad']}x {i['Producto']} - S/{float(i['Subtotal']):.2f}" for i in b['items']]) + f"\n---\n*TOTAL: S/{float(b['t_neto']):.2f}*\nMetodo: {b['metodo']}"
-            st.link_button("📲 WhatsApp", f"https://wa.me/?text={urllib.parse.quote(texto)}", use_container_width=True)
-        if st.button("⬅️ NUEVA VENTA", use_container_width=True, key="btn_nueva_venta"): st.session_state.boleta = None; st.rerun()
-    else:
-        tab_vender, tab_ingreso_emp = st.tabs(["🛒 VENDER", "📦 INGRESAR MERCADERÍA"])
-
-        with tab_vender:
-            st.subheader("🛍️ Nueva Venta")
-            busq = st.text_input("🔍 Buscar:", key="bv", placeholder="Escribe nombre del producto...").upper()
-            ops = []
-            for _, f in df_inv.iterrows():
-                if busq in str(f['Producto']):
-                    est = f"STOCK: {f['Stock']}" if f['Stock'] > 0 else "🚫 AGOTADO"
-                    ops.append(f"{f['Producto']} | S/ {f['Precio']:.2f} | {est}")
-            col1, col2 = st.columns([3, 1])
-            if ops:
-                sel = col1.selectbox("Producto:", ops, key="sel_v", placeholder="Busca y selecciona producto")
-                p_sel = sel.split(" | ")[0] if sel else None
-            else:
-                st.info("👆 Escribe arriba para buscar productos")
-                sel = None
-                p_sel = None
-            cant = col2.number_input("Cant:", min_value=1, value=1, key="cant_v")
-            if p_sel:
-                dp = df_inv[df_inv['Producto'] == p_sel].iloc[0]
-                en_carro = sum(i['Cantidad'] for i in st.session_state.carrito if i['Producto'] == p_sel)
-                disp = dp.Stock - en_carro
-                st.info(f"Disponible: {disp}")
-                if st.button("➕ Añadir", use_container_width=True, key="btn_add_carrito"):
-                    if cant <= disp:
-                        st.session_state.carrito.append({'Producto': p_sel, 'Cantidad': int(cant), 'Precio': to_decimal(dp.Precio), 'Precio_Compra': to_decimal(dp.Precio_Compra), 'Subtotal': to_decimal(dp.Precio) * int(cant)})
-                        st.rerun()
-                    else: st.error("❌ Sin stock")
-            if st.session_state.carrito:
-                for idx, item in enumerate(st.session_state.carrito):
-                    c1, c2 = st.columns([3,1])
-                    c1.write(f"{item['Producto']} x{item['Cantidad']}")
-                    c2.write(f"S/{float(item['Subtotal']):.2f}")
-                if st.button("🗑️ VACIAR", key="btn_vaciar_carrito"): st.session_state.carrito = []; st.rerun()
-
-                st.write("**Método de Pago:**")
-                col_ef, col_yape, col_plin = st.columns(3)
-
-                with col_ef:
-                    st.markdown("<div style='text-align:center;font-size:40px;'>💵</div>", unsafe_allow_html=True)
-                    if st.button("EFECTIVO", use_container_width=True, type="primary" if st.session_state.metodo_pago=="💵 EFECTIVO" else "secondary", key="btn_efectivo"):
-                        st.session_state.metodo_pago = "💵 EFECTIVO"
-                        st.rerun()
-
-                with col_yape:
-                    st.markdown("<div style='text-align:center;font-size:40px;'>🟣</div>", unsafe_allow_html=True)
-                    if st.button("YAPE", use_container_width=True, type="primary" if st.session_state.metodo_pago=="🟣 YAPE" else "secondary", key="btn_yape"):
-                        st.session_state.metodo_pago = "🟣 YAPE"
-                        st.rerun()
-
-                with col_plin:
-                    st.markdown("<div style='text-align:center;font-size:40px;'>🔵</div>", unsafe_allow_html=True)
-                    if st.button("PLIN", use_container_width=True, type="primary" if st.session_state.metodo_pago=="🔵 PLIN" else "secondary", key="btn_plin"):
-                        st.session_state.metodo_pago = "🔵 PLIN"
-                        st.rerun()
-
-                metodo = st.session_state.metodo_pago
-                st.markdown(f"<h3 style='text-align:center;color:#3b82f6;'>Seleccionado: {metodo}</h3>", unsafe_allow_html=True)
-
-                rebaja = st.number_input("💸 Descuento:", min_value=0.0, value=0.0, key="num_rebaja")
-                total = max(Decimal('0.00'), sum(i['Subtotal'] for i in st.session_state.carrito) - to_decimal(rebaja))
-                st.markdown(f"<h1 style='text-align:center;color:#3b82f6;font-size:3rem;'>S/ {float(total):.2f}</h1>", unsafe_allow_html=True)
-                if st.button("🚀 FINALIZAR", use_container_width=True, type="primary", key="btn_finalizar"): st.session_state.confirmar = True
-                if st.session_state.confirmar:
-                    if st.button(f"✅ CONFIRMAR S/ {float(total):.2f}", use_container_width=True, key="btn_confirmar_venta"):
-                        f, h, uid = obtener_tiempo_peru()
-                        for item in st.session_state.carrito:
-                            tabla_stock.update_item(Key={'TenantID': st.session_state.tenant, 'Producto': item['Producto']}, UpdateExpression="SET Stock = Stock - :s", ConditionExpression="Stock >= :s", ExpressionAttributeValues={':s': item['Cantidad']})
-                            tabla_ventas.put_item(Item={'TenantID': st.session_state.tenant, 'VentaID': f"V-{uid}", 'Fecha': f, 'Hora': h, 'Producto': item['Producto'], 'Cantidad': int(item['Cantidad']), 'Total': item['Subtotal'], 'Precio_Compra': item['Precio_Compra'], 'Metodo': metodo, 'Rebaja': to_decimal(rebaja), 'Usuario': st.session_state.usuario})
-                            registrar_kardex(item['Producto'], item['Cantidad'], "VENTA", item['Subtotal'], item['Precio_Compra'], metodo)
-                        st.session_state.boleta = {'items': st.session_state.carrito, 't_neto': total, 'rebaja': to_decimal(rebaja), 'metodo': metodo, 'fecha': f, 'hora': h}
-                        st.session_state.carrito = []; st.session_state.confirmar = False; st.rerun()
-
-        with tab_ingreso_emp:
-            st.subheader("📦 Registrar Ingreso de Mercadería")
-            st.caption("Busca y haz click en el producto")
-
-            if not df_inv.empty:
-                busq_ingreso = st.text_input("🔍 Buscar producto:", key="busq_ingreso_emp", placeholder="Ej: CUADERNO, LAPIZ...").upper()
-
-                if busq_ingreso:
-                    df_filtrado = df_inv[df_inv['Producto'].str.contains(busq_ingreso, na=False)]
-                else:
-                    df_filtrado = df_inv.head(20)
-                    st.caption("Mostrando primeros 20 productos. Escribe para buscar más.")
-
-                if not df_filtrado.empty:
-                    st.write("**Click en la fila para seleccionar:**")
-                    df_tabla_busq = df_filtrado[['Producto', 'Stock', 'Precio_Compra']].copy()
-                    df_tabla_busq.columns = ['PRODUCTO', 'STOCK', 'COSTO']
-                    df_tabla_busq['STOCK'] = df_tabla_busq['STOCK'].astype(int)
-
-                    evento = st.dataframe(
-                        df_tabla_busq,
-                        use_container_width=True,
-                        hide_index=True,
-                        height=300,
-                        on_select="rerun",
-                        selection_mode="single-row",
-                        column_config={
-                            "PRODUCTO": st.column_config.TextColumn("PRODUCTO", width="large"),
-                            "STOCK": st.column_config.NumberColumn("STOCK", width="small"),
-                            "COSTO": st.column_config.NumberColumn("COSTO", width="small", format="S/ %.2f")
-                        }
-                    )
-
-                    if evento.selection.rows:
-                        idx = evento.selection.rows[0]
-                        prod_ingreso = df_filtrado.iloc[idx]['Producto']
-                        df_prod = df_inv[df_inv['Producto'] == prod_ingreso].iloc[0]
-
-                        st.success(f"Seleccionado: **{prod_ingreso}**")
-                        st.info(f"Stock actual: {int(df_prod['Stock'])} unidades | Costo actual: S/{df_prod['Precio_Compra']:.2f}")
-
-                        st.markdown("**📦 DATOS DE LA COMPRA:**")
-                        col1, col2, col3 = st.columns(3)
-                        unidad_medida = col1.selectbox("Unidad:", ["Unidades", "Docenas", "Cajas", "Paquetes", "Millares"], key="unidad_medida_emp")
-                        cantidad = col2.number_input(f"Cantidad:", min_value=1, value=1, key="cant_lote_emp")
-                        costo_x_unidad = col3.number_input(f"Costo x unidad S/:", min_value=0.0, value=0.0, key="costo_x_unidad_emp")
-
-                        multiplicador = {"Unidades": 1, "Docenas": 12, "Cajas": 1, "Paquetes": 1, "Millares": 1000}[unidad_medida]
-                        if unidad_medida in ["Cajas", "Paquetes"]:
-                            unid_x_bulto = st.number_input(f"¿Cuántas unidades trae cada {unidad_medida[:-1]}?", min_value=1, value=50, key="unid_bulto_emp")
-                            multiplicador = unid_x_bulto
-
-                        cant_ingreso = cantidad * multiplicador
-                        nuevo_pc = costo_x_unidad
-
-                        st.success(f"✅ Total: {cant_ingreso} unidades | Costo unitario: S/{nuevo_pc:.2f}")
-                        stock_final = int(df_prod['Stock']) + cant_ingreso
-                        st.metric("Stock nuevo", f"{stock_final} unidades")
-
-                        if st.button("📥 REGISTRAR", use_container_width=True, type="primary", key="btn_ingreso_stock_emp"):
-                            if stock_final > MAX_STOCK_POR_PRODUCTO:
-                                st.error(f"❌ Stock máximo: {MAX_STOCK_POR_PRODUCTO}")
-                            else:
-                                stock_viejo = int(df_prod['Stock'])
-                                pc_viejo = float(df_prod['Precio_Compra'])
-                                pc_promedio = ((stock_viejo * pc_viejo) + (cant_ingreso * nuevo_pc)) / stock_final if stock_viejo > 0 else nuevo_pc
-
-                                tabla_stock.update_item(
-                                    Key={'TenantID': st.session_state.tenant, 'Producto': prod_ingreso},
-                                    UpdateExpression="SET Stock = :s, Precio_Compra = :pc",
-                                    ExpressionAttributeValues={':s': stock_final, ':pc': to_decimal(pc_promedio)}
-                                )
-                                registrar_kardex(prod_ingreso, cant_ingreso, "INGRESO_STOCK", cant_ingreso * nuevo_pc, nuevo_pc, f"INGRESO_{st.session_state.usuario}")
-                                st.success(f"✅ {st.session_state.usuario} ingresó {cant_ingreso} {prod_ingreso} | Nuevo costo: S/{pc_promedio:.2f}")
-                                time.sleep(1)
-                                st.ii8rerun()
-                    else:
-                        st.info("👆 Haz click en una fila de la tabla para seleccionar")
-                else:
-                    st.warning("❌ No se encontró ese producto")
-            else:
-                st.warning("⚠️ No hay productos")
-# === TAB STOCK - SIN SCROLL + COSTO SOLO DUEÑO ===
-with tabs[1]:
-    st.subheader("📦 Inventario")
-
-    busq = st.text_input("🔍 Buscar producto por nombre:", key="bs", placeholder="Ej: CUADERNO, LAPIZ, BORRADOR...").upper()
-
-    col1, col2, col3 = st.columns([2,1,1])
-    mostrar_todos = col1.checkbox("📋 Ver lista completa", value=False, help="Solo activa si tienes <200 productos")
-    filtro_stock = col2.selectbox("Filtrar:", ["Todos", "Stock bajo <5", "Agotados", "Con stock"], key="filtro_stock")
-
-    df_mostrar = df_inv.copy()
-
-    if busq:
-        df_mostrar = df_mostrar[df_mostrar['Producto'].str.contains(busq, na=False)]
-
-    if filtro_stock == "Stock bajo <5":
-        df_mostrar = df_mostrar[df_mostrar['Stock'] < 5]
-    elif filtro_stock == "Agotados":
-        df_mostrar = df_mostrar[df_mostrar['Stock'] == 0]
-    elif filtro_stock == "Con stock":
-        df_mostrar = df_mostrar[df_mostrar['Stock'] > 0]
-
-    if busq or mostrar_todos:
-        if not df_mostrar.empty:
-            st.caption(f"Mostrando {len(df_mostrar)} de {len(df_inv)} productos totales")
-
-            if len(df_mostrar) > 50:
-                page_size = 50
-                total_pages = (len(df_mostrar) - 1) // page_size + 1
-                page = st.number_input("Página:", min_value=1, max_value=total_pages, value=1, key="page_stock") - 1
-                start_idx = page * page_size
-                end_idx = start_idx + page_size
-                df_pagina = df_mostrar.iloc[start_idx:end_idx]
-                st.caption(f"Página {page+1} de {total_pages}")
-            else:
-                df_pagina = df_mostrar
-
-            if st.session_state.rol == "DUEÑO":
-                df_tabla = df_pagina[['Producto', 'Stock', 'Precio_Compra', 'Precio']].copy()
-                df_tabla.columns = ['PROD', 'STOCK', 'COSTO', 'VENTA']
-                df_tabla['STOCK'] = df_tabla['STOCK'].astype(int)
-                column_config = {
-                    "PROD": st.column_config.TextColumn("PROD", width="medium"),
-                    "STOCK": st.column_config.NumberColumn("STOCK", width="small", format="%d"),
-                    "COSTO": st.column_config.NumberColumn("COSTO", width="small", format="S/ %.2f"),
-                    "VENTA": st.column_config.NumberColumn("VENTA", width="small", format="S/ %.2f")
-                }
-                col_order = ["PROD", "STOCK", "COSTO", "VENTA"]
-            else:
-                df_tabla = df_pagina[['Producto', 'Stock', 'Precio']].copy()
-                df_tabla.columns = ['PROD', 'STOCK', 'VENTA']
-                df_tabla['STOCK'] = df_tabla['STOCK'].astype(int)
-                column_config = {
-                    "PROD": st.column_config.TextColumn("PROD", width="large"),
-                    "STOCK": st.column_config.NumberColumn("STOCK", width="small", format="%d"),
-                    "VENTA": st.column_config.NumberColumn("VENTA", width="medium", format="S/ %.2f")
-                }
-                col_order = ["PROD", "STOCK", "VENTA"]
-
-            st.dataframe(
-                df_tabla,
-                use_container_width=True,
-                hide_index=True,
-                height=400,
-                column_config=column_config,
-                column_order=col_order
-            )
-
-            buf = io.BytesIO()
-            with pd.ExcelWriter(buf, engine='openpyxl') as w:
-                df_mostrar.to_excel(w, index=False, sheet_name='Inventario')
-            st.download_button(
-                "📥 DESCARGAR EXCEL FILTRADO",
-                buf.getvalue(),
-                f"Inventario_{st.session_state.tenant}_{datetime.now(tz_peru).strftime('%Y%m%d')}.xlsx",
-                use_container_width=True,
-                key="btn_desc_inv"
-            )
-
-            bajo = df_mostrar[df_mostrar['Stock'] < 5]
-            if not bajo.empty:
-                st.warning(f"⚠️ Stock crítico: {len(bajo)} productos con menos de 5 unidades")
-                with st.expander("Ver productos con stock bajo"):
-                    for idx, row in bajo.iterrows():
-                        st.write(f"**{row['Producto']}** - Stock: {int(row['Stock'])}")
-        else:
-            if busq:
-                st.info(f"❌ No se encontró '{busq}'. Prueba con parte del nombre.")
-            else:
-                st.info("📭 No hay productos con ese filtro")
-    else:
-        st.info("👆 Escribe arriba para buscar o activa 'Ver lista completa'")
-        st.caption(f"Total en BD: {contarProductosEnBD()} productos")
-
-        if not df_inv.empty:
-            col1, col2, col3, col4 = st.columns(4)
-            col1.metric("Total productos", len(df_inv))
-            col2.metric("Agotados", len(df_inv[df_inv['Stock'] == 0]))
-            col3.metric("Stock bajo <5", len(df_inv[df_inv['Stock'] < 5]))
-            col4.metric("Valor inventario", f"S/ {(df_inv['Stock'] * df_inv['Precio_Compra']).sum():.2f}")
-
-# === TAB REPORTES - GANANCIA SOLO DUEÑO ===
-with tabs[2]:
-    st.subheader("📊 Reportes del Día")
-
-    col_f1, col_f2 = st.columns([3,1])
-    fecha = col_f1.date_input("Selecciona día:", value=datetime.now(tz_peru).date(), key="date_reportes_fix")
-    if col_f2.button("🔄 ACTUALIZAR", use_container_width=True, key="btn_actualizar_reportes"):
-        st.cache_data.clear()
+with st.sidebar:
+    st.markdown(f"### 🏢 {user.get('nombre_negocio', 'NEXUS')}")
+    st.markdown(f"**Plan:** {user.get('plan', 'trial').upper()}")
+    st.markdown("---")
+    menu = st.sidebar.selectbox("Menú", ["Productos", "Ventas", "Reportes", "⚙️ Ajustes"])
+    st.markdown("---")
+    if st.button("🚪 Cerrar Sesión", use_container_width=True):
+        st.session_state.logged_in = False
+        st.session_state.user_data = {}
+        st.session_state.carrito = []
         st.rerun()
 
-    fecha_iso = fecha.strftime('%Y-%m-%d')
-    fecha_sem_pasada = (fecha - timedelta(days=7)).strftime('%Y-%m-%d')
+if menu == "Productos":
+    st.title("📦 Gestión de Inventario")
 
-    if st.session_state.rol == "EMPLEADO":
-        res_hoy = tabla_movs.query(
-            IndexName='TenantID-FechaISO-index',
-            KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant) & Key('FechaISO').eq(fecha_iso),
-            FilterExpression=Attr('Usuario').eq(st.session_state.usuario) & Attr('Tipo').eq('VENTA')
-        )
-        res_sem = tabla_movs.query(
-            IndexName='TenantID-FechaISO-index',
-            KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant) & Key('FechaISO').eq(fecha_sem_pasada),
-            FilterExpression=Attr('Usuario').eq(st.session_state.usuario) & Attr('Tipo').eq('VENTA')
-        )
-        st.info(f"📊 Viendo solo TUS ventas - {st.session_state.usuario}")
-    else:
-        res_hoy = tabla_movs.query(IndexName='TenantID-FechaISO-index', KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant) & Key('FechaISO').eq(fecha_iso))
-        res_sem = tabla_movs.query(IndexName='TenantID-FechaISO-index', KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant) & Key('FechaISO').eq(fecha_sem_pasada))
+    with st.expander("📂 Carga masiva desde Excel"):
+        archivo = st.file_uploader("Sube tu archivo Excel", type=["xlsx", "xls"])
 
-    items_hoy = res_hoy.get('Items', [])
-    df_v = pd.DataFrame([m for m in items_hoy if m.get('Tipo') == 'VENTA'])
-
-    items_sem = res_sem.get('Items', [])
-    df_v_sem = pd.DataFrame([m for m in items_sem if m.get('Tipo') == 'VENTA'])
-
-    if df_v.empty:
-        st.warning(f"📭 No hay ventas registradas el {fecha.strftime('%d/%m/%Y')}")
-        if st.session_state.rol == "EMPLEADO":
-            st.caption("Si hiciste ventas hoy, verifica que cerraste la venta correctamente.")
-    else:
-        df_v = df_v.sort_values('Hora', ascending=False)
-        df_v['Total'] = pd.to_numeric(df_v['Total'], errors='coerce').fillna(0)
-        df_v['Precio_Compra'] = pd.to_numeric(df_v['Precio_Compra'], errors='coerce').fillna(0)
-        df_v['Cantidad'] = pd.to_numeric(df_v['Cantidad'], errors='coerce').fillna(0)
-        df_v['Metodo'] = df_v['Metodo'].fillna('').astype(str)
-        df_v['Costo'] = df_v['Precio_Compra'] * df_v['Cantidad']
-        df_v['Ganancia_Item'] = df_v['Total'] - df_v['Costo']
-
-        vt = df_v['Total'].sum()
-        tk = len(df_v)
-        tp = vt/tk if tk else 0
-        costo_total = df_v['Costo'].sum()
-        gn_total = df_v['Ganancia_Item'].sum()
-
-        vt_sem = df_v_sem['Total'].sum() if not df_v_sem.empty else 0
-        dif = vt - vt_sem
-        pct = (dif / vt_sem * 100) if vt_sem > 0 else 0
-
-        col1, col2 = st.columns(2)
-
-        with col1:
-            st.markdown("### 💰 VENTA TOTAL")
-            st.markdown(f"<h1 style='margin:0;font-size:38px;color:#3b82f6;'>S/ {float(vt):.2f}</h1>", unsafe_allow_html=True)
-            if dif >= 0:
-                st.success(f"↑ {abs(pct):.1f}% vs semana pasada")
-            else:
-                st.error(f"↓ {abs(pct):.1f}% vs semana pasada")
-
-        with col2:
-            if st.session_state.rol == "DUEÑO":
-                st.markdown("### 📈 GANANCIA REAL")
-                st.markdown(f"<h1 style='margin:0;font-size:38px;color:#10b981;'>S/ {float(gn_total):.2f}</h1>", unsafe_allow_html=True)
-                st.info(f"Tickets: {tk} | Ticket Prom: S/{float(tp):.2f} | Margen: {(gn_total/vt*100) if vt > 0 else 0:.1f}%")
-            else:
-                st.markdown("### 📊 RESUMEN")
-                st.markdown(f"<h1 style='margin:0;font-size:38px;color:#10b981;'>{tk} Tickets</h1>", unsafe_allow_html=True)
-                st.info(f"Ticket Promedio: S/{float(tp):.2f}")
-
-        st.write("---")
-
-        with st.expander("🧾 VER TICKETS DEL DÍA - MÁS RECIENTE ARRIBA", expanded=True):
-            df_tickets = df_v[['Hora', 'Producto', 'Cantidad', 'Total']].copy()
-            df_tickets['Cantidad'] = df_tickets['Cantidad'].astype(int)
-            df_tickets.columns = ['HORA', 'PROD', 'CANT', 'TOTAL']
-            st.dataframe(
-                df_tickets,
-                use_container_width=True,
-                hide_index=True,
-                height=350,
-                column_config={
-                    "HORA": st.column_config.TextColumn("HORA", width="small"),
-                    "PROD": st.column_config.TextColumn("PROD", width="medium"),
-                    "CANT": st.column_config.NumberColumn("CANT", width="small"),
-                    "TOTAL": st.column_config.NumberColumn("TOTAL", width="small", format="S/ %.2f")
-                }
-            )
-
-        df_ef = df_v[df_v['Metodo'].str.contains('EFECTIVO')]
-        df_yape = df_v[df_v['Metodo'].str.contains('YAPE')]
-        df_plin = df_v[df_v['Metodo'].str.contains('PLIN')]
-
-        cols = st.columns(3)
-        if not df_ef.empty:
-            venta_ef = df_ef['Total'].sum()
-            gan_ef = df_ef['Ganancia_Item'].sum()
-            if st.session_state.rol == "DUEÑO":
-                cols[0].metric("💵 EFECTIVO", f"S/ {float(venta_ef):.2f}", f"Ganancia: S/ {float(gan_ef):.2f}")
-            else:
-                cols[0].metric("💵 EFECTIVO", f"S/ {float(venta_ef):.2f}")
-
-        if not df_yape.empty:
-            venta_yape = df_yape['Total'].sum()
-            gan_yape = df_yape['Ganancia_Item'].sum()
-            if st.session_state.rol == "DUEÑO":
-                cols[1].metric("🟣 YAPE", f"S/ {float(venta_yape):.2f}", f"Ganancia: S/ {float(gan_yape):.2f}")
-            else:
-                cols[1].metric("🟣 YAPE", f"S/ {float(venta_yape):.2f}")
-
-        if not df_plin.empty:
-            venta_plin = df_plin['Total'].sum()
-            gan_plin = df_plin['Ganancia_Item'].sum()
-            if st.session_state.rol == "DUEÑO":
-                cols[2].metric("🔵 PLIN", f"S/ {float(venta_plin):.2f}", f"Ganancia: S/ {float(gan_plin):.2f}")
-            else:
-                cols[2].metric("🔵 PLIN", f"S/ {float(venta_plin):.2f}")
-
-# === TAB HISTORIAL - DUEÑO Y EMPLEADO - CIERRE PARA AMBOS ===
-with tabs[3]:
-    st.subheader("📋 Historial Kardex")
-    col_f1, col_f2 = st.columns([3,1])
-    f_h = col_f1.date_input("Día:", value=datetime.now(tz_peru).date(), key="date_historial_fix")
-    if col_f2.button("🔄 ACTUALIZAR", use_container_width=True, key="btn_actualizar_hist"): st.cache_data.clear(); st.rerun()
-
-    fecha_iso_h = f_h.strftime('%Y-%m-%d')
-
-    if st.session_state.rol == "EMPLEADO":
-        res_h = tabla_movs.query(
-            IndexName='TenantID-FechaISO-index',
-            KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant) & Key('FechaISO').eq(fecha_iso_h),
-            FilterExpression=Attr('Usuario').eq(st.session_state.usuario)
-        )
-        st.info(f"📊 Viendo solo TUS movimientos - {st.session_state.usuario}")
-    else:
-        res_h = tabla_movs.query(IndexName='TenantID-FechaISO-index', KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant) & Key('FechaISO').eq(fecha_iso_h))
-
-    df_h = pd.DataFrame(res_h.get('Items', []))
-
-    if not df_h.empty:
-        df_h = df_h.sort_values('Hora', ascending=False)
-        df_h['Total'] = pd.to_numeric(df_h['Total'], errors='coerce').fillna(0)
-        df_h['Precio_Compra'] = pd.to_numeric(df_h['Precio_Compra'], errors='coerce').fillna(0)
-        df_h['Cantidad'] = pd.to_numeric(df_h['Cantidad'], errors='coerce').fillna(0)
-        df_h['Usuario'] = df_h['Usuario'].fillna('SISTEMA')
-        df_h['Costo'] = df_h['Precio_Compra'] * df_h['Cantidad']
-        df_h['Ganancia'] = df_h.apply(lambda r: r['Total'] - r['Costo'] if r['Tipo'] == 'VENTA' else 0, axis=1)
-
-        df_tabla_h = df_h[['Hora', 'Producto', 'Tipo', 'Cantidad', 'Usuario']].copy()
-        df_tabla_h['Cantidad'] = df_tabla_h['Cantidad'].astype(int)
-        df_tabla_h.columns = ['HORA', 'PROD', 'TIPO', 'CANT', 'USUARIO']
-
-        st.dataframe(
-            df_tabla_h,
-            use_container_width=True,
-            hide_index=True,
-            height=400,
-            column_config={
-                "HORA": st.column_config.TextColumn("HORA", width="small"),
-                "PROD": st.column_config.TextColumn("PROD", width="medium"),
-                "TIPO": st.column_config.TextColumn("TIPO", width="small"),
-                "CANT": st.column_config.NumberColumn("CANT", width="small"),
-                "USUARIO": st.column_config.TextColumn("QUIÉN", width="small")
-            }
-        )
-
-        df_v_h = df_h[df_h['Tipo'] == 'VENTA']
-        if not df_v_h.empty:
-            vt_h = df_v_h['Total'].sum()
-            costo_h = df_v_h['Costo'].sum()
-            gn_h = df_v_h['Ganancia'].sum()
-
-            if st.session_state.rol == "DUEÑO":
-                col1, col2, col3 = st.columns(3)
-                col1.metric("💰 VENTA TOTAL", f"S/ {float(vt_h):.2f}")
-                col2.metric("📉 COSTO TOTAL", f"S/ {float(costo_h):.2f}")
-                col3.metric("📈 GANANCIA REAL", f"S/ {float(gn_h):.2f}")
-            else:
-                col1, col2 = st.columns(2)
-                col1.metric("💰 VENTA TOTAL", f"S/ {float(vt_h):.2f}")
-                col2.metric("📊 TICKETS", len(df_v_h))
-
-            buf = io.BytesIO()
-            with pd.ExcelWriter(buf, engine='openpyxl') as w: df_h.to_excel(w, index=False)
-            st.download_button("📥 DESCARGAR EXCEL", buf.getvalue(), f"Kardex_{f_h.strftime('%Y%m%d')}.xlsx", use_container_width=True, key="btn_desc_kardex")
-
-            if tiene_whatsapp_habilitado():
-                if st.session_state.rol == "DUEÑO":
-                    res = f"*REPORTE {f_h.strftime('%d/%m/%Y')}*\nVenta: S/{float(vt_h):.2f}\nCosto: S/{float(costo_h):.2f}\n*Ganancia: S/{float(gn_h):.2f}*"
-                else:
-                    res = f"*REPORTE {f_h.strftime('%d/%m/%Y')} - {st.session_state.usuario}*\nVenta: S/{float(vt_h):.2f}\nTickets: {len(df_v_h)}"
-                st.link_button("📲 COMPARTIR", f"https://wa.me/?text={urllib.parse.quote(res)}", use_container_width=True)
-            else:
-                st.caption("💡 WhatsApp solo disponible en Plan PRO/PREMIUM")
-        else:
-            st.info("No hay ventas este día")
-    else:
-        st.info(f"📭 No hay movimientos el {f_h.strftime('%d/%m/%Y')}")
-
-    st.write("---")
-    st.subheader("🔒 Cierre de Caja")
-    st.caption(f"Usuario actual: {st.session_state.usuario}")
-
-    fecha_cierre = st.date_input("Fecha a cerrar:", value=datetime.now(tz_peru).date(), key="date_cierre_fix")
-    fecha_iso_cierre = fecha_cierre.strftime('%Y-%m-%d')
-
-    if st.session_state.rol == "EMPLEADO":
-        res_cierre_check = tabla_cierres.query(
-            KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant),
-            FilterExpression=Attr('Fecha').eq(fecha_cierre.strftime('%d/%m/%Y')) & Attr('UsuarioTurno').eq(st.session_state.usuario)
-        )
-    else:
-        res_cierre_check = tabla_cierres.query(KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant), FilterExpression=Attr('Fecha').eq(fecha_cierre.strftime('%d/%m/%Y')))
-
-    ya_cerro_caja = len(res_cierre_check.get('Items', [])) > 0
-
-    if ya_cerro_caja:
-        st.success(f"✅ Caja del {fecha_cierre.strftime('%d/%m/%Y')} ya fue cerrada")
-        if st.session_state.rol == "DUEÑO":
-            if st.button("🔓 REABRIR CAJA", use_container_width=True, key="btn_reabrir_caja_hist"):
-                for c in res_cierre_check.get('Items', []):
-                    tabla_cierres.delete_item(Key={'TenantID': st.session_state.tenant, 'CierreID': c['CierreID']})
-                st.success("✅ Caja reabierta"); time.sleep(1); st.rerun()
-    else:
-        if st.session_state.rol == "EMPLEADO":
-            res_cierre_calc = tabla_movs.query(
-                IndexName='TenantID-FechaISO-index',
-                KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant) & Key('FechaISO').eq(fecha_iso_cierre),
-                FilterExpression=Attr('Tipo').eq('VENTA') & Attr('Usuario').eq(st.session_state.usuario)
-            )
-        else:
-            res_cierre_calc = tabla_movs.query(IndexName='TenantID-FechaISO-index', KeyConditionExpression=Key('TenantID').eq(st.session_state.tenant) & Key('FechaISO').eq(fecha_iso_cierre), FilterExpression=Attr('Tipo').eq('VENTA'))
-
-        df_cierre = pd.DataFrame(res_cierre_calc.get('Items', []))
-
-        if not df_cierre.empty:
-            df_cierre['Total'] = pd.to_numeric(df_cierre['Total'], errors='coerce').fillna(0)
-            total_cierre = df_cierre['Total'].sum()
-
-            if st.session_state.rol == "EMPLEADO":
-                st.info(f"💵 Total de TUS ventas: S/ {float(total_cierre):.2f}")
-            else:
-                usuarios_turno = df_cierre['Usuario'].unique()
-                st.info(f"💵 Total del día: S/ {float(total_cierre):.2f}")
-                st.caption(f"Usuarios que vendieron: {', '.join(usuarios_turno)}")
-
-            if st.button("🔒 CERRAR CAJA", use_container_width=True, type="primary", key="btn_cerrar_caja"):
-                registrar_cierre(total_cierre, st.session_state.usuario, "CIERRE_DIARIO", st.session_state.usuario, fecha_cierre.strftime('%d/%m/%Y'))
-                st.success(f"✅ Caja del {fecha_cierre.strftime('%d/%m/%Y')} cerrada por {st.session_state.usuario}"); time.sleep(1); st.rerun()
-        else:
-            st.info("No hay ventas para cerrar este día")
-
-# === TAB CARGAR - SOLO DUEÑO ===
-with tabs[4]:
-    if st.session_state.rol!= "DUEÑO":
-        st.error("⛔ Solo DUEÑO puede cargar productos")
-        st.stop()
-        
-    st.subheader("📥 Cargar Productos")
-    st.info(f"Productos: {contarProductosEnBD()}/{MAX_PRODUCTOS_TOTALES} | Stock máx/producto: {MAX_STOCK_POR_PRODUCTO}")
-    
-    tab_nuevo, tab_stock, tab_masiva = st.tabs(["➕ PRODUCTO NUEVO", "📦 INGRESO DE STOCK", "📤 CARGA MASIVA"])
-    
-    # === PRODUCTO NUEVO ===
-    with tab_nuevo:
-        st.markdown("#### Crear producto desde cero")
-        col1, col2 = st.columns(2)
-        prod_nuevo = col1.text_input("Nombre producto:", key="prod_nuevo_carga").upper().strip()
-        precio_compra_nuevo = col2.number_input("Costo S/:", min_value=0.0, value=0.0, key="pc_nuevo")
-        col3, col4 = st.columns(2)
-        precio_venta_nuevo = col3.number_input("Precio venta S/:", min_value=0.01, value=1.0, key="pv_nuevo")
-        stock_inicial = col4.number_input("Stock inicial:", min_value=0, value=0, key="stock_nuevo")
-        
-        if st.button("💾 CREAR PRODUCTO", use_container_width=True, type="primary", key="btn_crear_nuevo"):
-            if not prod_nuevo:
-                st.error("❌ Pon nombre al producto")
-            elif df_inv['Producto'].str.upper().eq(prod_nuevo).any():
-                st.error(f"❌ {prod_nuevo} ya existe. Usa INGRESO DE STOCK para aumentar")
-            elif contarProductosEnBD() >= MAX_PRODUCTOS_TOTALES:
-                st.error(f"⛔ Límite {MAX_PRODUCTOS_TOTALES} productos alcanzado")
-            elif stock_inicial > MAX_STOCK_POR_PRODUCTO:
-                st.error(f"❌ Stock máximo por producto: {MAX_STOCK_POR_PRODUCTO}")
-            else:
-                tabla_stock.put_item(Item={
-                    'TenantID': st.session_state.tenant,
-                    'Producto': prod_nuevo,
-                    'Precio_Compra': to_decimal(precio_compra_nuevo),
-                    'Precio': to_decimal(precio_venta_nuevo),
-                    'Stock': int(stock_inicial)
-                })
-                if stock_inicial > 0:
-                    registrar_kardex(prod_nuevo, stock_inicial, "INGRESO_INICIAL", stock_inicial * precio_compra_nuevo, precio_compra_nuevo, "CREACION")
-                st.success(f"✅ {prod_nuevo} creado")
-                time.sleep(1)
-                st.rerun()
-    
-    # === INGRESO DE STOCK ===
-    with tab_stock:
-        st.markdown("#### Aumentar stock de producto existente")
-        busq_ing = st.text_input("🔍 Buscar:", key="busq_ing_carga").upper()
-        df_busq = df_inv[df_inv['Producto'].str.contains(busq_ing, na=False)] if busq_ing else df_inv.head(20)
-        
-        if not df_busq.empty:
-            evento = st.dataframe(df_busq[['Producto', 'Stock', 'Precio_Compra']], use_container_width=True, 
-                                  hide_index=True, on_select="rerun", selection_mode="single-row", height=250)
-            
-            if evento.selection.rows:
-                prod_sel = df_busq.iloc[evento.selection.rows[0]]['Producto']
-                df_prod = df_inv[df_inv['Producto'] == prod_sel].iloc[0]
-                st.success(f"Seleccionado: **{prod_sel}** | Stock: {int(df_prod['Stock'])}")
-                
-                col1, col2 = st.columns(2)
-                cant_add = col1.number_input("Cantidad a ingresar:", min_value=1, value=1, key="cant_add_carga")
-                costo_lote = col2.number_input("Costo x unidad S/:", min_value=0.0, value=float(df_prod['Precio_Compra']), key="costo_add_carga")
-                
-                stock_final = int(df_prod['Stock']) + cant_add
-                st.metric("Stock nuevo", f"{stock_final} unidades")
-                
-                if st.button("📥 INGRESAR STOCK", use_container_width=True, type="primary", key="btn_ing_stock"):
-                    if stock_final > MAX_STOCK_POR_PRODUCTO:
-                        st.error(f"❌ Stock máximo: {MAX_STOCK_POR_PRODUCTO}")
-                    else:
-                        stock_viejo = int(df_prod['Stock'])
-                        pc_viejo = float(df_prod['Precio_Compra'])
-                        pc_promedio = ((stock_viejo * pc_viejo) + (cant_add * costo_lote)) / stock_final if stock_viejo > 0 else costo_lote
-                        
-                        tabla_stock.update_item(
-                            Key={'TenantID': st.session_state.tenant, 'Producto': prod_sel},
-                            UpdateExpression="SET Stock = :s, Precio_Compra = :pc",
-                            ExpressionAttributeValues={':s': stock_final, ':pc': to_decimal(pc_promedio)}
-                        )
-                        registrar_kardex(prod_sel, cant_add, "INGRESO_STOCK", cant_add * costo_lote, costo_lote, "CARGA")
-                        st.success(f"✅ {cant_add} unidades ingresadas | Nuevo costo prom: S/{pc_promedio:.2f}")
-                        time.sleep(1)
-                        st.rerun()
-        else:
-            st.warning("No se encontró producto")
-    
-    # === CARGA MASIVA SOLO NUEVOS ===
-    with tab_masiva:
-        st.markdown("#### 📤 Cargar Excel con productos NUEVOS")
-        st.warning("⚠️ SOLO crea productos que NO existan. Los existentes se ignoran.")
-        
-        st.markdown("""
-        **Formato Excel requerido:**
-        | Producto | Precio_Compra | Precio | Stock |
-        |---|---|---|---|
-        | CUADERNO A4 | 2.50 | 4.00 | 100 |
-        """)
-        
-        archivo = st.file_uploader("Subir Excel", type=['xlsx'], key="upload_masiva")
-        
         if archivo:
             df_excel = pd.read_excel(archivo)
-            df_excel.columns = df_excel.columns.str.strip()
-            cols_req = ['Producto', 'Precio_Compra', 'Precio', 'Stock']
-            
-            if not all(c in df_excel.columns for c in cols_req):
-                st.error(f"❌ Excel debe tener columnas: {cols_req}")
-            else:
-                productos_existentes = df_inv['Producto'].str.upper().tolist()
-                df_excel['Producto'] = df_excel['Producto'].str.upper().str.strip()
-                
-                # SOLO NUEVOS
-                df_nuevos = df_excel[~df_excel['Producto'].isin(productos_existentes)].copy()
-                df_duplicados = df_excel[df_excel['Producto'].isin(productos_existentes)]
-                
-                total_actual = contarProductosEnBD()
-                total_nuevos = len(df_nuevos)
-                
-                st.info(f"📊 Excel: {len(df_excel)} filas | Nuevos: {total_nuevos} | Duplicados: {len(df_duplicados)} | Actual BD: {total_actual}/{MAX_PRODUCTOS_TOTALES}")
-                
-                if len(df_duplicados) > 0:
-                    with st.expander(f"⚠️ {len(df_duplicados)} productos ya existen - SE IGNORARÁN"):
-                        st.dataframe(df_duplicados[['Producto']], hide_index=True)
-                
-                if total_actual + total_nuevos > MAX_PRODUCTOS_TOTALES:
-                    st.error(f"⛔ Con estos {total_nuevos} nuevos pasarías el límite de {MAX_PRODUCTOS_TOTALES}")
-                elif total_nuevos == 0:
-                    st.warning("No hay productos nuevos para cargar")
+            st.write("Vista previa de los datos:")
+            st.dataframe(df_excel.head())
+
+            if st.button("🚀 Procesar Carga Masiva"):
+                procesar_carga_excel(df_excel)
+                st.rerun()
+
+    with st.expander("➕ Agregar Nuevo Producto"):
+        rubro = st.session_state.user_data.get('rubro', 'Otro')
+        opciones_base = CATEGORIAS_POR_RUBRO.get(rubro, ["General"])
+        opciones_lista = opciones_base + ["+ Agregar nueva categoría"]
+
+        seleccion_cat = st.selectbox("Selecciona categoría", opciones_lista, key="sel_cat")
+
+        cat_final = seleccion_cat
+        if seleccion_cat == "+ Agregar nueva categoría":
+            cat_final = st.text_input("Escribe el nombre de tu nueva categoría:", key="input_manual_unico")
+
+        with st.form("form_unico_producto", clear_on_submit=True):
+            nombre_nuevo = st.text_input("Nombre del producto")
+            pv_nuevo = st.number_input("Precio Venta", step=0.1)
+            pc_nuevo = st.number_input("Precio Compra", step=0.1)
+            stk_nuevo = st.number_input("Stock", step=1)
+
+            if st.form_submit_button("Guardar Producto Nuevo"):
+                if seleccion_cat == "+ Agregar nueva categoría" and not cat_final:
+                    st.error("Por favor, escribe el nombre de la nueva categoría.")
+                elif nombre_nuevo and cat_final:
+                    if agregar_producto(nombre_nuevo, pv_nuevo, pc_nuevo, stk_nuevo, cat_final):
+                        st.success("¡Producto agregado!")
+                        st.session_state["input_manual_unico"] = ""
+                        st.rerun()
                 else:
-                    # Validar stock máximo
-                    df_stock_alto = df_nuevos[df_nuevos['Stock'] > MAX_STOCK_POR_PRODUCTO]
-                    if not df_stock_alto.empty:
-                        st.error(f"❌ {len(df_stock_alto)} productos superan stock máximo {MAX_STOCK_POR_PRODUCTO}")
-                        st.dataframe(df_stock_alto[['Producto', 'Stock']], hide_index=True)
-                    else:
-                        st.success(f"✅ Listo para cargar {total_nuevos} productos nuevos")
-                        if st.button(f"🚀 CARGAR {total_nuevos} PRODUCTOS", use_container_width=True, type="primary", key="btn_carga_masiva"):
-                            with st.spinner(f"Cargando {total_nuevos} productos en bloques de 25..."):
-                                # === BATCH WRITE DE 25 EN 25 ===
-                                BATCH_SIZE = 25
-                                total_cargados = 0
-                                
-                                for i in range(0, len(df_nuevos), BATCH_SIZE):
-                                    batch = df_nuevos.iloc[i:i+BATCH_SIZE]
-                                    
-                                    with tabla_stock.batch_writer() as writer:
-                                        for _, row in batch.iterrows():
-                                            writer.put_item(Item={
-                                                'TenantID': st.session_state.tenant,
-                                                'Producto': str(row['Producto']),
-                                                'Precio_Compra': to_decimal(row['Precio_Compra']),
-                                                'Precio': to_decimal(row['Precio']),
-                                                'Stock': int(row['Stock'])
+                    st.error("Nombre y categoría son obligatorios")
+
+    st.subheader("Control de Inventario")
+    productos = obtener_productos()
+
+    if productos:
+        df_inv = pd.DataFrame(productos)      
+
+# --- FILTROS ---
+        col1, col2 = st.columns(2)
+        with col1:
+            busqueda_p = st.text_input("🔍 Buscar por nombre:", key="buscador_unico")
+        with col2:
+            categorias_unicas = sorted(df_inv['categoria'].unique().tolist())
+            filtro_cat = st.selectbox("📂 Filtrar por Categoría:", ["Todas"] + categorias_unicas)
+
+        df_mostrar = df_inv.copy()
+        if busqueda_p:
+            df_mostrar = df_mostrar[df_mostrar['nombre'].str.contains(busqueda_p, case=False, na=False)]
+        if filtro_cat!= "Todas":
+            df_mostrar = df_mostrar[df_mostrar['categoria'] == filtro_cat]
+
+        columnas_a_mostrar = ['producto_id', 'nombre', 'precio_compra', 'precio_venta', 'stock', 'categoria']
+
+        df_editado = st.data_editor(
+            df_mostrar[columnas_a_mostrar],
+            key='editor_inventario',
+            column_config={
+                "producto_id": None,
+                "precio_compra": st.column_config.NumberColumn(format="S/%.2f"),
+                "precio_venta": st.column_config.NumberColumn(format="S/%.2f"),
+            },
+            use_container_width=True,
+            height=400
+        )
+
+        if st.button("💾 Guardar cambios masivos"):
+            actualizar_inventario_masivo(df_editado)
+            st.rerun()
+
+        st.divider()
+        st.subheader("🗑️ Eliminar Producto")
+
+        producto_a_borrar = st.selectbox(
+            "Selecciona el producto a eliminar:",
+            options=df_mostrar['nombre'].tolist(),
+            key="selector_borrado"
+        )
+
+        if st.button("❌ Confirmar Eliminación"):
+            fila_prod = df_mostrar[df_mostrar['nombre'] == producto_a_borrar].iloc[0]
+            if borrar_producto(fila_prod['producto_id'], st.session_state.user_data['usuario_id']):
+                st.success(f"¡{producto_a_borrar} eliminado correctamente!")
+                st.rerun()
+
+    else:
+        st.info("Aún no hay productos registrados.")
+
+if menu == "Ventas":
+    st.title("🛒 Terminal de Ventas")
+
+    user_id = st.session_state.user_data['usuario_id']
+    ultimo_cierre_str = st.session_state.user_data.get('ultimo_cierre', (datetime.now(timezone.utc) - timedelta(days=1)).isoformat())
+    ultimo_cierre_dt = datetime.fromisoformat(ultimo_cierre_str)
+
+    # --- PANEL DE CONTROL DE CAJA MANUAL ---
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("### 💰 Control de Caja")
+    
+    ventas_totales = obtener_ventas()
+    ventas_turno = []
+    for v in ventas_totales:
+        fecha_v_dt = datetime.fromisoformat(v['fecha'])
+        if fecha_v_dt > ultimo_cierre_dt:
+            ventas_turno.append(v)
+            
+    total_efectivo = sum(float(v['total_venta']) for v in ventas_turno if "Efectivo" in v.get('pago', ''))
+    total_yape = sum(float(v['total_venta']) for v in ventas_turno if "Yape" in v.get('pago', ''))
+    total_plin = sum(float(v['total_venta']) for v in ventas_turno if "Plin" in v.get('pago', ''))
+    total_acumulado_turno = total_efectivo + total_yape + total_plin
+
+    cierre_peru = ultimo_cierre_dt - timedelta(hours=5)
+    st.sidebar.info(f"📆 **Caja abierta desde:**\n{cierre_peru.strftime('%d/%m/%Y %H:%M:%S')}")
+    
+    with st.sidebar.expander("📊 Totales del Turno Actual"):
+        st.write(f"💵 Efectivo: S/ {total_efectivo:.2f}")
+        st.write(f"📱 Yape: S/ {total_yape:.2f}")
+        st.write(f"💳 Plin: S/ {total_plin:.2f}")
+        st.markdown("**---**")
+        st.markdown(f"### Total: S/ {total_acumulado_turno:.2f}")
+
+    if st.sidebar.button("🔴 CERRAR CAJA MANUAL", type="primary", use_container_width=True):
+        if registrar_cierre_manual_dynamo(user_id):
+            st.success("🎉 ¡Caja cerrada con éxito! Turno reiniciado.")
+            st.balloons()
+            time.sleep(1.5)
+            st.rerun()
+
+
+    productos = obtener_productos()
+    tenant_actual = st.session_state.user_data.get('nombre_negocio','MI NEGOCIO')
+
+    if not productos:
+        st.info("💡 Aún no hay productos registrados en el inventario. Agrega algunos en la pestaña Productos.")
+    else:
+        categorias_disponibles = sorted(list(set(prod.get('categoria', 'General') for prod in productos)))
+        opciones_categoria = ["📁 Todas las Categorías"] + [f"🏷️ {cat}" for cat in categorias_disponibles]
+
+        c_busq, c_cat = st.columns([2, 1])
+        with c_busq:
+            busqueda_v = st.text_input("🔍 Buscar producto por nombre:", value=st.session_state["buscar_ventas"], key="input_buscar_ventas")
+        with c_cat:
+            categoria_seleccionada = st.selectbox("Filtrar por Categoría:", opciones_categoria)
+
+        productos_mostrar = productos
+        if busqueda_v.strip()!= "":
+            productos_mostrar = [p for p in productos_mostrar if busqueda_v.lower() in p.get('nombre', '').lower()]
+        if categoria_seleccionada!= "📁 Todas las Categorías":
+            cat_pura = categoria_seleccionada.replace("🏷️ ", "")
+            productos_mostrar = [p for p in productos_mostrar if p.get('categoria', 'General') == cat_pura]
+
+        col_productos, col_carrito = st.columns([1.2, 1.0])
+
+        with col_productos:
+            st.markdown("### 📦 Catálogo")
+            if not productos_mostrar:
+                st.error("❌ No se encontraron productos en este filtro.")
+            else:
+                st.markdown("---")
+                with st.container(height=500, border=False):
+                    for prod in productos_mostrar:
+                        p_id = prod.get('producto_id', 'S/I')
+                        p_nombre = prod.get('nombre', 'Producto sin nombre')
+                        p_precio_venta = float(prod.get('precio_venta', 0.0))
+                        p_precio_compra = float(prod.get('precio_compra', 0.0))
+
+                        cantidad_en_carrito = sum(int(item['cantidad']) for item in st.session_state.carrito if item['producto_id'] == p_id)
+                        p_stock_real = int(prod.get('stock', 0))
+                        p_stock_disponible = p_stock_real - cantidad_en_carrito
+
+                        with st.container(border=True):
+                            c_info, c_cant, c_btn = st.columns([2.1, 1.1, 1.2])
+                            with c_info:
+                                st.markdown(f"**{p_nombre}**")
+
+                                if p_stock_disponible <= 0:
+                                    st.markdown(f"🔴 **Agotado** · <span style='color:gray;'>S/{p_precio_venta:.2f}</span>", unsafe_allow_html=True)
+                                elif p_stock_disponible <= 5:
+                                    st.markdown(f"🟡 **Stock: {p_stock_disponible}** · **S/{p_precio_venta:.2f}**", unsafe_allow_html=True)
+                                else:
+                                    st.markdown(f"🟢 **Stock: {p_stock_disponible}** · **S/{p_precio_venta:.2f}**", unsafe_allow_html=True)
+
+                            with c_cant:
+                                qty = st.number_input("Cant", min_value=0, max_value=max(0, p_stock_disponible), key=f"qty_{p_id}", label_visibility="collapsed")
+
+                            with c_btn:
+                                es_invalido = p_stock_disponible <= 0
+                                def agregar_al_carrito_saas(id_p, nom_p, pre_v, pre_c, cant_solicitada, stock_r):
+                                    if cant_solicitada > 0:
+                                        existe = False
+                                        for item in st.session_state.carrito:
+                                            if item['producto_id'] == id_p:
+                                                item['cantidad'] = int(item['cantidad']) + cant_solicitada
+                                                existe = True
+                                                break
+                                        if not existe:
+                                            st.session_state.carrito.append({
+                                                'producto_id': id_p, 'nombre': nom_p, 'precio_venta': pre_v,
+                                                'precio_compra': pre_c, 'cantidad': cant_solicitada, 'stock_max': stock_r
                                             })
-                                            total_cargados += 1
-                                    
-                                    # Pausa de 0.2 seg entre batches para no saturar DynamoDB
-                                    time.sleep(0.2)
-                                    st.toast(f"Cargados {min(i+BATCH_SIZE, total_nuevos)}/{total_nuevos}", icon="📦")
-                                
-                                # Registrar kardex después de cargar todo
-                                for _, row in df_nuevos.iterrows():
-                                    if int(row['Stock']) > 0:
-                                        registrar_kardex(str(row['Producto']), int(row['Stock']), "INGRESO_MASIVO", 
-                                                       int(row['Stock']) * float(row['Precio_Compra']), float(row['Precio_Compra']), "CARGA_MASIVA")
-                            
-                            st.success(f"✅ {total_cargados} productos creados en {len(df_nuevos)//BATCH_SIZE + 1} bloques")
-                            st.balloons()
-                            time.sleep(2)
+                                        st.session_state["buscar_ventas"] = ""
+
+                                st.button("🛒 Añadir", key=f"btn_saas_{p_id}", use_container_width=True, disabled=es_invalido, on_click=agregar_al_carrito_saas, args=(p_id, p_nombre, p_precio_venta, p_precio_compra, qty, p_stock_real))
+
+        with col_carrito:
+            st.markdown("### 🧾 Resumen de Pedido")
+
+            if st.session_state.carrito:
+                total_venta_bruto = 0
+
+                for index, item in enumerate(st.session_state.carrito):
+                    subtotal = float(item['precio_venta']) * int(item['cantidad'])
+                    total_venta_bruto += subtotal
+
+                    c1, c2 = st.columns([4, 1])
+                    with c1:
+                        st.markdown(f"**{item['nombre']}** - {item['cantidad']} x S/{item['precio_venta']:.2f}")
+                    with c2:
+                        if st.button("🗑️", key=f"del_{index}"):
+                            st.session_state.carrito.pop(index)
                             st.rerun()
 
-# === TAB MANTENIMIENTO - BORRAR Y CORREGIR ===
-with tabs[5]:
-    if st.session_state.rol!= "DUEÑO":
-        st.error("⛔ Solo DUEÑO puede usar mantenimiento")
-        st.stop()
-        
-    st.subheader("🛠️ Mantenimiento de Inventario")
-    
-    tab_editar, tab_borrar = st.tabs(["✏️ EDITAR", "🗑️ ELIMINAR"])
-    
-    # === EDITAR ===
-    with tab_editar:
-        st.markdown("#### Corregir producto existente")
-        busq_edit = st.text_input("🔍 Buscar:", key="busq_edit").upper()
-        df_edit = df_inv[df_inv['Producto'].str.contains(busq_edit, na=False)] if busq_edit else df_inv.head(20)
-        
-        if not df_edit.empty:
-            evento_edit = st.dataframe(df_edit, use_container_width=True, hide_index=True, 
-                                       on_select="rerun", selection_mode="single-row", height=250)
-            
-            if evento_edit.selection.rows:
-                prod_edit = df_edit.iloc[evento_edit.selection.rows[0]]
-                st.info(f"Editando: **{prod_edit['Producto']}**")
+                st.markdown("---")
                 
-                col1, col2 = st.columns(2)
-                nuevo_nombre = col1.text_input("Nombre:", value=prod_edit['Producto'], key="edit_nombre").upper()
-                nuevo_pc = col2.number_input("Costo S/:", value=float(prod_edit['Precio_Compra']), key="edit_pc")
-                col3, col4 = st.columns(2)
-                nuevo_pv = col3.number_input("Precio venta S/:", value=float(prod_edit['Precio']), key="edit_pv")
-                nuevo_stock = col4.number_input("Stock:", value=int(prod_edit['Stock']), min_value=0, key="edit_stock")
+                metodo_pago = st.radio("Forma de Pago:", ["💵 Efectivo", "📱 Yape", "💳 Plin"], horizontal=True)
+                w_cliente_nombre = st.text_input("Nombre Cliente:", key="w_cli_nom")
+                w_cliente_celular = st.text_input("Celular:", key="w_cli_cel")
                 
-                if st.button("💾 GUARDAR CAMBIOS", use_container_width=True, type="primary", key="btn_guardar_edit"):
-                    # Si cambió nombre, borrar viejo y crear nuevo
-                    if nuevo_nombre!= prod_edit['Producto']:
-                        if df_inv['Producto'].str.upper().eq(nuevo_nombre).any():
-                            st.error(f"❌ Ya existe un producto llamado {nuevo_nombre}")
-                        else:
-                            tabla_stock.delete_item(Key={'TenantID': st.session_state.tenant, 'Producto': prod_edit['Producto']})
-                            tabla_stock.put_item(Item={
-                                'TenantID': st.session_state.tenant,
-                                'Producto': nuevo_nombre,
-                                'Precio_Compra': to_decimal(nuevo_pc),
-                                'Precio': to_decimal(nuevo_pv),
-                                'Stock': int(nuevo_stock)
-                            })
-                            registrar_kardex(nuevo_nombre, nuevo_stock, "EDICION_NOMBRE", 0, nuevo_pc, f"ANTES:{prod_edit['Producto']}")
-                            st.success(f"✅ Renombrado a {nuevo_nombre}")
-                    else:
-                        tabla_stock.update_item(
-                            Key={'TenantID': st.session_state.tenant, 'Producto': prod_edit['Producto']},
-                            UpdateExpression="SET Precio_Compra = :pc, Precio = :pv, Stock = :s",
-                            ExpressionAttributeValues={':pc': to_decimal(nuevo_pc), ':pv': to_decimal(nuevo_pv), ':s': int(nuevo_stock)}
-                        )
-                        registrar_kardex(prod_edit['Producto'], nuevo_stock, "EDICION", 0, nuevo_pc, "MANTENIMIENTO")
-                        st.success(f"✅ {prod_edit['Producto']} actualizado")
-                    time.sleep(1)
-                    st.rerun()
-    
-    # === ELIMINAR ===
-    with tab_borrar:
-        st.markdown("#### ⚠️ Eliminar producto permanentemente")
-        st.error("CUIDADO: Esto borra el producto y su historial de stock. No se puede deshacer.")
-        
-        busq_del = st.text_input("🔍 Buscar para eliminar:", key="busq_del").upper()
-        df_del = df_inv[df_inv['Producto'].str.contains(busq_del, na=False)] if busq_del else pd.DataFrame()
-        
-        if not df_del.empty:
-            evento_del = st.dataframe(df_del[['Producto', 'Stock']], use_container_width=True, hide_index=True,
-                                      on_select="rerun", selection_mode="single-row", height=200)
-            
-            if evento_del.selection.rows:
-                prod_del = df_del.iloc[evento_del.selection.rows[0]]['Producto']
-                st.warning(f"Vas a eliminar: **{prod_del}**")
-                confirmar = st.text_input(f"Escribe ELIMINAR para confirmar:", key="confirm_del")
+                # 1. Definir el total bruto - SIN TAB
+                total_bruto = sum(float(item['precio_venta']) * int(item['cantidad']) for item in st.session_state.carrito)
                 
-                if st.button("🗑️ ELIMINAR DEFINITIVAMENTE", use_container_width=True, key="btn_eliminar"):
-                    if confirmar == "ELIMINAR":
-                        tabla_stock.delete_item(Key={'TenantID': st.session_state.tenant, 'Producto': prod_del})
-                        registrar_kardex(prod_del, 0, "ELIMINADO", 0, 0, "MANTENIMIENTO")
-                        st.success(f"✅ {prod_del} eliminado")
-                        time.sleep(1)
+                # 2. PRIMERO dibuja el input - SIN TAB
+                descuento = st.number_input("💰 Descuento (S/):", min_value=0.0, max_value=total_bruto if total_bruto > 0 else 0.0, value=0.0, format="%.2f", key="descuento_venta_final")
+                total_venta_neto = max(0, round(total_bruto - descuento, 2))
+                st.markdown(f"### Total a pagar: S/{total_venta_neto:.2f}")
+                
+                if st.button("⚡ Finalizar y Registrar Venta", type="primary", use_container_width=True):
+                    # 3. VALIDACIÓN CRÍTICA - CON TAB
+                    descuento_valido = float(descuento)
+                    if descuento_valido > total_bruto:
+                        descuento_valido = total_bruto
+                        st.warning(f"⚠️ El descuento se ajustó a S/{total_bruto:.2f}")
+                    
+                    total_venta_neto = max(0, round(total_bruto - descuento_valido, 2))
+                    
+                    if total_venta_neto <= 0:
+                        st.error("❌ No se puede registrar venta con total S/0.00")
+                        st.stop()
+                    
+                    factor = (total_bruto - descuento_valido) / total_bruto if total_bruto > 0 else 1
+                    
+                    ok = True
+                    items_guardar = []  # Inicializamos la lista vacía
+                    
+                    for item in st.session_state.carrito:
+                        # 2. Calcular precio unitario final con el descuento aplicado
+                        precio_original = float(item['precio_venta'])
+                        precio_final = round(precio_original * factor, 2)
+                        
+                        # --- AQUÍ ESTÁ EL CAMBIO: Agregamos el ítem a la lista ---
+                        items_guardar.append({
+                            "nombre": item['nombre'],
+                            "cantidad": item['cantidad'],
+                            "precio_venta": precio_final
+                        })
+                        # --------------------------------------------------------
+                        
+                        try:
+                            # 3. Registrar usando el precio_final ajustado
+                            res = registrar_venta(
+                                producto_id=item['producto_id'],
+                                cantidad=int(item['cantidad']),
+                                precio_venta=precio_final,
+                                precio_compra=float(item['precio_compra']),
+                                pago=metodo_pago,
+                                cliente=w_cliente_nombre.strip() if w_cliente_nombre.strip() else "Consumidor Final",
+                                celular=w_cliente_celular.strip()
+                            )
+                            if res:
+                                nuevo_stock = int(item['stock_max']) - int(item['cantidad'])
+                                actualizar_producto(
+                                    producto_id=item['producto_id'],
+                                    nuevo_precio=item['precio_venta'],
+                                    nuevo_stock=nuevo_stock
+                                )
+                            else:
+                                ok = False
+                                break
+                        except Exception as e:
+                            st.error(f"Error al registrar: {e}")
+                            ok = False
+                            break
+                    if ok:
+                        hora_servidor = datetime.now()
+                        hora_peru = hora_servidor - timedelta(hours=5)
+                        fecha_formateada = hora_peru.strftime("%Y-%m-%d %H:%M:%S")
+
+                        st.session_state.ultima_venta = {
+                            "tenant": tenant_actual,
+                            "fecha": fecha_formateada,
+                            "items": items_guardar,
+                            "descuento": descuento_valido,
+                            "total": total_venta_neto,        
+                            "pago": metodo_pago,
+                            "cliente_nom": w_cliente_nombre.strip() if w_cliente_nombre.strip() else "Consumidor Final",
+                            "cliente_cel": w_cliente_celular.strip()
+                        }
+                        st.session_state.carrito = []
+                        st.success("🎉 Venta procesada con éxito.")
+                        st.balloons()
                         st.rerun()
-                    else:
-                        st.error("❌ Escribe ELIMINAR exacto para confirmar")
+            else:
+                st.info("🛒 El carrito está vacío. ¡Añade productos del catálogo!")
+
+        if st.session_state.ultima_venta is not None:
+            st.markdown("---")
+            st.markdown("### 📄 Último Comprobante Generado")
+
+            # 1. Obtenemos la venta más reciente
+            uv = st.session_state.ultima_venta
+        
+            # 2. Inicializamos variables de cálculo
+            lineas_productos = ""
+            subtotal_real = 0.0
+            
+            # 3. Recorremos los productos para listar y sumar el subtotal real
+            if uv and "items" in uv:
+                for it in uv["items"]:
+                    # Calculamos el subtotal de esta línea
+                    precio = float(it.get('precio_venta', 0))
+                    cantidad = float(it.get('cantidad', 0))
+                    total_linea = precio * cantidad
+                    
+                    # Sumamos al acumulador
+                    subtotal_real += total_linea
+                    
+                    # Formateamos la línea del producto
+                    lineas_productos += f"• {it['nombre']} (x{int(cantidad)}): S/{total_linea:.2f}\n"
+            
+            # 4. Construimos el texto final con los valores correctos
+            texto_whatsapp = (
+                f"=== COMPROBANTE DE COMPRA ===\n"
+                f"♦ Comercio: {uv.get('tenant', 'Bodega')}\n"
+                f"♦ Fecha: {uv.get('fecha', '')}\n"
+                f"♦ Cliente: {uv.get('cliente_nom', 'Consumidor Final')}\n"
+                f"-----------------------------\n"
+                f"{lineas_productos}"
+                f"-----------------------------\n"
+                f"♦ Subtotal Real: S/{subtotal_real:.2f}\n"
+                f"♦ Descuento Aplicado: -S/{float(uv.get('descuento', 0)):.2f}\n"
+                f"♦ TOTAL PAGADO: S/{float(uv.get('total', 0)):.2f}\n"
+                f"♦ Medio de Pago: {uv.get('pago', 'Efectivo')}\n"
+                f"¡Gracias por su preferencia! ♦"
+            )
+
+            html_ticket = f"""
+            <div id="ticket-saas-print" style="width: 280px; background-color: white; color: black; padding: 15px; font-family: 'Courier New', Courier, monospace; font-size: 12px; border: 1px dashed #000; margin: 0 auto;">
+                <div style="text-align: center; font-weight: bold; font-size: 14px; margin-bottom: 5px; text-transform: uppercase;">{uv['tenant']}</div>
+                <div style="text-align: center; margin-bottom: 10px;">*** COMPROBANTE DE COMPRA ***<br><small style="font-size:10px;">Control Interno Comercial</small></div>
+                <p style="margin: 3px 0;"><b>Fecha:</b> {uv['fecha']}</p>
+                <p style="margin: 3px 0;"><b>Cliente:</b> {uv['cliente_nom']}</p>
+                <div style="border-bottom: 1px dashed black; margin: 8px 0;"></div>
+                <table style="width: 100%; font-size: 12px; border-collapse: collapse;">
+            """
+            for it in uv["items"]:
+                subt = int(it['cantidad']) * float(it['precio_venta'])
+                html_ticket += f"""
+                <tr>
+                    <td style="padding: 2px 0;">{it['cantidad']}x {it['nombre']}</td>
+                    <td style="text-align: right; padding: 2px 0;">S/{subt:.2f}</td>
+                </tr>
+                """
+            html_ticket += f"""
+                </table>
+                <div style="border-bottom: 1px dashed black; margin: 8px 0;"></div>
+                <div style="display: table; width: 100%;">
+                    <div style="display: table-row;">
+                        <div style="display: table-cell; padding: 2px 0;">Subtotal:</div>
+                        <div style="display: table-cell; text-align: right; padding: 2px 0;">S/{float(uv['total']) + float(uv['descuento']):.2f}</div>
+                    </div>
+                    <div style="display: table-row; color: #c0392b;">
+                        <div style="display: table-cell; padding: 2px 0; font-weight: bold;">🎁 Descuento:</div>
+                        <div style="display: table-cell; text-align: right; padding: 2px 0; font-weight: bold;">-S/{float(uv['descuento']):.2f}</div>
+                    </div>
+                    <div style="display: table-row; font-size: 14px; font-weight: bold;">
+                        <div style="display: table-cell; padding-top: 8px;">TOTAL COBRADO:</div>
+                        <div style="display: table-cell; text-align: right; padding-top: 8px; font-size: 15px;">S/{uv['total']:.2f}</div>
+                    </div>
+                </div>
+                <div style="border-bottom: 1px dashed black; margin: 8px 0;"></div>
+                <p style="margin: 3px 0; text-align: center;"><b>Forma de Pago:</b> {uv['pago']}</p>
+                <div style="text-align: center; margin-top: 15px; font-weight: bold;">¡GRACIAS POR SU COMPRA!</div>
+            </div>
+            """
+
+            col_comp, col_acciones = st.columns([1.1, 1.0])
+            with col_comp:
+                st.markdown("<div style='background-color:#f9f9f9; padding:10px; border-radius:5px;'>", unsafe_allow_html=True)
+                st.html(html_ticket)
+                st.markdown("</div>", unsafe_allow_html=True)
+
+            with col_acciones:
+                st.markdown("#### ⚡ Acciones del Comprobante")
+                
+                # Verificamos si realmente existe la venta en el estado
+                if "ultima_venta" in st.session_state and st.session_state.ultima_venta:
+                    uv = st.session_state.ultima_venta
+                    
+                    # 1. BOTÓN IMPRIMIR
+                    if st.button("🖨️ Imprimir Ticket 80mm", use_container_width=True):
+                        components.html(f"""
+                            <script>
+                                var contenido = window.parent.document.getElementById('ticket-saas-print').innerHTML;
+                                var ventana = window.open('', '_blank', 'width=300,height=600');
+                                ventana.document.write('<html><head><style>body{{font-family:Courier New; font-size:11px;}}</style></head><body>' + contenido + '</body></html>');
+                                ventana.document.close();
+                                ventana.print();
+                            </script>
+                        """, height=0)
+                
+                    # 2. BOTÓN EXCEL - Aquí forzamos la creación del DataFrame
+                    try:
+                        if "items" in uv and uv["items"]:
+                            df_items = pd.DataFrame(uv["items"])
+                            csv_data = df_items.to_csv(index=False, sep=';').encode('utf-8-sig')
+                            
+                            st.download_button(
+                                label="📊 Descargar Detalle en Excel (CSV)",
+                                data=csv_data,
+                                file_name=f"ticket_{str(uv.get('fecha', '')).replace(' ', '_').replace(':', '-')}.csv",
+                                mime="text/csv",
+                                use_container_width=True
+                            )
+                        else:
+                            st.warning("Los datos de la venta están incompletos (sin items).")
+                    except Exception as e:
+                        st.error(f"Error al generar Excel: {e}")
+                
+                    # 3. BOTÓN WHATSAPP
+                    # Asegúrate de que 'texto_whatsapp' esté definido antes de este bloque
+                    texto_url = urllib.parse.quote(texto_whatsapp)
+                    url_wa = f"https://wa.me/51{uv.get('cliente_cel', '')}?text={texto_url}"
+                    st.link_button("📱 Enviar por WhatsApp Digital", url=url_wa, use_container_width=True)
+                
+                else:
+                    st.info("Realiza una venta para ver las acciones.")
+                
+                # 4. BOTÓN LIMPIAR (Fuera del if principal para que siempre aparezca)
+                if st.button("Limpiar y Nueva Venta", use_container_width=True):
+                    st.session_state.ultima_venta = None
+                    st.rerun()
+                    
+elif menu == "Reportes":
+    st.title("📊 Centro de Analítica - NEXUS")
+
+    ventas_raw = obtener_ventas()
+    productos_raw = obtener_productos()
+
+    if not ventas_raw:
+        st.info("💡 No hay ventas registradas en el sistema.")
+    else:
+        # Convertimos a DataFrame base
+        df = pd.DataFrame(ventas_raw)
+
+        # --- NORMALIZACIÓN DE FECHAS ---
+        # Convertimos la fecha UTC de DynamoDB, removemos zona horaria y restamos 5 horas para Perú
+        df['fecha_dt'] = pd.to_datetime(df['fecha']).dt.tz_localize(None) - pd.Timedelta(hours=5)
+        df['Fecha_Corta'] = df['fecha_dt'].dt.date
+        df['Hora'] = df['fecha_dt'].dt.strftime('%H:%M:%S')
+
+        # --- SELECTOR DE FILTRO: TURNO MANUAL VS CALENDARIO ---
+        st.markdown("### 🔍 Criterio de Búsqueda")
+        tipo_filtro = st.radio(
+            "Selecciona el modo de visualización para tu analítica:",
+            ["Turno Actual (Desde el último cierre manual)", "Historial por Fecha (Calendario)"],
+            horizontal=True
+        )
+
+        if tipo_filtro == "Turno Actual (Desde el último cierre manual)":
+            # Obtenemos el último cierre guardado en la sesión (UTC)
+            ultimo_cierre_str = st.session_state.user_data.get('ultimo_cierre', (datetime.now(timezone.utc) - timedelta(days=1)).isoformat())
+            # Lo pasamos a datetime naive y le restamos 5 horas para equipararlo con df['fecha_dt']
+            ultimo_cierre_dt = datetime.fromisoformat(ultimo_cierre_str).replace(tzinfo=None) - timedelta(hours=5)
+            
+            # Filtramos todo lo estrictamente posterior a ese cierre
+            df_filtrado = df[df['fecha_dt'] > ultimo_cierre_dt].copy()
+            st.info(f"⚡ Mostrando ventas del turno actual. Caja abierta desde: **{ultimo_cierre_dt.strftime('%d/%m/%Y %H:%M:%S')}**")
+            
+            # Para la comparativa de ganancia, usamos el mismo día de la semana pasada de forma referencial
+            fecha_referencia = (datetime.now() - timedelta(hours=5)).date() - timedelta(days=7)
+            df_pasada = df[df['Fecha_Corta'] == fecha_referencia].copy()
+        else:
+            # Modo tradicional por calendario
+            fecha_hoy = (datetime.now() - timedelta(hours=5)).date()
+            fecha_busqueda = st.date_input("Selecciona el día a auditar:", value=fecha_hoy)
+            
+            df_filtrado = df[df['Fecha_Corta'] == fecha_busqueda].copy()
+            fecha_semana_pasada = fecha_busqueda - timedelta(days=7)
+            df_pasada = df[df['Fecha_Corta'] == fecha_semana_pasada].copy()
+
+        # Ordenamos las ventas cronológicamente (más recientes primero)
+        df_filtrado = df_filtrado.sort_values(by='fecha_dt', ascending=False)
+
+        # Inicializamos acumuladores
+        efectivo = 0.0
+        yape = 0.0
+        plin = 0.0
+        ganancia_hoy = 0.0
+        ganancia_pasada = 0.0
+        total_ventas_dia = 0.0
+
+        if df_filtrado.empty:
+            st.warning("⚠️ No se encontraron ventas registradas para el criterio seleccionado.")
+        else:
+            # Mapeo de nombres de productos
+            mapa_productos = {p['producto_id']: p['nombre'] for p in productos_raw} if productos_raw else {}
+            
+            # Controlamos si la estructura viene de una venta unitaria o un carrito consolidado
+            if 'producto_id' in df_filtrado.columns:
+                df_filtrado['Producto'] = df_filtrado['producto_id'].map(mapa_productos).fillna(df_filtrado['producto_id'])
+            else:
+                df_filtrado['Producto'] = "Carrito Consolidado"
+
+            # Normalización del método de pago
+            if 'pago' not in df_filtrado.columns: 
+                df_filtrado['pago'] = 'efectivo'
+            df_filtrado['pago'] = df_filtrado['pago'].fillna('efectivo')
+            
+            df_filtrado['pago_norm'] = df_filtrado['pago'].astype(str).str.replace('💵', '').str.replace('📱', '').str.replace('💳', '').str.replace('🔮', '').str.strip().str.lower()
+            df_filtrado['pago_norm'] = df_filtrado['pago_norm'].apply(lambda x: x if x in ['yape', 'plin'] else 'efectivo')
+
+            # Sanitización de columnas numéricas
+            cols_numericas = ['total_venta', 'precio_venta', 'precio_compra', 'cantidad']
+            for col in cols_numericas:
+                if col in df_filtrado.columns:
+                    df_filtrado[col] = pd.to_numeric(df_filtrado[col], errors='coerce').fillna(0)
+                else:
+                    df_filtrado[col] = 0.0
+                
+                if col in df_pasada.columns:
+                    df_pasada[col] = pd.to_numeric(df_pasada[col], errors='coerce').fillna(0)
+
+            # Cálculo de Ganancias Reales
+            df_filtrado['ganancia_real'] = (df_filtrado['precio_venta'] - df_filtrado['precio_compra']) * df_filtrado['cantidad']
+            ganancia_hoy = df_filtrado['ganancia_real'].sum()
+
+            if not df_pasada.empty and 'precio_venta' in df_pasada.columns and 'precio_compra' in df_pasada.columns:
+                df_pasada['ganancia_real'] = (df_pasada['precio_venta'] - df_pasada['precio_compra']) * df_pasada['cantidad']
+                ganancia_pasada = df_pasada['ganancia_real'].sum()
+
+            # Distribución de montos por pasarela de pago
+            yape = df_filtrado[df_filtrado['pago_norm'] == 'yape']['total_venta'].sum()
+            plin = df_filtrado[df_filtrado['pago_norm'] == 'plin']['total_venta'].sum()
+            efectivo = df_filtrado[df_filtrado['pago_norm'] == 'efectivo']['total_venta'].sum()
+            total_ventas_dia = efectivo + yape + plin
+
+            # --- RENDERIZADO DE INTERFAZ ---
+            st.markdown("""
+                <style>
+                div[data-testid="metric-container"] { background-color: #1e293b; padding: 20px; border-radius: 10px; border: 1px solid #475569; }
+                div[data-testid="metric-container"] label { font-size: 1.2rem!important; }
+                div[data-testid="metric-container"] [data-testid="stMetricValue"] { font-size: 2.5rem!important; color: #38bdf8!important; }
+                </style>
+            """, unsafe_allow_html=True)
+
+            st.markdown("### 📊 Resumen Financiero")
+            c1, c2, c3, c4 = st.columns(4)
+            c1.metric("💰 Total Ventas", f"S/{total_ventas_dia:.2f}")
+            c2.metric("💵 Efectivo", f"S/{efectivo:.2f}")
+            c3.metric("📱 Yape", f"S/{yape:.2f}")
+            c4.metric("🟣 Plin", f"S/{plin:.2f}")
+
+            delta_val = ganancia_hoy - ganancia_pasada
+            st.metric("📝 Ganancia Real", f"S/{ganancia_hoy:.2f}", delta=f"{delta_val:.2f} vs periodo comparativo")
+
+            st.write("---")
+            st.subheader("📊 Análisis Visual del Periodo")
+
+            # Construcción de Gráficas con Plotly
+            col_graf1, col_graf2 = st.columns(2)
+
+            with col_graf1:
+                df_top = df_filtrado.groupby('Producto')['total_venta'].sum().reset_index().sort_values('total_venta', ascending=False).head(10)
+                fig_bar = px.bar(df_top, x='total_venta', y='Producto', orientation='h', title="Top 10 Productos Más Vendidos")
+                st.plotly_chart(fig_bar, use_container_width=True)
+
+            def limpiar_pago(valor):
+                v = str(valor).lower().strip()
+                if 'efectivo' in v: return 'Efectivo'
+                elif 'yape' in v: return 'Yape'
+                elif 'plin' in v: return 'Plin'
+                else: return v.capitalize()
+
+            df_filtrado['pago_norm_display'] = df_filtrado['pago'].apply(limpiar_pago)
+
+            with col_graf2:
+                fig_pie = px.pie(df_filtrado, values='total_venta', names='pago_norm_display', title="Distribución de Métodos de Pago", hole=0.4)
+                st.plotly_chart(fig_pie, use_container_width=True)
+
+            if 'Hora' in df_filtrado.columns:
+                df_hora = df_filtrado.groupby('Hora')['total_venta'].sum().reset_index()
+                fig_line = px.area(df_hora, x='Hora', y='total_venta', title="Tendencia Horaria de Ventas", line_shape='spline')
+                st.plotly_chart(fig_line, use_container_width=True)
+
+            # Tabla expandible con auditoría detallada
+            with st.expander("📊 Ver detalle de transacciones (Maximizar/Minimizar)"):
+                columnas_disponibles = df_filtrado.columns.tolist()
+                columnas_a_mostrar = [c for c in ['Hora', 'Producto', 'cantidad', 'total_venta', 'ganancia_real', 'pago'] if c in columnas_disponibles]
+                st.dataframe(df_filtrado[columnas_a_mostrar], use_container_width=True)
+
+            # --- GENERACIÓN DE REPORTE EXCEL (XLSXWRITER) ---
+            buffer = io.BytesIO()
+            with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
+                # Quitamos columnas temporales de visualización antes de exportar
+                columnas_export = [c for c in df_filtrado.columns if c not in ['pago_norm_display']]
+                df_filtrado[columnas_export].to_excel(writer, sheet_name='Ventas_Auditoria', index=False)
+
+                workbook = writer.book
+                worksheet = writer.sheets['Ventas_Auditoria']
+                money_fmt = workbook.add_format({'num_format': 'S/ #,##0.00'})
+
+                total_sum = df_filtrado['total_venta'].sum()
+                row_idx = len(df_filtrado) + 1
+                worksheet.write(row_idx, 1, "TOTALES:")
+                
+                # Buscamos el índice de la columna 'total_venta' para pintarlo en el lugar correcto
+                if 'total_venta' in columnas_export:
+                    col_num_idx = columnas_export.index('total_venta')
+                    worksheet.write(row_idx, col_num_idx, total_sum, money_fmt)
+
+            nombre_archivo = "Reporte_Turno_Actual.xlsx" if tipo_filtro.startswith("Turno") else f"Reporte_NEXUS_{fecha_busqueda}.xlsx"
+
+            st.download_button(
+                label="📥 Descargar Reporte en Excel (Auditoría)",
+                data=buffer.getvalue(),
+                file_name=nombre_archivo,
+                mime="application/vnd.ms-excel"
+            )
+
+elif menu == "⚙️ Ajustes":
+    mostrar_ajustes()
+        
