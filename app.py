@@ -142,10 +142,10 @@ def init_dynamodb():
                           aws_secret_access_key=AWS_SECRET_ACCESS_KEY, region_name=AWS_REGION)
 
 dynamodb = init_dynamodb()
-tabla_usuarios = dynamodb.Table('NEXUS_USUARIOS')
-tabla_productos = dynamodb.Table('NEXUS_PRODUCTOS')
-tabla_ventas = dynamodb.Table('NEXUS_VENTAS')
-tabla_trial = dynamodb.Table('NEXUS_TRIAL_USADOS')
+tabla_usuarios = dynamodb.Table('NEXUS_USUARIOS' + SUFIJO)
+tabla_productos = dynamodb.Table('NEXUS_PRODUCTOS' + SUFIJO)
+tabla_ventas = dynamodb.Table('NEXUS_VENTAS' + SUFIJO)
+tabla_trial = dynamodb.Table('NEXUS_TRIAL_USADOS' + SUFIJO)
 
 # ======= 3. FUNCIONES CORE =======
 def hash_password(password):
