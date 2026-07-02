@@ -328,24 +328,86 @@ def procesar_carga_excel(df):
     total_filas = len(df)
 
     try:
-        progreso_bar = st.progress(0)
+        from decimal import Decimal
+        import uuid
 
+        # 1. Traemos los productos actuales del negocio
+        productos_actuales = obtener_productos()
+        
+        # Mapeamos lo existente por nombre en minúsculas para encontrar coincidencias al instante
+        inventario_existente = {}
+        if productos_actuales:
+            for p in productos_actuales:
+                nombre_normalizado = str(p.get('nombre', '')).strip().lower()
+                inventario_existente[nombre_normalizado] = {
+                    'producto_id': p.get('producto_id'),
+                    'stock_actual': int(p.get('stock', 0))
+                }
+
+        # Conectamos con DynamoDB
+        dynamodb_resource = boto3.resource('dynamodb', region_name='us-east-1')
+        tabla_productos = dynamodb_resource.Table('NEXUS_PRODUCTOS')
+        
+        usuario_id = st.session_state.user_data.get('usuario_id')
+        progreso_bar = st.progress(0)
+        
+        contador_nuevos = 0
+        contador_actualizados = 0
+
+        # 2. Procesamos el Excel por bloques respetando tu barra de progreso
         for i in range(0, total_filas, tamanio_bloque):
             bloque = df.iloc[i : i + tamanio_bloque]
 
             for index, row in bloque.iterrows():
-                agregar_producto(
-                    nombre=str(row['nombre']),
-                    precio_venta=float(row['precio_venta']),
-                    precio_compra=float(row['precio_compra']),
-                    stock=int(row['stock']),
-                    categoria=str(row['categoria'])
-                )
+                nombre_excel = str(row['nombre']).strip()
+                nombre_excel_lower = nombre_excel.lower()
+                
+                if not nombre_excel:
+                    continue
+
+                pv = float(row['precio_venta'])
+                pc = float(row['precio_compra'])
+                stock_excel = int(row['stock'])
+                categoria = str(row['categoria']).strip()
+
+                # 3. Control de Duplicados basándonos en tu consola de AWS
+                if nombre_excel_lower in inventario_existente:
+                    # ¡YA EXISTE! Sumamos el stock para evitar duplicar la fila
+                    prod_id_existente = inventario_existente[nombre_excel_lower]['producto_id']
+                    nuevo_stock = inventario_existente[nombre_excel_lower]['stock_actual'] + stock_excel
+                    
+                    # Actualizamos usando la clave compuesta exacta de tu consola: id_del_dueno + producto_id
+                    tabla_productos.update_item(
+                        Key={
+                            'id_del_dueno': str(usuario_id),
+                            'producto_id': str(prod_id_existente)
+                        },
+                        UpdateExpression="SET stock = :s, precio_compra = :pc, precio_venta = :pv, categoria = :c",
+                        ExpressionAttributeValues={
+                            ':s': nuevo_stock,
+                            ':pc': Decimal(str(pc)),
+                            ':pv': Decimal(str(pv)),
+                            ':c': categoria
+                        }
+                    )
+                    # Actualizamos la memoria por si el Excel viene con el mismo artículo repetido varias veces
+                    inventario_existente[nombre_excel_lower]['stock_actual'] = nuevo_stock
+                    contador_actualizados += 1
+                else:
+                    # ¡NUEVO! Si no existe, usamos tu función para meter el producto desde cero
+                    agregar_producto(
+                        nombre=nombre_excel,
+                        precio_venta=pv,
+                        precio_compra=pc,
+                        stock=stock_excel,
+                        categoria=categoria
+                    )
+                    contador_nuevos += 1
 
             progreso = min((i + tamanio_bloque) / total_filas, 1.0)
             progreso_bar.progress(progreso)
 
-        st.success(f"✅ ¡Carga completada! Se procesaron {total_filas} productos.")
+        st.success(f"✅ ¡Carga completada! Creados: {contador_nuevos} nuevos | Actualizados (Stock sumado): {contador_actualizados} existentes.")
         return True
 
     except Exception as e:
