@@ -1,10 +1,7 @@
 streamlit
-pandas
 boto3
-xlsxwriter
-openpyxl
 pytz
-fpdf
-python-dateutil
-pytesseract
-pillow
+plotly
+pandas
+xlsxwriter==3.1.0
+openpyxl
