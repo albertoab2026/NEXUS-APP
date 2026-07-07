@@ -307,28 +307,45 @@ def eliminar_producto(producto_id):
         st.error(f"Error al eliminar en la base de datos: {e}")
         return False
 
-def registrar_venta(producto_id, cantidad, precio_venta, precio_compra, pago, cliente, celular):
+def registrar_venta(lista_productos, pago, cliente="Consumidor Final", celular="", tipo_comprobante="Boleta", documento_numero=""):
     try:
         id_dueno = st.session_state.user_data['usuario_id']
         fecha_utc = datetime.now(timezone.utc).isoformat()
-        total_venta = float(precio_venta) * int(cantidad)
+        
+        # 1. Calculamos los totales acumulados recorriendo el carrito
+        total_venta_acumulado = Decimal('0.0')
+        productos_json = []
+        
+        for prod in lista_productos:
+            subtotal = Decimal(str(prod['precio_venta'])) * int(prod['cantidad'])
+            total_venta_acumulado += subtotal
+            
+            # Formateamos cada producto para guardarlo ordenadamente dentro del JSON
+            productos_json.append({
+                'producto_id': str(prod['producto_id']),
+                'nombre': str(prod.get('nombre', 'Producto')), # Por si tienes el nombre a la mano
+                'cantidad': int(prod['cantidad']),
+                'precio_venta': Decimal(str(prod['precio_venta'])),
+                'precio_compra': Decimal(str(prod['precio_compra'])),
+                'total_item': subtotal
+            })
 
+        # 2. Guardamos UN SOLO registro en DynamoDB con todo el carrito dentro
         tabla_ventas.put_item(Item={
             'usuario_id': id_dueno,
             'Venta_id': str(uuid.uuid4()),
-            'producto_id': producto_id,
-            'cantidad': int(cantidad),
-            'total_venta': Decimal(str(total_venta)),
-            'precio_venta': Decimal(str(precio_venta)),
-            'precio_compra': Decimal(str(precio_compra)),
             'fecha': fecha_utc,
             'pago': str(pago),
             'cliente': str(cliente),
-            'celular': str(celular)
+            'celular': str(celular),
+            'total_venta': total_venta_acumulado,
+            'tipo_comprobante': str(tipo_comprobante),       # BOLETA o FACTURA (Requisito SUNAT)
+            'cliente_documento': str(documento_numero),    # DNI o RUC si pasa los S/ 700 (Requisito SUNAT)
+            'productos': productos_json                    # ¡Aquí viaja toda la lista mapeada!
         })
         return True
     except Exception as e:
-        st.error(f"Error en venta: {e}")
+        st.error(f"Error en venta agrupada: {e}")
         return False
 
 def procesar_carga_excel(df):
