@@ -921,7 +921,7 @@ if menu == "Ventas":
                             "producto_id": item['producto_id'],
                             "nombre": item['nombre'],
                             "cantidad": item['cantidad'],
-                            "precio_venta": precio_final
+                            "precio_venta": precio_final,
                             "precio_compra": float(item['precio_compra'])
                         })
                         # --------------------------------------------------------
