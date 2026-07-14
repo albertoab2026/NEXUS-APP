@@ -924,52 +924,40 @@ if menu == "Ventas":
                         })
                         # --------------------------------------------------------
                         
-                        try:
-                            # 3. Registrar usando el precio_final ajustado
-                            res = registrar_venta(
-                                producto_id=item['producto_id'],
-                                cantidad=int(item['cantidad']),
-                                precio_venta=precio_final,
-                                precio_compra=float(item['precio_compra']),
-                                pago=metodo_pago,
-                                cliente=w_cliente_nombre.strip() if w_cliente_nombre.strip() else "Consumidor Final",
-                                celular=w_cliente_celular.strip()
-                            )
-                            if res:
-                                nuevo_stock = int(item['stock_max']) - int(item['cantidad'])
-                                actualizar_producto(
-                                    producto_id=item['producto_id'],
-                                    nuevo_precio=item['precio_venta'],
-                                    nuevo_stock=nuevo_stock
-                                )
-                            else:
-                                ok = False
-                                break
-                        except Exception as e:
-                            st.error(f"Error al registrar: {e}")
-                            ok = False
-                            break
                     if ok:
-                        hora_servidor = datetime.now()
-                        hora_peru = hora_servidor - timedelta(hours=5)
-                        fecha_formateada = hora_peru.strftime("%Y-%m-%d %H:%M:%S")
-
-                        st.session_state.ultima_venta = {
-                            "tenant": tenant_actual,
-                            "fecha": fecha_formateada,
-                            "items": items_guardar,
-                            "descuento": descuento_valido,
-                            "total": total_venta_neto,        
-                            "pago": metodo_pago,
-                            "cliente_nom": w_cliente_nombre.strip() if w_cliente_nombre.strip() else "Consumidor Final",
-                            "cliente_cel": w_cliente_celular.strip()
-                        }
-                        st.session_state.carrito = []
-                        st.success("🎉 Venta procesada con éxito.")
-                        st.balloons()
-                        st.rerun()
-            else:
-                st.info("🛒 El carrito está vacío. ¡Añade productos del catálogo!")
+                        # ========================================================
+                        # 🚀 ¡AQUÍ ENVIAMOS TODO EL CARRITO DE UN SOLO GOLPE!
+                        # ========================================================
+                        res_agrupado = registrar_venta(
+                            lista_productos=items_guardar,
+                            pago=metodo_pago,
+                            cliente=w_cliente_nombre.strip() if w_cliente_nombre else "Consumidor Final",
+                            celular=w_cliente_celular.strip()
+                        )
+        
+                        if res_agrupado:
+                            # Tu lógica original para formatear la fecha y hora
+                            hora_servidor = datetime.now()
+                            hora_peru = hora_servidor - timedelta(hours=5)
+                            fecha_formateada = hora_peru.strftime("%Y-%m-%d %H:%M:%S")
+            
+                            st.session_state.ultima_venta = {
+                                "tenant": tenant_actual,
+                                "fecha": fecha_formateada,
+                                "items": items_guardar,
+                                "descuento": descuento_valido,
+                                "total": total_venta_neto,
+                                "pago": metodo_pago,
+                                "cliente_nom": w_cliente_nombre.strip() if w_cliente_nombre else "Consumidor Final",
+                                "cliente_cel": w_cliente_celular.strip()
+                            }
+            
+                            st.session_state.carrito = [] # Vaciamos el carrito
+                            st.success("🎉 Venta procesada con éxito.")
+                            st.balloons()
+                            st.rerun()
+                        else:
+                            st.error("Error al registrar la venta agrupada en DynamoDB.")
 
         if st.session_state.ultima_venta is not None:
             st.markdown("---")
