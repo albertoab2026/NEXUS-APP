@@ -918,9 +918,11 @@ if menu == "Ventas":
                         
                         # --- AQUÍ ESTÁ EL CAMBIO: Agregamos el ítem a la lista ---
                         items_guardar.append({
+                            "producto_id": item['producto_id'],
                             "nombre": item['nombre'],
                             "cantidad": item['cantidad'],
                             "precio_venta": precio_final
+                            "precio_compra": float(item['precio_compra'])
                         })
                         # --------------------------------------------------------
                         
