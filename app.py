@@ -256,7 +256,7 @@ def registrar_cierre_manual_dynamo(usuario_id):
         st.error(f"Error al guardar el cierre en DynamoDB: {e}")
         return False
 
-def agregar_producto(nombre, precio_venta, precio_compra, stock, categoria):
+def agregar_producto(nombre, precio_venta, precio_compra, stock, categoria, codigo_barras=""):
     try:
         id_dueno = st.session_state.user_data['usuario_id']
         tabla_productos.put_item(Item={
@@ -266,7 +266,8 @@ def agregar_producto(nombre, precio_venta, precio_compra, stock, categoria):
             'precio_venta': Decimal(str(precio_venta)),
             'precio_compra': Decimal(str(precio_compra)),
             'stock': int(stock),
-            'categoria': categoria
+            'categoria': categoria,
+            'codigo_barras': str(codigo_barras).strip()
         })
         return True
     except Exception as e:
@@ -677,12 +678,13 @@ if menu == "Productos":
             pv_nuevo = st.number_input("Precio Venta", step=0.1)
             pc_nuevo = st.number_input("Precio Compra", step=0.1)
             stk_nuevo = st.number_input("Stock", step=1)
+            codigo_nuevo = st.text_input("Código de Barras (Escanea con pistola o escribe)", key="input_codigo_manual")
 
             if st.form_submit_button("Guardar Producto Nuevo"):
                 if seleccion_cat == "+ Agregar nueva categoría" and not cat_final:
                     st.error("Por favor, escribe el nombre de la nueva categoría.")
                 elif nombre_nuevo and cat_final:
-                    if agregar_producto(nombre_nuevo, pv_nuevo, pc_nuevo, stk_nuevo, cat_final):
+                    if agregar_producto(nombre_nuevo, pv_nuevo, pc_nuevo, stk_nuevo, cat_final, codigo_nuevo):
                         st.success("¡Producto agregado!")
                         st.session_state["input_manual_unico"] = ""
                         st.rerun()
