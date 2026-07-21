@@ -907,7 +907,7 @@ if menu == "Ventas":
                 total_venta_bruto = 0
 
                 for index, item in enumerate(st.session_state.carrito):
-                    subtotal = float(item['precio_venta']) * int(item['cantidad'])
+                    subtotal = float(item.get('precio_venta', item.get('precio', 0.0))) * int(item.get('cantidad', 1))
                     total_venta_bruto += subtotal
 
                     c1, c2 = st.columns([4, 1])
