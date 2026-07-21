@@ -710,7 +710,9 @@ if menu == "Productos":
     productos = obtener_productos()
 
     if productos:
-        df_inv = pd.DataFrame(productos)      
+    df_inv = pd.DataFrame(productos)
+    if 'codigo_barras' not in df_inv.columns:
+        df_inv['codigo_barras'] = ""      
 
 # --- FILTROS ---
         col1, col2 = st.columns(2)
