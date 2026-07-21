@@ -964,7 +964,7 @@ if menu == "Ventas":
                         items_guardar.append({
                             "producto_id": item['producto_id'],
                             "nombre": item['nombre'],
-                            "cantidad": item['cantidad'],
+                            "cantidad": item.get('cantidad', 1),
                             "precio_venta": precio_final,
                             "precio_compra": float(item['precio_compra'])
                         })
