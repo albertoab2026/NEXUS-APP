@@ -1239,9 +1239,9 @@ elif menu == "Reportes":
                 p_c = df_filtrado['precio_compra'] if 'precio_compra' in df_filtrado.columns else (df_filtrado['costo'] if 'costo' in df_filtrado.columns else 0)
                 cant = df_filtrado['cantidad'] if 'cantidad' in df_filtrado.columns else 1
     
-                v_num = pd.to_numeric(p_v, errors='coerce').fillna(0)
-                c_num = pd.to_numeric(p_c, errors='coerce').fillna(0)
-                cant_num = pd.to_numeric(cant, errors='coerce').fillna(1)
+                v_num = pd.Series(pd.to_numeric(p_v, errors='coerce')).fillna(0)
+                c_num = pd.Series(pd.to_numeric(p_c, errors='coerce')).fillna(0)
+                cant_num = pd.Series(pd.to_numeric(cant, errors='coerce')).fillna(1)
     
                 df_filtrado['ganancia_real'] = (v_num - c_num) * cant_num
                 ganancia_hoy = float(df_filtrado['ganancia_real'].sum())
@@ -1253,9 +1253,9 @@ elif menu == "Reportes":
                 p_c_p = df_pasada['precio_compra'] if 'precio_compra' in df_pasada.columns else (df_pasada['costo'] if 'costo' in df_pasada.columns else 0)
                 cant_p = df_pasada['cantidad'] if 'cantidad' in df_pasada.columns else 1
     
-                v_pas_num = pd.to_numeric(p_v_p, errors='coerce').fillna(0)
-                c_pas_num = pd.to_numeric(p_c_p, errors='coerce').fillna(0)
-                cant_pas_num = pd.to_numeric(cant_p, errors='coerce').fillna(1)
+                v_pas_num = pd.Series(pd.to_numeric(p_v_p, errors='coerce')).fillna(0)
+                c_pas_num = pd.Series(pd.to_numeric(p_c_p, errors='coerce')).fillna(0)
+                cant_pas_num = pd.Series(pd.to_numeric(cant_p, errors='coerce')).fillna(1)
     
                 df_pasada['ganancia_real'] = (v_pas_num - c_pas_num) * cant_pas_num
                 ganancia_pasada = float(df_pasada['ganancia_real'].sum())
