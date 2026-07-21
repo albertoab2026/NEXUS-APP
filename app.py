@@ -925,7 +925,7 @@ if menu == "Ventas":
                 w_cliente_celular = st.text_input("Celular:", key="w_cli_cel")
                 
                 # 1. Definir el total bruto - SIN TAB
-                total_bruto = sum(float(item['precio_venta']) * int(item['cantidad']) for item in st.session_state.carrito)
+                total_bruto = sum(float(item.get('precio_venta', item.get('precio', 0.0))) * int(item.get('cantidad', 1)) for item in st.session_state.carrito)
                 
                 # 2. PRIMERO dibuja el input - SIN TAB
                 descuento = st.number_input("💰 Descuento (S/):", min_value=0.0, max_value=total_bruto if total_bruto > 0 else 0.0, value=0.0, format="%.2f", key="descuento_venta_final")
