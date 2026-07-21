@@ -912,7 +912,7 @@ if menu == "Ventas":
 
                     c1, c2 = st.columns([4, 1])
                     with c1:
-                        st.markdown(f"**{item['nombre']}** - {item['cantidad']} x S/{item['precio_venta']:.2f}")
+                        st.markdown(f"**{item.get('nombre', 'Producto')}** - {item.get('cantidad', 1)} x S/{float(item.get('precio_venta', item.get('precio', 0.0))):.2f}")
                     with c2:
                         if st.button("🗑️", key=f"del_{index}"):
                             st.session_state.carrito.pop(index)
