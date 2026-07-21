@@ -709,7 +709,7 @@ if menu == "Productos":
     st.subheader("Control de Inventario")
     productos = obtener_productos()
 
-    if productos:
+if productos:
     df_inv = pd.DataFrame(productos)
     if 'codigo_barras' not in df_inv.columns:
         df_inv['codigo_barras'] = ""      
