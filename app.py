@@ -838,7 +838,6 @@ if menu == "Ventas":
                 
                 st.session_state.carrito.append(prod_encontrado)
                 st.toast(f"✅ Agregado: {prod_encontrado['nombre']}")
-                st.session_state["input_buscar_ventas"] = ""
                 st.rerun()
             else:
                 # 🔍 Si no es un código de barras, filtra el catálogo por NOMBRE
