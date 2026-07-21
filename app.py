@@ -957,17 +957,29 @@ if menu == "Ventas":
                     
                     for item in st.session_state.carrito:
                         # 2. Calcular precio unitario final con el descuento aplicado
-                        precio_original = float(item['precio_venta'])
+                        precio_original = float(item.get('precio_venta', item.get('precio', 0)))
                         precio_final = round(precio_original * factor, 2)
-                        
-                        # --- AQUÍ ESTÁ EL CAMBIO: Agregamos el ítem a la lista ---
+            
+                        # Buscamos el costo de compra de forma segura (soporta 'precio_compra' o 'costo')
+                        costo_compra = float(item.get('precio_compra', item.get('costo', 0)))
+            
+                        p_id = item.get('producto_id', item.get('id'))
+            
+                        # Agregamos el ítem a la lista de la venta
                         items_guardar.append({
-                            "producto_id": item['producto_id'],
-                            "nombre": item['nombre'],
+                            "producto_id": p_id,
+                            "nombre": item.get('nombre', 'Producto'),
                             "cantidad": item.get('cantidad', 1),
                             "precio_venta": precio_final,
-                            "precio_compra": float(item['precio_compra'])
+                            "precio_compra": costo_compra
                         })
+            
+                        # Descontamos el stock directamente de la lista de productos
+                        cant_v = int(item.get('cantidad', 1))
+                        for prod in productos:
+                            if prod.get('producto_id') == p_id or prod.get('id') == p_id:
+                                stock_actual = int(prod.get('stock', 0))
+                                prod['stock'] = max(0, stock_actual - cant_v)
                         # --------------------------------------------------------
                         
                     if ok:
