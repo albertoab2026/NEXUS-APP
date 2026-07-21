@@ -824,7 +824,7 @@ if menu == "Ventas":
 
         c_busq, c_cat = st.columns([2, 1])
         with c_busq:
-            busqueda_v = st.text_input("🔍 Buscar por nombre o 🪪 Escanear código:", key="input_buscar_ventas", on_change=limpiar_buscador)
+            busqueda_v = st.text_input("🔍 Buscar por nombre o 🪪 Escanear código:", key="input_buscar_ventas")
 
         with c_cat:
             categoria_seleccionada = st.selectbox("Filtrar por Categoría:", opciones_categoria)
