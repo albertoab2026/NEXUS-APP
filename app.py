@@ -236,6 +236,21 @@ def obtener_ventas():
         st.error(f"Error cargando ventas: {e}")
         return []
 
+def buscar_producto_por_codigo(codigo_barras):
+    try:
+        id_dueno = st.session_state.user_data['usuario_id']
+        respuesta = tabla_productos.query(
+            IndexName='codigo_barras-index',
+            KeyConditionExpression=Key('codigo_barras').eq(str(codigo_barras).strip())
+        )
+        items = respuesta.get('Items', [])
+        for item in items:
+            if item.get('id_del_dueno') == str(id_dueno):
+                return item
+        return None
+    except Exception as e:
+        return None        
+
 def registrar_cierre_manual_dynamo(usuario_id):
     """Actualiza la fecha y hora del último cierre en el perfil del Tenant"""
     try:
@@ -711,7 +726,7 @@ if menu == "Productos":
         if filtro_cat!= "Todas":
             df_mostrar = df_mostrar[df_mostrar['categoria'] == filtro_cat]
 
-        columnas_a_mostrar = ['producto_id', 'nombre', 'precio_compra', 'precio_venta', 'stock', 'categoria']
+        columnas_a_mostrar = ['producto_id', 'nombre', 'codigo_barras', 'precio_compra', 'precio_venta', 'stock', 'categoria']
 
         df_editado = st.data_editor(
             df_mostrar[columnas_a_mostrar],
@@ -797,15 +812,34 @@ if menu == "Ventas":
         categorias_disponibles = sorted(list(set(prod.get('categoria', 'General') for prod in productos)))
         opciones_categoria = ["📁 Todas las Categorías"] + [f"🏷️ {cat}" for cat in categorias_disponibles]
 
+        if "input_buscar_ventas" not in st.session_state:
+            st.session_state["input_buscar_ventas"] = ""
+
         c_busq, c_cat = st.columns([2, 1])
         with c_busq:
-            busqueda_v = st.text_input("🔍 Buscar producto por nombre:", value=st.session_state["buscar_ventas"], key="input_buscar_ventas")
+            busqueda_v = st.text_input("🔍 Buscar por nombre o 🔫 Escanear código:", key="input_buscar_ventas")
+
         with c_cat:
             categoria_seleccionada = st.selectbox("Filtrar por Categoría:", opciones_categoria)
 
         productos_mostrar = productos
-        if busqueda_v.strip()!= "":
-            productos_mostrar = [p for p in productos_mostrar if busqueda_v.lower() in p.get('nombre', '').lower()]
+
+        if busqueda_v.strip() != "":
+            # 1. Verificamos si lo que se ingresó es un CÓDIGO DE BARRAS exacto (Pistola)
+            prod_encontrado = buscar_producto_por_codigo(busqueda_v)
+            
+            if prod_encontrado:
+                if 'carrito' not in st.session_state:
+                    st.session_state.carrito = []
+                
+                st.session_state.carrito.append(prod_encontrado)
+                st.toast(f"✅ Agregado: {prod_encontrado['nombre']}")
+                st.session_state["input_buscar_ventas"] = ""
+                st.rerun()
+            else:
+                # 🔍 Si no es un código de barras, filtra el catálogo por NOMBRE
+                productos_mostrar = [p for p in productos_mostrar if busqueda_v.lower() in p.get('nombre', '').lower()]
+        
         if categoria_seleccionada!= "📁 Todas las Categorías":
             cat_pura = categoria_seleccionada.replace("🏷️ ", "")
             productos_mostrar = [p for p in productos_mostrar if p.get('categoria', 'General') == cat_pura]
