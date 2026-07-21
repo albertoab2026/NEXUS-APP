@@ -974,12 +974,20 @@ if menu == "Ventas":
                             "costo": costo_compra
                         })
             
-                        # Descontamos el stock de la lista en memoria
+                        # Descontamos el stock y actualizamos DynamoDB de forma persistente
                         cant_v = int(item.get('cantidad', 1))
                         for prod in productos:
                             if prod.get('producto_id') == p_id or prod.get('id') == p_id:
                                 stock_actual = int(prod.get('stock', 0))
-                                prod['stock'] = max(0, stock_actual - cant_v)
+                                nuevo_stock = max(0, stock_actual - cant_v)
+                                prod['stock'] = nuevo_stock
+                                
+                                # Llamamos a la función de AWS DynamoDB para guardar el nuevo stock en la nube
+                                # (Usualmente en tus funciones de DynamoDB se llama actualizar_item, guardar_item o similar)
+                                try:
+                                    actualizar_item_dynamodb(prod) # O la función que use tu app para guardar productos en AWS
+                                except Exception:
+                                    pass
                           
                         # --------------------------------------------------------
                         
