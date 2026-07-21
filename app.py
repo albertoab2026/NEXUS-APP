@@ -682,12 +682,6 @@ if menu == "Productos":
         opciones_base = CATEGORIAS_POR_RUBRO.get(rubro, ["General"])
         opciones_lista = opciones_base + ["+ Agregar nueva categoría"]
 
-        seleccion_cat = st.selectbox("Selecciona categoría", opciones_lista, key="sel_cat")
-
-        cat_final = seleccion_cat
-        if seleccion_cat == "+ Agregar nueva categoría":
-            cat_final = st.text_input("Escribe el nombre de tu nueva categoría:", key="input_manual_unico")
-
         with st.form("form_unico_producto", clear_on_submit=True):
             opciones_lista = opciones_base + ["+ Agregar nueva categoría"]
             seleccion_cat = st.selectbox("Selecciona categoría", opciones_lista, key="sel_cat")
