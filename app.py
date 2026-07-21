@@ -962,24 +962,31 @@ if menu == "Ventas":
             
                         # Buscamos el costo de compra de forma segura (soporta 'precio_compra' o 'costo')
                         costo_compra = float(item.get('precio_compra', item.get('costo', 0)))
-            
                         p_id = item.get('producto_id', item.get('id'))
             
-                        # Agregamos el ítem a la lista de la venta
+                        # Agregamos el ítem a la venta guardando 'costo' y 'precio_compra' para asegurar los reportes
                         items_guardar.append({
                             "producto_id": p_id,
                             "nombre": item.get('nombre', 'Producto'),
                             "cantidad": item.get('cantidad', 1),
                             "precio_venta": precio_final,
-                            "precio_compra": costo_compra
+                            "precio_compra": costo_compra,
+                            "costo": costo_compra
                         })
             
-                        # Descontamos el stock directamente de la lista de productos
+                        # Descontamos el stock de la lista en memoria y actualizamos la persistencia
                         cant_v = int(item.get('cantidad', 1))
                         for prod in productos:
                             if prod.get('producto_id') == p_id or prod.get('id') == p_id:
                                 stock_actual = int(prod.get('stock', 0))
-                                prod['stock'] = max(0, stock_actual - cant_v)
+                                nuevo_s = max(0, stock_actual - cant_v)
+                                prod['stock'] = nuevo_s
+                                
+                                # Guardamos el cambio en la BD para que no vuelva a 20 tras reiniciar la página
+                                if 'guardar_producto' in globals():
+                                    guardar_producto(prod)
+                                elif 'actualizar_producto' in globals():
+                                    actualizar_producto(prod)
                         # --------------------------------------------------------
                         
                     if ok:
