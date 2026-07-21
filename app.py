@@ -843,9 +843,10 @@ if menu == "Ventas":
             categoria_seleccionada = st.selectbox("Filtrar por Categoría:", opciones_categoria)
 
         productos_mostrar = productos
-            else:
-                # 🔍 Si no es un código de barras, filtra el catálogo por NOMBRE
-                productos_mostrar = [p for p in productos_mostrar if busqueda_v.lower() in p.get('nombre', '').lower()]
+        
+        if busqueda_v.strip() != "":
+            # Si no es código de barras o quieres filtrar el catálogo por NOMBRE:
+            productos_mostrar = [p for p in productos_mostrar if busqueda_v.lower() in p.get('nombre', '').lower()]
         
         if categoria_seleccionada!= "📁 Todas las Categorías":
             cat_pura = categoria_seleccionada.replace("🏷️ ", "")
