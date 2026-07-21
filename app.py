@@ -980,12 +980,7 @@ if menu == "Ventas":
                             if prod.get('producto_id') == p_id or prod.get('id') == p_id:
                                 stock_actual = int(prod.get('stock', 0))
                                 prod['stock'] = max(0, stock_actual - cant_v)
-                                
-                                # Guardamos el cambio en la BD para que no vuelva a 20 tras reiniciar la página
-                                if 'guardar_producto' in globals():
-                                    guardar_producto(prod)
-                                elif 'actualizar_producto' in globals():
-                                    actualizar_producto(prod)
+                          
                         # --------------------------------------------------------
                         
                     if ok:
