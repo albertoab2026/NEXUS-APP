@@ -974,13 +974,12 @@ if menu == "Ventas":
                             "costo": costo_compra
                         })
             
-                        # Descontamos el stock de la lista en memoria y actualizamos la persistencia
+                        # Descontamos el stock de la lista en memoria
                         cant_v = int(item.get('cantidad', 1))
                         for prod in productos:
                             if prod.get('producto_id') == p_id or prod.get('id') == p_id:
                                 stock_actual = int(prod.get('stock', 0))
-                                nuevo_s = max(0, stock_actual - cant_v)
-                                prod['stock'] = nuevo_s
+                                prod['stock'] = max(0, stock_actual - cant_v)
                                 
                                 # Guardamos el cambio en la BD para que no vuelva a 20 tras reiniciar la página
                                 if 'guardar_producto' in globals():
