@@ -689,22 +689,30 @@ if menu == "Productos":
             cat_final = st.text_input("Escribe el nombre de tu nueva categoría:", key="input_manual_unico")
 
         with st.form("form_unico_producto", clear_on_submit=True):
+            opciones_lista = opciones_base + ["+ Agregar nueva categoría"]
+            seleccion_cat = st.selectbox("Selecciona categoría", opciones_lista, key="sel_cat")
+            cat_final = seleccion_cat
+            
+            if seleccion_cat == "+ Agregar nueva categoría":
+                cat_final = st.text_input("Escribe el nombre de tu nueva categoría:", key="input_manual_unico")
+        
             nombre_nuevo = st.text_input("Nombre del producto")
             pv_nuevo = st.number_input("Precio Venta", step=0.1)
             pc_nuevo = st.number_input("Precio Compra", step=0.1)
             stk_nuevo = st.number_input("Stock", step=1)
             codigo_nuevo = st.text_input("Código de Barras (Escanea con pistola o escribe)", key="input_codigo_manual")
-
-            if st.form_submit_button("Guardar Producto Nuevo"):
-                if seleccion_cat == "+ Agregar nueva categoría" and not cat_final:
-                    st.error("Por favor, escribe el nombre de la nueva categoría.")
-                elif nombre_nuevo and cat_final:
-                    if agregar_producto(nombre_nuevo, pv_nuevo, pc_nuevo, stk_nuevo, cat_final, codigo_nuevo):
-                        st.success("¡Producto agregado!")
-                        st.session_state["input_manual_unico"] = ""
-                        st.rerun()
-                else:
-                    st.error("Nombre y categoría son obligatorios")
+        
+            submit_btn = st.form_submit_button("Guardar Producto Nuevo")
+        
+        if submit_btn:
+            if seleccion_cat == "+ Agregar nueva categoría" and not cat_final:
+                st.error("Por favor, escribe el nombre de la nueva categoría.")
+            elif nombre_nuevo and cat_final:
+                if agregar_producto(nombre_nuevo, pv_nuevo, pc_nuevo, stk_nuevo, cat_final, codigo_nuevo):
+                    st.success("¡Producto agregado!")
+                    st.rerun()
+            else:
+                st.error("Nombre y categoría son obligatorios")
 
     st.subheader("Control de Inventario")
     productos = obtener_productos()
