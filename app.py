@@ -816,8 +816,8 @@ if menu == "Ventas":
         categorias_disponibles = sorted(list(set(prod.get('categoria', 'General') for prod in productos)))
         opciones_categoria = ["📁 Todas las Categorías"] + [f"🏷️ {cat}" for cat in categorias_disponibles]
 
-    if "input_buscar_ventas" not in st.session_state:
-    st.session_state["input_buscar_ventas"] = ""
+        if "input_buscar_ventas" not in st.session_state:
+        st.session_state["input_buscar_ventas"] = ""
 
     def limpiar_buscador():
         st.session_state["input_buscar_ventas"] = ""
