@@ -816,33 +816,33 @@ if menu == "Ventas":
         categorias_disponibles = sorted(list(set(prod.get('categoria', 'General') for prod in productos)))
         opciones_categoria = ["📁 Todas las Categorías"] + [f"🏷️ {cat}" for cat in categorias_disponibles]
 
-        if "input_buscar_ventas" not in st.session_state:
+        # Función que procesa el escáner y vacía la casilla sin dar errores
+        def procesar_busqueda():
+            val = st.session_state.get("input_buscar_ventas", "").strip()
+            if val:
+                prod_enc = buscar_producto_por_codigo(val)
+                if prod_enc:
+                    if 'carrito' not in st.session_state:
+                        st.session_state.carrito = []
+                    st.session_state.carrito.append(prod_enc)
+                    st.toast(f"✅ Agregado: {prod_enc.get('nombre', 'Producto')}")
             st.session_state["input_buscar_ventas"] = ""
 
-        def limpiar_buscador():
+        if "input_buscar_ventas" not in st.session_state:
             st.session_state["input_buscar_ventas"] = ""
 
         c_busq, c_cat = st.columns([2, 1])
         with c_busq:
-            busqueda_v = st.text_input("🔍 Buscar por nombre o 🪪 Escanear código:", key="input_buscar_ventas")
+            busqueda_v = st.text_input(
+                "🔍 Buscar por nombre o 🪪 Escanear código:", 
+                key="input_buscar_ventas", 
+                on_change=procesar_busqueda
+            )
 
         with c_cat:
             categoria_seleccionada = st.selectbox("Filtrar por Categoría:", opciones_categoria)
 
         productos_mostrar = productos
-
-        if busqueda_v.strip() != "":
-            # 1. Verificamos si lo que se ingresó es un CÓDIGO DE BARRAS exacto (Pistola)
-            prod_encontrado = buscar_producto_por_codigo(busqueda_v)
-
-            if prod_encontrado:
-                if 'carrito' not in st.session_state:
-                    st.session_state.carrito = []
-
-                st.session_state.carrito.append(prod_encontrado)
-                st.toast(f"✅ Agregado: {prod_encontrado['nombre']}")
-                st.session_state["input_buscar_ventas"] = ""
-                st.rerun()
             else:
                 # 🔍 Si no es un código de barras, filtra el catálogo por NOMBRE
                 productos_mostrar = [p for p in productos_mostrar if busqueda_v.lower() in p.get('nombre', '').lower()]
