@@ -862,7 +862,7 @@ if menu == "Ventas":
                         p_precio_venta = float(prod.get('precio_venta', 0.0))
                         p_precio_compra = float(prod.get('precio_compra', 0.0))
 
-                        cantidad_en_carrito = sum(int(item['cantidad']) for item in st.session_state.carrito if item['producto_id'] == p_id)
+                        cantidad_en_carrito = sum(int(item.get('cantidad', 1)) for item in st.session_state.carrito if item.get('producto_id') == prod_id)
                         p_stock_real = int(prod.get('stock', 0))
                         p_stock_disponible = p_stock_real - cantidad_en_carrito
 
