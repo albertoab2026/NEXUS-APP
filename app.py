@@ -1286,7 +1286,7 @@ elif menu == "Reportes":
             for col in cols_num_pasada:
                 if col in df_pasada.columns:
                     df_pasada[col] = pd.to_numeric(df_pasada[col], errors='coerce').fillna(0)
-            
+        
             if 'precio_venta' in df_pasada.columns and 'precio_compra' in df_pasada.columns:
                 ganancia_pasada = float(((df_pasada['precio_venta'] - df_pasada['precio_compra']) * df_pasada['cantidad']).sum())
             else:
@@ -1294,11 +1294,11 @@ elif menu == "Reportes":
         else:
             ganancia_pasada = 0.0
         
-            # Distribución de montos por pasarela de pago
-            yape = df_filtrado[df_filtrado['pago_norm'] == 'yape']['total_venta'].sum()
-            plin = df_filtrado[df_filtrado['pago_norm'] == 'plin']['total_venta'].sum()
-            efectivo = df_filtrado[df_filtrado['pago_norm'] == 'efectivo']['total_venta'].sum()
-            total_ventas_dia = efectivo + yape + plin
+        # Distribución de montos por pasarela de pago
+        yape = df_filtrado[df_filtrado['pago_norm'] == 'yape']['total_venta'].sum()
+        plin = df_filtrado[df_filtrado['pago_norm'] == 'plin']['total_venta'].sum()
+        efectivo = df_filtrado[df_filtrado['pago_norm'] == 'efectivo']['total_venta'].sum()
+        total_ventas_dia = efectivo + yape + plin
 
             # --- RENDERIZADO DE INTERFAZ ---
             st.markdown("""
