@@ -1250,8 +1250,13 @@ elif menu == "Reportes":
                     df_filtrado[col] = pd.to_numeric(df_filtrado[col], errors='coerce').fillna(0)
                 else:
                     df_filtrado[col] = 0.0
-            # Cálculo directo basado en el total general de ventas de la pantalla
-            ganancia_hoy = float(total_ventas_dia * 0.30) if 'total_ventas_dia' in locals() and total_ventas_dia > 0 else 83.30 * 0.30
+            # Cálculo seguro de Ganancias Reales
+            if 'precio_venta' in df_filtrado.columns and 'precio_compra' in df_filtrado.columns:
+                df_filtrado['ganancia_real'] = (df_filtrado['precio_venta'] - df_filtrado['precio_compra']) * df_filtrado['cantidad']
+            else:
+                df_filtrado['ganancia_real'] = df_filtrado['total_venta'] * 0.30
+
+            ganancia_hoy = float(df_filtrado['ganancia_real'].sum()) if not df_filtrado.empty else 0.0
     
         if not df_pasada.empty:
             cols_num_pasada = ['total_venta', 'precio_venta', 'precio_compra', 'cantidad']
