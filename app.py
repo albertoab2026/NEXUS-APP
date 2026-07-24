@@ -1280,8 +1280,6 @@ elif menu == "Reportes":
         df_filtrado['ganancia_real'] = pd.to_numeric(df_filtrado['total_venta'], errors='coerce').fillna(0) * 0.30
 
     ganancia_hoy = float(df_filtrado['ganancia_real'].sum()) if not df_filtrado.empty else 0.0
-        
-            ganancia_hoy = float(df_filtrado['ganancia_real'].sum()) if not df_filtrado.empty else 0.0
     
         if not df_pasada.empty:
             cols_num_pasada = ['total_venta', 'precio_venta', 'precio_compra', 'cantidad']
