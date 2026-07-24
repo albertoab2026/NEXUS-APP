@@ -1229,11 +1229,13 @@ elif menu == "Reportes":
             # Mapeo de nombres de productos
             mapa_productos = {p['producto_id']: p['nombre'] for p in productos_raw} if productos_raw else {}
     
-            # Controlamos si la estructura viene de una venta unitaria o un carrito consolidado
+            # Controlamos si la estructura viene de una venta unitaria o mapea los productos correctamente
             if 'producto_id' in df_filtrado.columns:
                 df_filtrado['Producto'] = df_filtrado['producto_id'].map(mapa_productos).fillna(df_filtrado['producto_id'])
+            elif 'Producto' in df_filtrado.columns:
+                df_filtrado['Producto'] = df_filtrado['Producto'].fillna('Producto General')
             else:
-                df_filtrado['Producto'] = "Carrito Consolidado"
+                df_filtrado['Producto'] = 'Producto General'
     
             # Normalización del método de pago
             if 'pago' not in df_filtrado.columns:
