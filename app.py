@@ -1144,10 +1144,15 @@ elif menu == "Reportes":
         total_ventas_dia = 0.0
 
         if df_filtrado.empty:
-            st.warning("⚠️ No se encontraron ventas registradas para el criterio seleccionado.")
-        
-        # Procesamiento avanzado para mapear productos reales y calcular ganancia real por ítem
-        filas_tabla = []
+        st.warning("⚠️ No se encontraron ventas registradas para el criterio seleccionado.")
+        else:
+            # Diagnóstico de estructura real de DynamoDB
+            st.write("🔍 ESTRUCTURA REAL DE DYNAMODB (PRIMERA VENTA):")
+            if len(df_filtrado) > 0:
+                st.json(df_filtrado.iloc[0].to_dict())
+    
+            # Procesamiento avanzado para mapear productos reales y calcular ganancia real por ítem
+            filas_tabla = []
         for idx, row in df_filtrado.iterrows():
             fecha_v = row.get('fecha', '')
             pago_v = row.get('pago', 'Efectivo')
