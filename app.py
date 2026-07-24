@@ -1253,9 +1253,18 @@ elif menu == "Reportes":
             # Cálculo seguro de Ganancias Reales
             if 'precio_venta' in df_filtrado.columns and 'precio_compra' in df_filtrado.columns:
                 df_filtrado['ganancia_real'] = (df_filtrado['precio_venta'] - df_filtrado['precio_compra']) * df_filtrado['cantidad']
+            # Búsqueda flexible de columnas de costos y precios
+            cols_lower = [c.lower() for c in df_filtrado.columns]
+            
+            if 'precio_venta' in cols_lower and 'precio_compra' in cols_lower and 'cantidad' in cols_lower:
+                col_pv = [c for c in df_filtrado.columns if c.lower() == 'precio_venta'][0]
+                col_pc = [c for c in df_filtrado.columns if c.lower() == 'precio_compra'][0]
+                col_cant = [c for c in df_filtrado.columns if c.lower() == 'cantidad'][0]
+                
+                df_filtrado['ganancia_real'] = (pd.to_numeric(df_filtrado[col_pv], errors='coerce').fillna(0) - pd.to_numeric(df_filtrado[col_pc], errors='coerce').fillna(0)) * pd.to_numeric(df_filtrado[col_cant], errors='coerce').fillna(0)
             else:
-                df_filtrado['ganancia_real'] = df_filtrado['total_venta'] * 0.30
-
+                df_filtrado['ganancia_real'] = pd.to_numeric(df_filtrado['total_venta'], errors='coerce').fillna(0) * 0.30
+        
             ganancia_hoy = float(df_filtrado['ganancia_real'].sum()) if not df_filtrado.empty else 0.0
     
         if not df_pasada.empty:
