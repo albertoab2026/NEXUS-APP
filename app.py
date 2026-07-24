@@ -1252,18 +1252,20 @@ elif menu == "Reportes":
                     df_filtrado[col] = pd.to_numeric(df_filtrado[col], errors='coerce').fillna(0)
                 else:
                     df_filtrado[col] = 0.0
-            # Cálculo seguro de Ganancias Reales
-            if 'precio_venta' in df_filtrado.columns and 'precio_compra' in df_filtrado.columns:
-                df_filtrado['ganancia_real'] = (df_filtrado['precio_venta'] - df_filtrado['precio_compra']) * df_filtrado['cantidad']
-            # Cálculo inteligente: si hay precio de compra válido lo usa, si no, aplica el estimado del 30%
+            # Control de nombre de producto y cálculo automático de ganancia
+            if 'producto_id' in df_filtrado.columns:
+                df_filtrado['Producto'] = df_filtrado['producto_id'].map(mapa_productos).fillna(df_filtrado['producto_id'])
+            elif 'Producto' not in df_filtrado.columns:
+                df_filtrado['Producto'] = 'Producto General'
+        
+            # Cálculo seguro y de respaldo para la ganancia real
             if 'precio_venta' in df_filtrado.columns and 'precio_compra' in df_filtrado.columns and 'cantidad' in df_filtrado.columns:
                 pv = pd.to_numeric(df_filtrado['precio_venta'], errors='coerce').fillna(0)
                 pc = pd.to_numeric(df_filtrado['precio_compra'], errors='coerce').fillna(0)
                 cant = pd.to_numeric(df_filtrado['cantidad'], errors='coerce').fillna(0)
                 
-                # Si el precio de compra es mayor a 0 hace la resta real, si es 0 usa el 30% del total de esa fila
-                ganancia_calculada = ((pv - pc) * cant)
-                df_filtrado['ganancia_real'] = ganancia_calculada.where(pc > 0, pv * cant * 0.30)
+                ganancia_calculada = (pv - pc) * cant
+                df_filtrado['ganancia_real'] = ganancia_calculada.where(pc > 0, pd.to_numeric(df_filtrado['total_venta'], errors='coerce').fillna(0) * 0.30)
             else:
                 df_filtrado['ganancia_real'] = pd.to_numeric(df_filtrado['total_venta'], errors='coerce').fillna(0) * 0.30
         
