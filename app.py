@@ -1173,6 +1173,11 @@ elif menu == "Reportes":
                 
                 if col in df_pasada.columns:
                     df_pasada[col] = pd.to_numeric(df_pasada[col], errors='coerce').fillna(0)
+                    
+            # Diagnóstico visual temporal para ver qué columnas lee el reporte
+                st.write("Columnas de df_filtrado:", df_filtrado.columns.tolist() if not df_filtrado.empty else "Vacío")
+                if not df_filtrado.empty:
+                    st.write("Primer registro de venta:", df_filtrado.iloc[0].to_dict())
 
             # Cálculo de Ganancia Real cruzando con el inventario actual para asegurar el costo
             if not df_filtrado.empty and 'precio_venta' in df_filtrado.columns:
