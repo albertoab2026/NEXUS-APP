@@ -1259,235 +1259,235 @@ elif menu == "Reportes":
                 df_filtrado['Producto'] = 'Producto General'
         
             # Cruzar con el inventario actual para asegurar precios y nombres reales
-    if 'productos_raw' in locals() and productos_raw:
-        df_inv = pd.DataFrame(productos_raw)
-        if 'nombre' in df_inv.columns and 'precio_compra' in df_inv.columns:
-            df_filtrado = df_filtrado.merge(df_inv[['nombre', 'precio_compra', 'precio_venta']], left_on='Producto', right_on='nombre', how='left', suffixes=('', '_inv'))
-            if 'precio_compra_inv' in df_filtrado.columns:
-                df_filtrado['precio_compra'] = df_filtrado['precio_compra'].fillna(df_filtrado['precio_compra_inv'])
-            if 'precio_venta_inv' in df_filtrado.columns:
-                df_filtrado['precio_venta'] = df_filtrado['precio_venta'].fillna(df_filtrado['precio_venta_inv'])
+        if 'productos_raw' in locals() and productos_raw:
+            df_inv = pd.DataFrame(productos_raw)
+            if 'nombre' in df_inv.columns and 'precio_compra' in df_inv.columns:
+                df_filtrado = df_filtrado.merge(df_inv[['nombre', 'precio_compra', 'precio_venta']], left_on='Producto', right_on='nombre', how='left', suffixes=('', '_inv'))
+                if 'precio_compra_inv' in df_filtrado.columns:
+                    df_filtrado['precio_compra'] = df_filtrado['precio_compra'].fillna(df_filtrado['precio_compra_inv'])
+                if 'precio_venta_inv' in df_filtrado.columns:
+                    df_filtrado['precio_venta'] = df_filtrado['precio_venta'].fillna(df_filtrado['precio_venta_inv'])
 
-    # Cálculo seguro y de respaldo para la ganancia real
-    if 'precio_venta' in df_filtrado.columns and 'precio_compra' in df_filtrado.columns and 'cantidad' in df_filtrado.columns:
-        pv = pd.to_numeric(df_filtrado['precio_venta'], errors='coerce').fillna(0)
-        pc = pd.to_numeric(df_filtrado['precio_compra'], errors='coerce').fillna(0)
-        cant = pd.to_numeric(df_filtrado['cantidad'], errors='coerce').fillna(0)
+        # Cálculo seguro y de respaldo para la ganancia real
+        if 'precio_venta' in df_filtrado.columns and 'precio_compra' in df_filtrado.columns and 'cantidad' in df_filtrado.columns:
+            pv = pd.to_numeric(df_filtrado['precio_venta'], errors='coerce').fillna(0)
+            pc = pd.to_numeric(df_filtrado['precio_compra'], errors='coerce').fillna(0)
+            cant = pd.to_numeric(df_filtrado['cantidad'], errors='coerce').fillna(0)
+            
+            ganancia_calculada = (pv - pc) * cant
+            df_filtrado['ganancia_real'] = ganancia_calculada.where(pc > 0, pd.to_numeric(df_filtrado['total_venta'], errors='coerce').fillna(0) * 0.30)
+        else:
+            df_filtrado['ganancia_real'] = pd.to_numeric(df_filtrado['total_venta'], errors='coerce').fillna(0) * 0.30
+
+        ganancia_hoy = float(df_filtrado['ganancia_real'].sum()) if not df_filtrado.empty else 0.0
         
-        ganancia_calculada = (pv - pc) * cant
-        df_filtrado['ganancia_real'] = ganancia_calculada.where(pc > 0, pd.to_numeric(df_filtrado['total_venta'], errors='coerce').fillna(0) * 0.30)
-    else:
-        df_filtrado['ganancia_real'] = pd.to_numeric(df_filtrado['total_venta'], errors='coerce').fillna(0) * 0.30
-
-    ganancia_hoy = float(df_filtrado['ganancia_real'].sum()) if not df_filtrado.empty else 0.0
-    
-    if not df_pasada.empty:
-        cols_num_pasada = ['total_venta', 'precio_venta', 'precio_compra', 'cantidad']
-        for col in cols_num_pasada:
-            if col in df_pasada.columns:
-                df_pasada[col] = pd.to_numeric(df_pasada[col], errors='coerce').fillna(0)
-    
-        if 'precio_venta' in df_pasada.columns and 'precio_compra' in df_pasada.columns:
-            ganancia_pasada = float(((df_pasada['precio_venta'] - df_pasada['precio_compra']) * df_pasada['cantidad']).sum())
+        if not df_pasada.empty:
+            cols_num_pasada = ['total_venta', 'precio_venta', 'precio_compra', 'cantidad']
+            for col in cols_num_pasada:
+                if col in df_pasada.columns:
+                    df_pasada[col] = pd.to_numeric(df_pasada[col], errors='coerce').fillna(0)
+        
+            if 'precio_venta' in df_pasada.columns and 'precio_compra' in df_pasada.columns:
+                ganancia_pasada = float(((df_pasada['precio_venta'] - df_pasada['precio_compra']) * df_pasada['cantidad']).sum())
+            else:
+                ganancia_pasada = 0.0
         else:
             ganancia_pasada = 0.0
-    else:
-        ganancia_pasada = 0.0
-    
-    # Distribución de montos por pasarela de pago
-    yape = df_filtrado[df_filtrado['pago_norm'] == 'yape']['total_venta'].sum()
-    plin = df_filtrado[df_filtrado['pago_norm'] == 'plin']['total_venta'].sum()
-    efectivo = df_filtrado[df_filtrado['pago_norm'] == 'efectivo']['total_venta'].sum()
-    total_ventas_dia = efectivo + yape + plin
+        
+        # Distribución de montos por pasarela de pago
+        yape = df_filtrado[df_filtrado['pago_norm'] == 'yape']['total_venta'].sum()
+        plin = df_filtrado[df_filtrado['pago_norm'] == 'plin']['total_venta'].sum()
+        efectivo = df_filtrado[df_filtrado['pago_norm'] == 'efectivo']['total_venta'].sum()
+        total_ventas_dia = efectivo + yape + plin
 
-# --- RENDERIZADO DE INTERFAZ ---
-st.markdown("""
-<style>
-div[data-testid="metric-container"] {
-    background-color: #1e293b;
-    padding: 20px;
-    border-radius: 10px;
-    border: 1px solid #475569;
-}
-div[data-testid="metric-container"] label {
-    font-size: 1.2rem !important;
-}
-div[data-testid="metric-container"] [data-testid="stMetricValue"] {
-    font-size: 2.5rem !important;
-    color: #38bdf8 !important;
-}
-</style>
-""", unsafe_allow_html=True)
+    # --- RENDERIZADO DE INTERFAZ ---
+    st.markdown("""
+    <style>
+    div[data-testid="metric-container"] {
+        background-color: #1e293b;
+        padding: 20px;
+        border-radius: 10px;
+        border: 1px solid #475569;
+    }
+    div[data-testid="metric-container"] label {
+        font-size: 1.2rem !important;
+    }
+    div[data-testid="metric-container"] [data-testid="stMetricValue"] {
+        font-size: 2.5rem !important;
+        color: #38bdf8 !important;
+    }
+    </style>
+    """, unsafe_allow_html=True)
 
-st.markdown("### 📊 Resumen Financiero")
+    st.markdown("### 📊 Resumen Financiero")
 
-c1, c2, c3, c4 = st.columns(4)
+    c1, c2, c3, c4 = st.columns(4)
 
-c1.metric("💰 Total Ventas", f"S/{total_ventas_dia:.2f}")
-c2.metric("💵 Efectivo", f"S/{efectivo:.2f}")
-c3.metric("📱 Yape", f"S/{yape:.2f}")
-c4.metric("🟣 Plin", f"S/{plin:.2f}")
+    c1.metric("💰 Total Ventas", f"S/{total_ventas_dia:.2f}")
+    c2.metric("💵 Efectivo", f"S/{efectivo:.2f}")
+    c3.metric("📱 Yape", f"S/{yape:.2f}")
+    c4.metric("🟣 Plin", f"S/{plin:.2f}")
 
-delta_val = ganancia_hoy - ganancia_pasada
+    delta_val = ganancia_hoy - ganancia_pasada
 
-st.metric(
-    "📝 Ganancia Real",
-    f"S/{ganancia_hoy:.2f}",
-    delta=f"{delta_val:.2f} vs periodo comparativo"
-)
-
-st.write("---")
-st.subheader("📊 Análisis Visual del Periodo")
-
-# ==========================
-# Gráficas con Plotly
-# ==========================
-
-col_graf1, col_graf2 = st.columns(2)
-
-with col_graf1:
-    df_top = (
-        df_filtrado
-        .groupby("Producto")["total_venta"]
-        .sum()
-        .reset_index()
-        .sort_values("total_venta", ascending=False)
-        .head(10)
+    st.metric(
+        "📝 Ganancia Real",
+        f"S/{ganancia_hoy:.2f}",
+        delta=f"{delta_val:.2f} vs periodo comparativo"
     )
 
-    fig_bar = px.bar(
-        df_top,
-        x="total_venta",
-        y="Producto",
-        orientation="h",
-        title="Top 10 Productos Más Vendidos"
-    )
+    st.write("---")
+    st.subheader("📊 Análisis Visual del Periodo")
 
-    st.plotly_chart(fig_bar, use_container_width=True)
+    # ==========================
+    # Gráficas con Plotly
+    # ==========================
 
+    col_graf1, col_graf2 = st.columns(2)
 
-def limpiar_pago(valor):
-    v = str(valor).lower().strip()
-
-    if "efectivo" in v:
-        return "Efectivo"
-    elif "yape" in v:
-        return "Yape"
-    elif "plin" in v:
-        return "Plin"
-    else:
-        return v.capitalize()
-
-
-df_filtrado["pago_norm_display"] = df_filtrado["pago"].apply(limpiar_pago)
-
-with col_graf2:
-    fig_pie = px.pie(
-        df_filtrado,
-        values="total_venta",
-        names="pago_norm_display",
-        title="Distribución de Métodos de Pago",
-        hole=0.4
-    )
-
-    st.plotly_chart(fig_pie, use_container_width=True)
-
-if "Hora" in df_filtrado.columns:
-    df_hora = (
-        df_filtrado
-        .groupby("Hora")["total_venta"]
-        .sum()
-        .reset_index()
-    )
-
-    fig_line = px.area(
-        df_hora,
-        x="Hora",
-        y="total_venta",
-        title="Tendencia Horaria de Ventas",
-        line_shape="spline"
-    )
-
-    st.plotly_chart(fig_line, use_container_width=True)
-
-# ==========================
-# Tabla de auditoría
-# ==========================
-
-with st.expander("📊 Ver detalle de transacciones (Maximizar/Minimizar)"):
-    columnas_disponibles = df_filtrado.columns.tolist()
-
-    columnas_a_mostrar = [
-        c for c in [
-            "Hora",
-            "Producto",
-            "cantidad",
-            "total_venta",
-            "ganancia_real",
-            "pago"
-        ]
-        if c in columnas_disponibles
-    ]
-
-    st.dataframe(
-        df_filtrado[columnas_a_mostrar],
-        use_container_width=True
-    )
-
-# ==========================
-# Exportar a Excel
-# ==========================
-
-buffer = io.BytesIO()
-
-with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
-
-    # Eliminar columnas temporales antes de exportar
-    columnas_export = [
-        c for c in df_filtrado.columns
-        if c != "pago_norm_display"
-    ]
-
-    df_filtrado[columnas_export].to_excel(
-        writer,
-        sheet_name="Ventas_Auditoria",
-        index=False
-    )
-
-    workbook = writer.book
-    worksheet = writer.sheets["Ventas_Auditoria"]
-
-    money_fmt = workbook.add_format({
-        "num_format": "S/ #,##0.00"
-    })
-
-    total_sum = df_filtrado["total_venta"].sum()
-
-    row_idx = len(df_filtrado) + 1
-
-    worksheet.write(row_idx, 1, "TOTALES:")
-
-    if "total_venta" in columnas_export:
-        col_num_idx = columnas_export.index("total_venta")
-        worksheet.write(
-            row_idx,
-            col_num_idx,
-            total_sum,
-            money_fmt
+    with col_graf1:
+        df_top = (
+            df_filtrado
+            .groupby("Producto")["total_venta"]
+            .sum()
+            .reset_index()
+            .sort_values("total_venta", ascending=False)
+            .head(10)
         )
 
-nombre_archivo = (
-    "Reporte_Turno_Actual.xlsx"
-    if tipo_filtro.startswith("Turno")
-    else f"Reporte_NEXUS_{fecha_busqueda}.xlsx"
-)
+        fig_bar = px.bar(
+            df_top,
+            x="total_venta",
+            y="Producto",
+            orientation="h",
+            title="Top 10 Productos Más Vendidos"
+        )
 
-st.download_button(
-    label="📥 Descargar Reporte en Excel (Auditoría)",
-    data=buffer.getvalue(),
-    file_name=nombre_archivo,
-    mime="application/vnd.ms-excel"
-)
+        st.plotly_chart(fig_bar, use_container_width=True)
+
+
+    def limpiar_pago(valor):
+        v = str(valor).lower().strip()
+
+        if "efectivo" in v:
+            return "Efectivo"
+        elif "yape" in v:
+            return "Yape"
+        elif "plin" in v:
+            return "Plin"
+        else:
+            return v.capitalize()
+
+
+    df_filtrado["pago_norm_display"] = df_filtrado["pago"].apply(limpiar_pago)
+
+    with col_graf2:
+        fig_pie = px.pie(
+            df_filtrado,
+            values="total_venta",
+            names="pago_norm_display",
+            title="Distribución de Métodos de Pago",
+            hole=0.4
+        )
+
+        st.plotly_chart(fig_pie, use_container_width=True)
+
+    if "Hora" in df_filtrado.columns:
+        df_hora = (
+            df_filtrado
+            .groupby("Hora")["total_venta"]
+            .sum()
+            .reset_index()
+        )
+
+        fig_line = px.area(
+            df_hora,
+            x="Hora",
+            y="total_venta",
+            title="Tendencia Horaria de Ventas",
+            line_shape="spline"
+        )
+
+        st.plotly_chart(fig_line, use_container_width=True)
+
+    # ==========================
+    # Tabla de auditoría
+    # ==========================
+
+    with st.expander("📊 Ver detalle de transacciones (Maximizar/Minimizar)"):
+        columnas_disponibles = df_filtrado.columns.tolist()
+
+        columnas_a_mostrar = [
+            c for c in [
+                "Hora",
+                "Producto",
+                "cantidad",
+                "total_venta",
+                "ganancia_real",
+                "pago"
+            ]
+            if c in columnas_disponibles
+        ]
+
+        st.dataframe(
+            df_filtrado[columnas_a_mostrar],
+            use_container_width=True
+        )
+
+    # ==========================
+    # Exportar a Excel
+    # ==========================
+
+    buffer = io.BytesIO()
+
+    with pd.ExcelWriter(buffer, engine="xlsxwriter") as writer:
+
+        # Eliminar columnas temporales antes de exportar
+        columnas_export = [
+            c for c in df_filtrado.columns
+            if c != "pago_norm_display"
+        ]
+
+        df_filtrado[columnas_export].to_excel(
+            writer,
+            sheet_name="Ventas_Auditoria",
+            index=False
+        )
+
+        workbook = writer.book
+        worksheet = writer.sheets["Ventas_Auditoria"]
+
+        money_fmt = workbook.add_format({
+            "num_format": "S/ #,##0.00"
+        })
+
+        total_sum = df_filtrado["total_venta"].sum()
+
+        row_idx = len(df_filtrado) + 1
+
+        worksheet.write(row_idx, 1, "TOTALES:")
+
+        if "total_venta" in columnas_export:
+            col_num_idx = columnas_export.index("total_venta")
+            worksheet.write(
+                row_idx,
+                col_num_idx,
+                total_sum,
+                money_fmt
+            )
+
+    nombre_archivo = (
+        "Reporte_Turno_Actual.xlsx"
+        if tipo_filtro.startswith("Turno")
+        else f"Reporte_NEXUS_{fecha_busqueda}.xlsx"
+    )
+
+    st.download_button(
+        label="📥 Descargar Reporte en Excel (Auditoría)",
+        data=buffer.getvalue(),
+        file_name=nombre_archivo,
+        mime="application/vnd.ms-excel"
+    )
 
 elif menu == "⚙️ Ajustes":
     mostrar_ajustes()
