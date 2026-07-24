@@ -1251,11 +1251,11 @@ elif menu == "Reportes":
                 else:
                     df_filtrado[col] = 0.0
     
-            # Cálculo seguro de la Ganancia Real por ítem o venta general
+            # Cálculo seguro de la Ganancia Real usando el total o un estimado del 30%
             if 'precio_venta' in df_filtrado.columns and 'precio_compra' in df_filtrado.columns:
                 df_filtrado['ganancia_real'] = (df_filtrado['precio_venta'] - df_filtrado['precio_compra']) * df_filtrado['cantidad']
             else:
-                df_filtrado['ganancia_real'] = df_filtrado['total_venta']
+                df_filtrado['ganancia_real'] = df_filtrado['total_venta'] * 0.30
     
             ganancia_hoy = float(df_filtrado['ganancia_real'].sum()) if not df_filtrado.empty else 0.0
     
