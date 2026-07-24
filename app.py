@@ -1253,13 +1253,15 @@ elif menu == "Reportes":
             # Cálculo seguro de Ganancias Reales
             if 'precio_venta' in df_filtrado.columns and 'precio_compra' in df_filtrado.columns:
                 df_filtrado['ganancia_real'] = (df_filtrado['precio_venta'] - df_filtrado['precio_compra']) * df_filtrado['cantidad']
-            # Limpieza estricta y cálculo de ganancia real con las columnas encontradas
+            # Cálculo inteligente: si hay precio de compra válido lo usa, si no, aplica el estimado del 30%
             if 'precio_venta' in df_filtrado.columns and 'precio_compra' in df_filtrado.columns and 'cantidad' in df_filtrado.columns:
                 pv = pd.to_numeric(df_filtrado['precio_venta'], errors='coerce').fillna(0)
                 pc = pd.to_numeric(df_filtrado['precio_compra'], errors='coerce').fillna(0)
                 cant = pd.to_numeric(df_filtrado['cantidad'], errors='coerce').fillna(0)
                 
-                df_filtrado['ganancia_real'] = (pv - pc) * cant
+                # Si el precio de compra es mayor a 0 hace la resta real, si es 0 usa el 30% del total de esa fila
+                ganancia_calculada = ((pv - pc) * cant)
+                df_filtrado['ganancia_real'] = ganancia_calculada.where(pc > 0, pv * cant * 0.30)
             else:
                 df_filtrado['ganancia_real'] = pd.to_numeric(df_filtrado['total_venta'], errors='coerce').fillna(0) * 0.30
         
