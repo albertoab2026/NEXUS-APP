@@ -1258,16 +1258,28 @@ elif menu == "Reportes":
             elif 'Producto' not in df_filtrado.columns:
                 df_filtrado['Producto'] = 'Producto General'
         
-            # Cálculo seguro y de respaldo para la ganancia real
-            if 'precio_venta' in df_filtrado.columns and 'precio_compra' in df_filtrado.columns and 'cantidad' in df_filtrado.columns:
-                pv = pd.to_numeric(df_filtrado['precio_venta'], errors='coerce').fillna(0)
-                pc = pd.to_numeric(df_filtrado['precio_compra'], errors='coerce').fillna(0)
-                cant = pd.to_numeric(df_filtrado['cantidad'], errors='coerce').fillna(0)
-                
-                ganancia_calculada = (pv - pc) * cant
-                df_filtrado['ganancia_real'] = ganancia_calculada.where(pc > 0, pd.to_numeric(df_filtrado['total_venta'], errors='coerce').fillna(0) * 0.30)
-            else:
-                df_filtrado['ganancia_real'] = pd.to_numeric(df_filtrado['total_venta'], errors='coerce').fillna(0) * 0.30
+            # Cruzar con el inventario actual para asegurar precios y nombres reales
+    if 'productos_raw' in locals() and productos_raw:
+        df_inv = pd.DataFrame(productos_raw)
+        if 'nombre' in df_inv.columns and 'precio_compra' in df_inv.columns:
+            df_filtrado = df_filtrado.merge(df_inv[['nombre', 'precio_compra', 'precio_venta']], left_on='Producto', right_on='nombre', how='left', suffixes=('', '_inv'))
+            if 'precio_compra_inv' in df_filtrado.columns:
+                df_filtrado['precio_compra'] = df_filtrado['precio_compra'].fillna(df_filtrado['precio_compra_inv'])
+            if 'precio_venta_inv' in df_filtrado.columns:
+                df_filtrado['precio_venta'] = df_filtrado['precio_venta'].fillna(df_filtrado['precio_venta_inv'])
+
+    # Cálculo seguro y de respaldo para la ganancia real
+    if 'precio_venta' in df_filtrado.columns and 'precio_compra' in df_filtrado.columns and 'cantidad' in df_filtrado.columns:
+        pv = pd.to_numeric(df_filtrado['precio_venta'], errors='coerce').fillna(0)
+        pc = pd.to_numeric(df_filtrado['precio_compra'], errors='coerce').fillna(0)
+        cant = pd.to_numeric(df_filtrado['cantidad'], errors='coerce').fillna(0)
+        
+        ganancia_calculada = (pv - pc) * cant
+        df_filtrado['ganancia_real'] = ganancia_calculada.where(pc > 0, pd.to_numeric(df_filtrado['total_venta'], errors='coerce').fillna(0) * 0.30)
+    else:
+        df_filtrado['ganancia_real'] = pd.to_numeric(df_filtrado['total_venta'], errors='coerce').fillna(0) * 0.30
+
+    ganancia_hoy = float(df_filtrado['ganancia_real'].sum()) if not df_filtrado.empty else 0.0
         
             ganancia_hoy = float(df_filtrado['ganancia_real'].sum()) if not df_filtrado.empty else 0.0
     
