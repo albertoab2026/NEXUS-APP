@@ -1174,16 +1174,31 @@ elif menu == "Reportes":
                 if col in df_pasada.columns:
                     df_pasada[col] = pd.to_numeric(df_pasada[col], errors='coerce').fillna(0)
 
-            # Cálculo de Ganancias Reales Inteligente (con valor por defecto si falta el costo)
+            # Cálculo de Ganancia Real cruzando con el inventario actual para asegurar el costo
             if not df_filtrado.empty and 'precio_venta' in df_filtrado.columns:
                 p_v = pd.to_numeric(df_filtrado['precio_venta'], errors='coerce').fillna(0)
-                
-                if 'precio_compra' in df_filtrado.columns:
-                    p_c = pd.to_numeric(df_filtrado['precio_compra'], errors='coerce').fillna(0)
-                else:
-                    p_c = p_v * 0.8  # Si no hay costo registrado, asume un 80% como costo base temporalmente
-                    
                 cant = pd.to_numeric(df_filtrado['cantidad'], errors='coerce').fillna(1)
+                
+                # Buscamos el precio de compra directamente desde la lista de productos si existe
+                costos_calculados = []
+                for idx, row in df_filtrado.iterrows():
+                    p_id = row.get('producto_id', row.get('id'))
+                    c_encontrado = 0.0
+                    # Buscamos el costo real en el inventario actual
+                    for p in productos:
+                        if p.get('producto_id') == p_id or p.get('id') == p_id:
+                            c_encontrado = float(p.get('precio_compra', p.get('costo', 0)))
+                            break
+                    # Si no se halla en el inventario, intentamos ver si la venta lo traía guardado
+                    if c_encontrado == 0.0:
+                        c_encontrado = float(row.get('precio_compra', row.get('costo', 0)))
+                    # Si aún sigue en 0, estimamos un costo base para que no afecte la analítica
+                    if c_encontrado == 0.0:
+                        c_encontrado = float(row.get('precio_venta', 0)) * 0.8
+                        
+                    costos_calculados.append(c_encontrado)
+                    
+                p_c = pd.Series(costos_calculados)
                 df_filtrado['ganancia_real'] = (p_v - p_c) * cant
                 ganancia_hoy = float(df_filtrado['ganancia_real'].sum())
             else:
@@ -1191,15 +1206,26 @@ elif menu == "Reportes":
         
             if not df_pasada.empty and 'precio_venta' in df_pasada.columns:
                 p_v_p = pd.to_numeric(df_pasada['precio_venta'], errors='coerce').fillna(0)
-                
-                if 'precio_compra' in df_pasada.columns:
-                    p_c_p = pd.to_numeric(df_pasada['precio_compra'], errors='coerce').fillna(0)
-                else:
-                    p_c_p = p_v_p * 0.8
-                    
                 cant_p = pd.to_numeric(df_pasada['cantidad'], errors='coerce').fillna(1)
+                
+                costos_pasados = []
+                for idx, row in df_pasada.iterrows():
+                    p_id = row.get('producto_id', row.get('id'))
+                    c_encontrado = 0.0
+                    for p in productos:
+                        if p.get('producto_id') == p_id or p.get('id') == p_id:
+                            c_encontrado = float(p.get('precio_compra', p.get('costo', 0)))
+                            break
+                    if c_encontrado == 0.0:
+                        c_encontrado = float(row.get('precio_compra', row.get('costo', 0)))
+                    if c_encontrado == 0.0:
+                        c_encontrado = float(row.get('precio_venta', 0)) * 0.8
+                        
+                    costos_pasados.append(c_encontrado)
+                    
+                p_c_p = pd.Series(costos_pasados)
                 df_pasada['ganancia_real'] = (p_v_p - p_c_p) * cant_p
-                ganancia_pasada = float(df_pasada['ganancia_pasada'].sum()) if 'ganancia_pasada' in df_pasada.columns else float(df_pasada['ganancia_real'].sum())
+                ganancia_pasada = float(df_pasada['ganancia_real'].sum())
             else:
                 ganancia_pasada = 0.0
                 
