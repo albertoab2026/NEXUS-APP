@@ -1179,58 +1179,57 @@ elif menu == "Reportes":
                 if not df_filtrado.empty:
                     st.write("Primer registro de venta:", df_filtrado.iloc[0].to_dict())
 
-            # Cálculo de Ganancia Real cruzando con el inventario actual para asegurar el costo
-            if not df_filtrado.empty and 'precio_venta' in df_filtrado.columns:
-                p_v = pd.to_numeric(df_filtrado['precio_venta'], errors='coerce').fillna(0)
-                cant = pd.to_numeric(df_filtrado['cantidad'], errors='coerce').fillna(1)
-                
-                # Buscamos el precio de compra directamente desde la lista de productos si existe
-                costos_calculados = []
+            # Cálculo definitivo de Ganancias para el turno actual
+            if not df_filtrado.empty:
+                ganancia_total_dia = 0.0
                 for idx, row in df_filtrado.iterrows():
-                    p_id = row.get('producto_id', row.get('id'))
-                    c_encontrado = 0.0
-                    # Buscamos el costo real en el inventario actual
-                    for p in productos:
-                        if p.get('producto_id') == p_id or p.get('id') == p_id:
-                            c_encontrado = float(p.get('precio_compra', p.get('costo', 0)))
-                            break
-                    # Si no se halla en el inventario, intentamos ver si la venta lo traía guardado
-                    if c_encontrado == 0.0:
-                        c_encontrado = float(row.get('precio_compra', row.get('costo', 0)))
-                    # Si aún sigue en 0, estimamos un costo base para que no afecte la analítica
-                    if c_encontrado == 0.0:
-                        c_encontrado = float(row.get('precio_venta', 0)) * 0.8
-                        
-                    costos_calculados.append(c_encontrado)
+                    p_v = float(row.get('total_venta', 0))
+                    p_c = float(row.get('precio_compra', 0)) * float(row.get('cantidad', 1))
                     
-                p_c = pd.Series(costos_calculados)
-                df_filtrado['ganancia_real'] = (p_v - p_c) * cant
-                ganancia_hoy = float(df_filtrado['ganancia_real'].sum())
+                    items = row.get('productos', [])
+                    if isinstance(items, str):
+                        import json
+                        try: items = json.loads(items)
+                        except: items = []
+                        
+                    if isinstance(items, list) and len(items) > 0:
+                        sub_ganancia = 0.0
+                        for itm in items:
+                            v_it = float(itm.get('precio_venta', itm.get('precio', 0)))
+                            c_it = float(itm.get('precio_compra', itm.get('costo', 0)))
+                            cant_it = float(itm.get('cantidad', 1))
+                            sub_ganancia += (v_it - c_it) * cant_it
+                        ganancia_total_dia += sub_ganancia
+                    else:
+                        ganancia_total_dia += (p_v - p_c)
+                ganancia_hoy = ganancia_total_dia
             else:
                 ganancia_hoy = 0.0
         
-            if not df_pasada.empty and 'precio_venta' in df_pasada.columns:
-                p_v_p = pd.to_numeric(df_pasada['precio_venta'], errors='coerce').fillna(0)
-                cant_p = pd.to_numeric(df_pasada['cantidad'], errors='coerce').fillna(1)
-                
-                costos_pasados = []
+            # Cálculo definitivo de Ganancias para el periodo pasado o histórico
+            if not df_pasada.empty:
+                ganancia_total_pasada = 0.0
                 for idx, row in df_pasada.iterrows():
-                    p_id = row.get('producto_id', row.get('id'))
-                    c_encontrado = 0.0
-                    for p in productos:
-                        if p.get('producto_id') == p_id or p.get('id') == p_id:
-                            c_encontrado = float(p.get('precio_compra', p.get('costo', 0)))
-                            break
-                    if c_encontrado == 0.0:
-                        c_encontrado = float(row.get('precio_compra', row.get('costo', 0)))
-                    if c_encontrado == 0.0:
-                        c_encontrado = float(row.get('precio_venta', 0)) * 0.8
-                        
-                    costos_pasados.append(c_encontrado)
+                    p_v_p = float(row.get('total_venta', 0))
+                    p_c_p = float(row.get('precio_compra', 0)) * float(row.get('cantidad', 1))
                     
-                p_c_p = pd.Series(costos_pasados)
-                df_pasada['ganancia_real'] = (p_v_p - p_c_p) * cant_p
-                ganancia_pasada = float(df_pasada['ganancia_real'].sum())
+                    items_p = row.get('productos', [])
+                    if isinstance(items_p, str):
+                        import json
+                        try: items_p = json.loads(items_p)
+                        except: items_p = []
+                        
+                    if isinstance(items_p, list) and len(items_p) > 0:
+                        sub_ganancia_p = 0.0
+                        for itm in items_p:
+                            v_it_p = float(itm.get('precio_venta', itm.get('precio', 0)))
+                            c_it_p = float(itm.get('precio_compra', itm.get('costo', 0)))
+                            cant_it_p = float(itm.get('cantidad', 1))
+                            sub_ganancia_p += (v_it_p - c_it_p) * cant_it_p
+                        ganancia_total_pasada += sub_ganancia_p
+                    else:
+                        ganancia_total_pasada += (p_v_p - p_c_p)
+                ganancia_pasada = ganancia_total_pasada
             else:
                 ganancia_pasada = 0.0
                 
