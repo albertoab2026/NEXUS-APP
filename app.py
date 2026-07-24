@@ -1174,22 +1174,32 @@ elif menu == "Reportes":
                 if col in df_pasada.columns:
                     df_pasada[col] = pd.to_numeric(df_pasada[col], errors='coerce').fillna(0)
 
-            # Cálculo de Ganancias Reales Directas
-            if not df_filtrado.empty and 'precio_venta' in df_filtrado.columns and 'precio_compra' in df_filtrado.columns:
+            # Cálculo de Ganancias Reales Inteligente (con valor por defecto si falta el costo)
+            if not df_filtrado.empty and 'precio_venta' in df_filtrado.columns:
                 p_v = pd.to_numeric(df_filtrado['precio_venta'], errors='coerce').fillna(0)
-                p_c = pd.to_numeric(df_filtrado['precio_compra'], errors='coerce').fillna(0)
+                
+                if 'precio_compra' in df_filtrado.columns:
+                    p_c = pd.to_numeric(df_filtrado['precio_compra'], errors='coerce').fillna(0)
+                else:
+                    p_c = p_v * 0.8  # Si no hay costo registrado, asume un 80% como costo base temporalmente
+                    
                 cant = pd.to_numeric(df_filtrado['cantidad'], errors='coerce').fillna(1)
                 df_filtrado['ganancia_real'] = (p_v - p_c) * cant
                 ganancia_hoy = float(df_filtrado['ganancia_real'].sum())
             else:
                 ganancia_hoy = 0.0
         
-            if not df_pasada.empty and 'precio_venta' in df_pasada.columns and 'precio_compra' in df_pasada.columns:
+            if not df_pasada.empty and 'precio_venta' in df_pasada.columns:
                 p_v_p = pd.to_numeric(df_pasada['precio_venta'], errors='coerce').fillna(0)
-                p_c_p = pd.to_numeric(df_pasada['precio_compra'], errors='coerce').fillna(0)
+                
+                if 'precio_compra' in df_pasada.columns:
+                    p_c_p = pd.to_numeric(df_pasada['precio_compra'], errors='coerce').fillna(0)
+                else:
+                    p_c_p = p_v_p * 0.8
+                    
                 cant_p = pd.to_numeric(df_pasada['cantidad'], errors='coerce').fillna(1)
                 df_pasada['ganancia_real'] = (p_v_p - p_c_p) * cant_p
-                ganancia_pasada = float(df_pasada['ganancia_real'].sum())
+                ganancia_pasada = float(df_pasada['ganancia_pasada'].sum()) if 'ganancia_pasada' in df_pasada.columns else float(df_pasada['ganancia_real'].sum())
             else:
                 ganancia_pasada = 0.0
                 
