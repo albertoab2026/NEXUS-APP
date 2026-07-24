@@ -1144,134 +1144,95 @@ elif menu == "Reportes":
         total_ventas_dia = 0.0
 
         if df_filtrado.empty:
-        st.warning("⚠️ No se encontraron ventas registradas para el criterio seleccionado.")
+            st.warning("⚠️ No se encontraron ventas registradas para el criterio seleccionado.")
+            ganancia_hoy = 0.0
         else:
-            # Diagnóstico de estructura real de DynamoDB
-            st.write("🔍 ESTRUCTURA REAL DE DYNAMODB (PRIMERA VENTA):")
-            if len(df_filtrado) > 0:
-                st.json(df_filtrado.iloc[0].to_dict())
-    
             # Procesamiento avanzado para mapear productos reales y calcular ganancia real por ítem
             filas_tabla = []
-        for idx, row in df_filtrado.iterrows():
-            fecha_v = row.get('fecha', '')
-            pago_v = row.get('pago', 'Efectivo')
-            total_v = float(row.get('total_venta', 0))
-            
-            items = row.get('productos', [])
-            if isinstance(items, str):
-                import json
-                try: items = json.loads(items)
-                except: items = []
+            for idx, row in df_filtrado.iterrows():
+                fecha_v = row.get('fecha', '')
+                pago_v = row.get('pago', 'Efectivo')
+                total_v = float(row.get('total_venta', 0))
                 
-            if isinstance(items, list) and len(items) > 0:
-                for itm in items:
-                    nombre_prod = itm.get('nombre', itm.get('producto', 'Producto'))
-                    cant_prod = float(itm.get('cantidad', 1))
-                    precio_v = float(itm.get('precio_venta', itm.get('precio', 0)))
-                    precio_c = float(itm.get('precio_compra', itm.get('costo', 0)))
-                    sub_total = cant_prod * precio_v
-                    ganancia_it = (precio_v - precio_c) * cant_prod
+                items = row.get('productos', [])
+                if isinstance(items, str):
+                    import json
+                    try: items = json.loads(items)
+                    except: items = []
+                    
+                if isinstance(items, list) and len(items) > 0:
+                    for itm in items:
+                        nombre_prod = itm.get('nombre', itm.get('producto', 'Producto'))
+                        cant_prod = float(itm.get('cantidad', 1))
+                        precio_v = float(itm.get('precio_venta', itm.get('precio', 0)))
+                        precio_c = float(itm.get('precio_compra', itm.get('costo', 0)))
+                        sub_total = cant_prod * precio_v
+                        ganancia_it = (precio_v - precio_c) * cant_prod
+                        
+                        filas_tabla.append({
+                            'Hora': str(fecha_v)[11:19] if len(str(fecha_v)) >= 19 else str(fecha_v),
+                            'Producto': nombre_prod,
+                            'cantidad': cant_prod,
+                            'total_venta': sub_total,
+                            'ganancia_real': ganancia_it,
+                            'pago': str(pago_v)
+                        })
+                else:
+                    p_v = float(row.get('precio_venta', total_v))
+                    p_c = float(row.get('precio_compra', 0))
+                    cant_prod = float(row.get('cantidad', 1))
+                    nombre_prod = row.get('nombre', row.get('producto_id', 'Producto Unitario'))
+                    ganancia_it = (p_v - p_c) * cant_prod
                     
                     filas_tabla.append({
                         'Hora': str(fecha_v)[11:19] if len(str(fecha_v)) >= 19 else str(fecha_v),
                         'Producto': nombre_prod,
                         'cantidad': cant_prod,
-                        'total_venta': sub_total,
+                        'total_venta': total_v if total_v > 0 else (p_v * cant_prod),
                         'ganancia_real': ganancia_it,
                         'pago': str(pago_v)
                     })
+                    
+            if filas_tabla:
+                df_filtrado = pd.DataFrame(filas_tabla)
             else:
-                p_v = float(row.get('precio_venta', total_v))
-                p_c = float(row.get('precio_compra', 0))
-                cant_prod = float(row.get('cantidad', 1))
-                nombre_prod = row.get('nombre', row.get('producto_id', 'Producto Unitario'))
-                ganancia_it = (p_v - p_c) * cant_prod
+                df_filtrado = pd.DataFrame(columns=['Hora', 'Producto', 'cantidad', 'total_venta', 'ganancia_real', 'pago'])
+    
+            # Sanitización final de columnas para asegurar gráficos limpios
+            cols_numericas = ['total_venta', 'ganancia_real', 'cantidad']
+            for col in cols_numericas:
+                if col in df_filtrado.columns:
+                    df_filtrado[col] = pd.to_numeric(df_filtrado[col], errors='coerce').fillna(0)
+    
+            # Cálculo directo y definitivo de la ganancia real sumando la columna generada
+            ganancia_hoy = float(df_filtrado['ganancia_real'].sum()) if not df_filtrado.empty else 0.0
+    
+        # Procesamiento robusto para el periodo pasado / histórico
+        if not df_pasada.empty:
+            ganancia_total_pasada = 0.0
+            for idx, row in df_pasada.iterrows():
+                p_v_p = float(row.get('total_venta', 0))
+                p_c_p = float(row.get('precio_compra', 0)) * float(row.get('cantidad', 1))
                 
-                filas_tabla.append({
-                    'Hora': str(fecha_v)[11:19] if len(str(fecha_v)) >= 19 else str(fecha_v),
-                    'Producto': nombre_prod,
-                    'cantidad': cant_prod,
-                    'total_venta': total_v if total_v > 0 else (p_v * cant_prod),
-                    'ganancia_real': ganancia_it,
-                    'pago': str(pago_v)
-                })
-                
-        if filas_tabla:
-            df_filtrado = pd.DataFrame(filas_tabla)
+                items_p = row.get('productos', [])
+                if isinstance(items_p, str):
+                    import json
+                    try: items_p = json.loads(items_p)
+                    except: items_p = []
+                    
+                if isinstance(items_p, list) and len(items_p) > 0:
+                    sub_ganancia_p = 0.0
+                    for itm in items_p:
+                        v_it_p = float(itm.get('precio_venta', itm.get('precio', 0)))
+                        c_it_p = float(itm.get('precio_compra', itm.get('costo', 0)))
+                        cant_it_p = float(itm.get('cantidad', 1))
+                        sub_ganancia_p += (v_it_p - c_it_p) * cant_it_p
+                    ganancia_total_pasada += sub_ganancia_p
+                else:
+                    ganancia_total_pasada += (p_v_p - p_c_p)
+            ganancia_pasada = ganancia_total_pasada
         else:
-            df_filtrado = pd.DataFrame(columns=['Hora', 'Producto', 'cantidad', 'total_venta', 'ganancia_real', 'pago'])
-
-        # Sanitización final de columnas para asegurar gráficos limpios
-        cols_numericas = ['total_venta', 'ganancia_real', 'cantidad']
-        for col in cols_numericas:
-            if col in df_filtrado.columns:
-                df_filtrado[col] = pd.to_numeric(df_filtrado[col], errors='coerce').fillna(0)
-
-        ganancia_hoy = float(df_filtrado['ganancia_real'].sum()) if not df_filtrado.empty else 0.0
-
-    if not df_pasada.empty:
-        cols_num_pasada = ['total_venta', 'precio_venta', 'precio_compra', 'cantidad']
-        for col in cols_num_pasada:
-            if col in df_pasada.columns:
-                df_pasada[col] = pd.to_numeric(df_pasada[col], errors='coerce').fillna(0)
-        ganancia_pasada = float((df_pasada['precio_venta'] - df_pasada['precio_compra'] * df_pasada['cantidad']).sum()) if 'precio_compra' in df_pasada.columns else 0.0
-    else:
-        ganancia_pasada = 0.0
-
-            # Cálculo definitivo de Ganancias para el turno actual
-            if not df_filtrado.empty:
-                ganancia_total_dia = 0.0
-                for idx, row in df_filtrado.iterrows():
-                    p_v = float(row.get('total_venta', 0))
-                    p_c = float(row.get('precio_compra', 0)) * float(row.get('cantidad', 1))
-                    
-                    items = row.get('productos', [])
-                    if isinstance(items, str):
-                        import json
-                        try: items = json.loads(items)
-                        except: items = []
-                        
-                    if isinstance(items, list) and len(items) > 0:
-                        sub_ganancia = 0.0
-                        for itm in items:
-                            v_it = float(itm.get('precio_venta', itm.get('precio', 0)))
-                            c_it = float(itm.get('precio_compra', itm.get('costo', 0)))
-                            cant_it = float(itm.get('cantidad', 1))
-                            sub_ganancia += (v_it - c_it) * cant_it
-                        ganancia_total_dia += sub_ganancia
-                    else:
-                        ganancia_total_dia += (p_v - p_c)
-                ganancia_hoy = ganancia_total_dia
-            else:
-                ganancia_hoy = 0.0
-        
-            # Cálculo definitivo de Ganancias para el periodo pasado o histórico
-            if not df_pasada.empty:
-                ganancia_total_pasada = 0.0
-                for idx, row in df_pasada.iterrows():
-                    p_v_p = float(row.get('total_venta', 0))
-                    p_c_p = float(row.get('precio_compra', 0)) * float(row.get('cantidad', 1))
-                    
-                    items_p = row.get('productos', [])
-                    if isinstance(items_p, str):
-                        import json
-                        try: items_p = json.loads(items_p)
-                        except: items_p = []
-                        
-                    if isinstance(items_p, list) and len(items_p) > 0:
-                        sub_ganancia_p = 0.0
-                        for itm in items_p:
-                            v_it_p = float(itm.get('precio_venta', itm.get('precio', 0)))
-                            c_it_p = float(itm.get('precio_compra', itm.get('costo', 0)))
-                            cant_it_p = float(itm.get('cantidad', 1))
-                            sub_ganancia_p += (v_it_p - c_it_p) * cant_it_p
-                        ganancia_total_pasada += sub_ganancia_p
-                    else:
-                        ganancia_total_pasada += (p_v_p - p_c_p)
-                ganancia_pasada = ganancia_total_pasada
-            else:
-                ganancia_pasada = 0.0
+            ganancia_pasada = 0.0
                 
             # Distribución de montos por pasarela de pago
             yape = df_filtrado[df_filtrado['pago_norm'] == 'yape']['total_venta'].sum()
