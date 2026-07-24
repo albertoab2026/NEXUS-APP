@@ -1147,6 +1147,10 @@ elif menu == "Reportes":
             st.warning("⚠️ No se encontraron ventas registradas para el criterio seleccionado.")
             ganancia_hoy = 0.0
         else:
+            # 🔍 Diagnóstico temporal para ver qué columnas y datos exactos tiene tu tabla
+            st.write("--- DIAGNOSTICO DE DYNAMODB ---")
+            st.json(df_filtrado.iloc[0].to_dict())
+            st.write("---------------------------------")
             # Procesamiento avanzado para mapear productos reales y calcular ganancia real por ítem
             filas_tabla = []
             for idx, row in df_filtrado.iterrows():
