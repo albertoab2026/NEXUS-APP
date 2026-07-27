@@ -1182,8 +1182,7 @@ elif menu == "Reportes":
                     fila['Producto'] = p.get('nombre') or p.get('Producto') or p.get('nombre_producto') or 'Artículo Registrado'
                     
                     # 2. Agregamos el código de barras / ID del producto
-                    codigo_raw = str(p.get('codigo_barras') or p.get('producto_id') or '')
-                    fila['Código'] = codigo_raw[:8] if not p.get('codigo_barras') else codigo_raw 
+                    fila['Código'] = str(p.get('codigo_barras') or p.get('producto_id') or '')
                     
                     # 3. Borramos la clave 'nombre' del diccionario si existe para evitar duplicados
                     if 'nombre' in fila:
