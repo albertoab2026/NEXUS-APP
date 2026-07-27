@@ -1169,8 +1169,24 @@ elif menu == "Reportes":
     if not ventas_raw:
         st.info("💡 No hay ventas registradas en el sistema.")
     else:
-        # Convertimos a DataFrame base
-        df = pd.DataFrame(ventas_raw)
+        # Desglosamos cada venta para extraer los productos reales del carrito
+        filas_desglosadas = []
+        for v in ventas_raw:
+            # Buscamos la lista de productos guardada dentro de la venta
+            lista_prods = v.get('productos') or v.get('productos_json') or []
+            if isinstance(lista_prods, list) and len(lista_prods) > 0:
+                for p in lista_prods:
+                    fila = v.copy()
+                    nombre_prod = p.get('nombre') or p.get('Producto') or p.get('nombre_producto') or 'Artículo Registrado'
+                    fila['nombre'] = nombre_prod
+                    fila['Producto'] = nombre_prod
+                    fila['cantidad'] = int(p.get('cantidad', 1))
+                    fila['precio_venta'] = float(p.get('precio_venta', 0))
+                    filas_desglosadas.append(fila)
+            else:
+                filas_desglosadas.append(v)
+
+        df = pd.DataFrame(filas_desglosadas)
 
         # --- NORMALIZACIÓN DE FECHAS ---
         # Convertimos la fecha UTC de DynamoDB, removemos zona horaria y restamos 5 horas para Perú
