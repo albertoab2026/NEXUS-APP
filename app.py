@@ -274,16 +274,22 @@ def registrar_cierre_manual_dynamo(usuario_id):
 def agregar_producto(nombre, precio_venta, precio_compra, stock, categoria, codigo_barras=""):
     try:
         id_dueno = st.session_state.user_data['usuario_id']
-        tabla_productos.put_item(Item={
+        # Creamos el diccionario base del producto
+        item_producto = {
             'id_del_dueno': str(id_dueno),
             'producto_id': str(uuid.uuid4()),
             'nombre': nombre,
             'precio_venta': Decimal(str(precio_venta)),
             'precio_compra': Decimal(str(precio_compra)),
             'stock': int(stock),
-            'categoria': categoria,
-            'codigo_barras': str(codigo_barras).strip()
-        })
+            'categoria': categoria
+        }
+
+        # Solo agregamos el código de barras si el usuario escribió uno válido
+        if codigo_barras and str(codigo_barras).strip() != "":
+            item_producto['codigo_barras'] = str(codigo_barras).strip()
+
+        tabla_productos.put_item(Item=item_producto)
         return True
     except Exception as e:
         st.error(f"Error: {e}")
