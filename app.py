@@ -1296,10 +1296,16 @@ elif menu == "Reportes":
         else:
             ganancia_pasada = 0.0
         
-        # Distribución de montos por pasarela de pago
-        yape = df_filtrado[df_filtrado['pago_norm'] == 'yape']['total_venta'].sum()
-        plin = df_filtrado[df_filtrado['pago_norm'] == 'plin']['total_venta'].sum()
-        efectivo = df_filtrado[df_filtrado['pago_norm'] == 'efectivo']['total_venta'].sum()
+        # Distribución de montos por pasarela de pago (con validación de seguridad)
+        if 'pago_norm' in df_filtrado.columns and not df_filtrado.empty:
+            yape = df_filtrado[df_filtrado['pago_norm'] == 'yape']['total_venta'].sum()
+            plin = df_filtrado[df_filtrado['pago_norm'] == 'plin']['total_venta'].sum()
+            efectivo = df_filtrado[df_filtrado['pago_norm'] == 'efectivo']['total_venta'].sum()
+        else:
+            yape = 0.0
+            plin = 0.0
+            efectivo = 0.0
+            
         total_ventas_dia = efectivo + yape + plin
 
     # --- RENDERIZADO DE INTERFAZ ---
