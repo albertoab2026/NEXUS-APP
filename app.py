@@ -1354,13 +1354,10 @@ elif menu == "Reportes":
 
         with col_graf1:
             # Verificamos qué columna de producto tiene datos reales con texto
-            col_producto = 'Producto' if 'Producto' in df_filtrado.columns else 'nombre'
-            if 'nombre' in df_filtrado.columns and df_filtrado['nombre'].astype(str).str.strip().ne('').any():
-                col_producto = 'nombre'
+            col_para_grafico = 'Producto' if 'Producto' in df_filtrado.columns else 'nombre'
+            df_top = df_filtrado.groupby(col_para_grafico, dropna=False)['total_venta'].sum().reset_index().sort_values('total_venta', ascending=False).head(10)
             
-            df_top = df_filtrado.groupby(col_producto)['total_venta'].sum().reset_index().sort_values('total_venta', ascending=False).head(10)
-            
-            fig_bar = px.bar(df_top, x='total_venta', y=col_producto, orientation='h', title="Top 10 Productos Más Vendidos")
+            fig_bar = px.bar(df_top, x='total_venta', y=col_para_grafico, orientation='h', title="Top 10 Productos Más Vendidos")
             fig_bar.update_layout(yaxis={'categoryorder':'total ascending'})
             st.plotly_chart(fig_bar, use_container_width=True)
 
