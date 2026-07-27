@@ -887,24 +887,21 @@ if menu == "Ventas":
                                 qty = st.number_input("Cant", min_value=0, max_value=max(0, p_stock_disponible), key=f"qty_{p_id}", label_visibility="collapsed")
 
                             with c_btn:
-                                es_invalido = p_stock_disponible <= 0
-                                def agregar_al_carrito_saas(id_p, nom_p, pre_v, pre_c, cant_solicitada, stock_r):
-                                    if cant_solicitada > 0:
-                                        existe = False
-                                        for item in st.session_state.carrito:
-                                            if item['producto_id'] == id_p:
-                                                item['cantidad'] = int(item['cantidad']) + cant_solicitada
-                                                existe = True
-                                                break
-                                        if not existe:
-                                            st.session_state.carrito.append({
-                                                'producto_id': id_p, 'nombre': nom_p, 'precio_venta': pre_v,
-                                                'precio_compra': pre_c, 'cantidad': cant_solicitada, 'stock_max': stock_r
-                                            })
-                                        st.session_state["buscar_ventas"] = ""
-
-                                st.button("🛒 Añadir", key=f"btn_saas_{p_id}", use_container_width=True, disabled=es_invalido, on_click=agregar_al_carrito_saas, args=(p_id, p_nombre, p_precio_venta, p_precio_compra, qty, p_stock_real))
-
+                                es_invalido = p_stock_disponible <= 0 or qty <= 0
+                                
+                                st.button("🛒 Añadir", key=f"btn_saas_{p_id}", use_container_width=True, disabled=es_invalido, 
+                                          on_click=lambda i=p_id, n=p_nombre, pv=p_precio_venta, pc=p_precio_compra, q=qty: 
+                                          st.session_state.carrito.append({
+                                              'producto_id': i,
+                                              'nombre': n,
+                                              'precio_venta': pv,
+                                              'precio_compra': pc,
+                                              'cantidad': q
+                                          }) if not any(item['producto_id'] == i for item in st.session_state.carrito) 
+                                          else [
+                                              item.update({'cantidad': int(item['cantidad']) + q}) 
+                                              for item in st.session_state.carrito if item['producto_id'] == i
+                                          ])
         with col_carrito:
             st.markdown("### 🧾 Resumen de Pedido")
 
