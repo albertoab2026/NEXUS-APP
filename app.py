@@ -1257,7 +1257,7 @@ elif menu == "Reportes":
         if 'productos_raw' in locals() and productos_raw:
             df_inv = pd.DataFrame(productos_raw)
             if 'nombre' in df_inv.columns and 'precio_compra' in df_inv.columns:
-                df_filtrado = df_filtrado.merge(df_inv[['nombre', 'precio_compra', 'precio_venta']], left_on='Producto', right_on='nombre', how='left', suffixes=('', '_inv'))
+                df_filtrado = df_filtrado.merge(df_inv[['nombre', 'precio_compra', 'precio_venta']], left_on='producto', right_on='nombre', how='left', suffixes=('', '_inv'))
                 if 'precio_compra_inv' in df_filtrado.columns:
                     df_filtrado['precio_compra'] = df_filtrado['precio_compra'].fillna(df_filtrado['precio_compra_inv'])
                 if 'precio_venta_inv' in df_filtrado.columns:
