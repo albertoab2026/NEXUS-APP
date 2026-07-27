@@ -1353,7 +1353,7 @@ elif menu == "Reportes":
 
     col_graf1, col_graf2 = st.columns(2)
 
-    with col_graf1:
+    if 'Producto' in df_filtrado.columns and not df_filtrado.empty:
         df_top = (
             df_filtrado
             .groupby("Producto")["total_venta"]
@@ -1362,6 +1362,8 @@ elif menu == "Reportes":
             .sort_values("total_venta", ascending=False)
             .head(10)
         )
+    else:
+        df_top = pd.DataFrame(columns=["Producto", "total_venta"])
 
         fig_bar = px.bar(
             df_top,
