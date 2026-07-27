@@ -1348,18 +1348,21 @@ elif menu == "Reportes":
     st.subheader("📊 Análisis Visual del Periodo")
 
     # ==========================
-    # Construcción de Gráficas con Plotly (con validación de seguridad para turnos vacíos)
-    if not df_filtrado.empty and 'Producto' in df_filtrado.columns:
+    # Construcción de Gráficas con Plotly (con nombres reales y sin duplicados)
+    if not df_filtrado.empty:
         col_graf1, col_graf2 = st.columns(2)
 
         with col_graf1:
-            df_top = df_filtrado.groupby('Producto')['total_venta'].sum().reset_index().sort_values('total_venta', ascending=False).head(10)
-            if not df_top.empty:
-                fig_bar = px.bar(df_top, x='total_venta', y='Producto', orientation='h', title="Top 10 Productos Más Vendidos")
+            # Usar la columna de nombre real si existe, evitando el texto genérico
+            col_producto = 'nombre' if 'nombre' in df_filtrado.columns else ('Producto' if 'Producto' in df_filtrado.columns else None)
+            
+            if col_producto:
+                df_top = df_filtrado.groupby(col_producto)['total_venta'].sum().reset_index().sort_values('total_venta', ascending=False).head(10)
+                fig_bar = px.bar(df_top, x='total_venta', y=col_producto, orientation='h', title="Top 10 Productos Más Vendidos")
                 fig_bar.update_layout(yaxis={'categoryorder':'total ascending'})
                 st.plotly_chart(fig_bar, use_container_width=True)
             else:
-                st.info("No hay datos de productos en este turno.")
+                st.info("No se encontró la columna de productos.")
 
         def limpiar_pago(valor):
             v = str(valor).lower().strip()
@@ -1383,10 +1386,10 @@ elif menu == "Reportes":
                 fig_line = px.area(df_hora, x='Hora', y='total_venta', title="Tendencia Horaria de Ventas", line_shape='spline')
                 st.plotly_chart(fig_line, use_container_width=True)
 
-        # Tabla expandible con auditoría detallada
+        # Única tabla expandible con auditoría detallada (sin duplicados)
         with st.expander("📊 Ver detalle de transacciones (Maximizar/Minimizar)"):
             columnas_disponibles = df_filtrado.columns.tolist()
-            columnas_a_mostrar = [c for c in ['Hora', 'Producto', 'cantidad', 'total_venta', 'ganancia_real', 'pago'] if c in columnas_disponibles]
+            columnas_a_mostrar = [c for c in ['Hora', 'Producto', 'nombre', 'cantidad', 'total_venta', 'ganancia_real', 'pago'] if c in columnas_disponibles]
             st.dataframe(df_filtrado[columnas_a_mostrar], use_container_width=True)
     else:
         st.warning("No se encontraron registros o transacciones para mostrar en este criterio o turno.")
