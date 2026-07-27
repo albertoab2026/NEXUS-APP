@@ -1254,14 +1254,21 @@ elif menu == "Reportes":
                     df_filtrado[col] = 0.0
         
             # Cruzar con el inventario actual para asegurar precios y nombres reales
-        if 'productos_raw' in locals() and productos_raw:
-            df_inv = pd.DataFrame(productos_raw)
-            if 'nombre' in df_inv.columns and 'precio_compra' in df_inv.columns:
-                df_filtrado = df_filtrado.merge(df_inv[['nombre', 'precio_compra', 'precio_venta']], left_on='Producto', right_on='nombre', how='left', suffixes=('', '_inv'))
-                if 'precio_compra_inv' in df_filtrado.columns:
-                    df_filtrado['precio_compra'] = df_filtrado['precio_compra'].fillna(df_filtrado['precio_compra_inv'])
-                if 'precio_venta_inv' in df_filtrado.columns:
-                    df_filtrado['precio_venta'] = df_filtrado['precio_venta'].fillna(df_filtrado['precio_venta_inv'])
+            if 'productos_raw' in locals() and productos_raw:
+                df_inv = pd.DataFrame(productos_raw)
+                
+                # Asegurarnos de que df_filtrado tenga la columna 'Producto' lista
+                if 'producto' in df_filtrado.columns and 'Producto' not in df_filtrado.columns:
+                    df_filtrado['Producto'] = df_filtrado['producto']
+                elif 'Producto' not in df_filtrado.columns:
+                    df_filtrado['Producto'] = 'Producto General'
+        
+                if 'nombre' in df_inv.columns and 'precio_compra' in df_inv.columns:
+                    df_filtrado = df_filtrado.merge(df_inv[['nombre', 'precio_compra', 'precio_venta']], left_on='Producto', right_on='nombre', how='left', suffixes=('', '_inv'))
+                    if 'precio_compra_inv' in df_filtrado.columns:
+                        df_filtrado['precio_compra'] = df_filtrado['precio_compra'].fillna(df_filtrado['precio_compra_inv'])
+                    if 'precio_venta_inv' in df_filtrado.columns:
+                        df_filtrado['precio_venta'] = df_filtrado['precio_venta'].fillna(df_filtrado['precio_venta_inv'])
 
         # Cálculo seguro y de respaldo para la ganancia real
         if 'precio_venta' in df_filtrado.columns and 'precio_compra' in df_filtrado.columns and 'cantidad' in df_filtrado.columns:
