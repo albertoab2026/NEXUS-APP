@@ -1348,78 +1348,48 @@ elif menu == "Reportes":
     st.subheader("📊 Análisis Visual del Periodo")
 
     # ==========================
-    # Gráficas con Plotly
-    # ==========================
+    # Construcción de Gráficas con Plotly (con validación de seguridad para turnos vacíos)
+    if not df_filtrado.empty and 'Producto' in df_filtrado.columns:
+        col_graf1, col_graf2 = st.columns(2)
 
-    col_graf1, col_graf2 = st.columns(2)
+        with col_graf1:
+            df_top = df_filtrado.groupby('Producto')['total_venta'].sum().reset_index().sort_values('total_venta', ascending=False).head(10)
+            if not df_top.empty:
+                fig_bar = px.bar(df_top, x='total_venta', y='Producto', orientation='h', title="Top 10 Productos Más Vendidos")
+                fig_bar.update_layout(yaxis={'categoryorder':'total ascending'})
+                st.plotly_chart(fig_bar, use_container_width=True)
+            else:
+                st.info("No hay datos de productos en este turno.")
 
-    if 'Producto' in df_filtrado.columns and not df_filtrado.empty:
-        df_top = (
-            df_filtrado
-            .groupby("Producto")["total_venta"]
-            .sum()
-            .reset_index()
-            .sort_values("total_venta", ascending=False)
-            .head(10)
-        )
-    else:
-        df_top = pd.DataFrame(columns=["Producto", "total_venta"])
+        def limpiar_pago(valor):
+            v = str(valor).lower().strip()
+            if 'efectivo' in v: return 'Efectivo'
+            elif 'yape' in v: return 'Yape'
+            elif 'plin' in v: return 'Plin'
+            else: return v.capitalize()
 
-        fig_bar = px.bar(
-            df_top,
-            x="total_venta",
-            y="Producto",
-            orientation="h",
-            title="Top 10 Productos Más Vendidos"
-        )
-
-        st.plotly_chart(fig_bar, use_container_width=True)
-
-
-    def limpiar_pago(valor):
-        v = str(valor).lower().strip()
-
-        if "efectivo" in v:
-            return "Efectivo"
-        elif "yape" in v:
-            return "Yape"
-        elif "plin" in v:
-            return "Plin"
+        if 'pago' in df_filtrado.columns:
+            df_filtrado['pago_norm_display'] = df_filtrado['pago'].apply(limpiar_pago)
         else:
-            return v.capitalize()
+            df_filtrado['pago_norm_display'] = 'Efectivo'
 
+        with col_graf2:
+            fig_pie = px.pie(df_filtrado, values='total_venta', names='pago_norm_display', title="Distribución de Métodos de Pago", hole=0.4)
+            st.plotly_chart(fig_pie, use_container_width=True)
 
-    df_filtrado["pago_norm_display"] = df_filtrado["pago"].apply(limpiar_pago)
+        if 'Hora' in df_filtrado.columns:
+            df_hora = df_filtrado.groupby('Hora')['total_venta'].sum().reset_index()
+            if not df_hora.empty:
+                fig_line = px.area(df_hora, x='Hora', y='total_venta', title="Tendencia Horaria de Ventas", line_shape='spline')
+                st.plotly_chart(fig_line, use_container_width=True)
 
-    with col_graf2:
-        fig_pie = px.pie(
-            df_filtrado,
-            values="total_venta",
-            names="pago_norm_display",
-            title="Distribución de Métodos de Pago",
-            hole=0.4
-        )
-
-        st.plotly_chart(fig_pie, use_container_width=True)
-
-    if "Hora" in df_filtrado.columns:
-        df_hora = (
-            df_filtrado
-            .groupby("Hora")["total_venta"]
-            .sum()
-            .reset_index()
-        )
-
-        fig_line = px.area(
-            df_hora,
-            x="Hora",
-            y="total_venta",
-            title="Tendencia Horaria de Ventas",
-            line_shape="spline"
-        )
-
-        st.plotly_chart(fig_line, use_container_width=True)
-
+        # Tabla expandible con auditoría detallada
+        with st.expander("📊 Ver detalle de transacciones (Maximizar/Minimizar)"):
+            columnas_disponibles = df_filtrado.columns.tolist()
+            columnas_a_mostrar = [c for c in ['Hora', 'Producto', 'cantidad', 'total_venta', 'ganancia_real', 'pago'] if c in columnas_disponibles]
+            st.dataframe(df_filtrado[columnas_a_mostrar], use_container_width=True)
+    else:
+        st.warning("No se encontraron registros o transacciones para mostrar en este criterio o turno.")
     # ==========================
     # Tabla de auditoría
     # ==========================
