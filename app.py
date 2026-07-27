@@ -1164,18 +1164,24 @@ elif menu == "Reportes":
     else:
         # Desglosamos cada venta para extraer los productos reales del carrito
         filas_desglosadas = []
+        
+        # Cargamos el inventario actual para respaldar códigos de barras faltantes
+        inventario_respaldo = {str(prod.get('producto_id')): prod.get('codigo_barras', '') for prod in obtener_productos()}
+    
         for v in ventas_raw:
             # Buscamos la lista de productos guardada dentro de la venta
             lista_prods = v.get('productos') or v.get('productos_json') or []
             if isinstance(lista_prods, list) and len(lista_prods) > 0:
                 for p in lista_prods:
                     fila = v.copy()
-                    
+    
                     # 1. Asignamos el nombre solo a la columna 'Producto'
                     fila['Producto'] = p.get('nombre') or p.get('Producto') or p.get('nombre_producto') or 'Artículo Registrado'
-                    
-                    # 2. Agregamos el código de barras / ID del producto
-                    fila['Código'] = str(p.get('codigo_barras') or p.get('producto_id') or '')
+    
+                    # 2. Obtenemos el código de barras (respaldado por inventario si falta)
+                    p_id = str(p.get('producto_id', ''))
+                    codigo_barras_final = p.get('codigo_barras') or inventario_respaldo.get(p_id, '')
+                    fila['Código'] = str(codigo_barras_final or p_id or '')
                     
                     # 3. Borramos la clave 'nombre' del diccionario si existe para evitar duplicados
                     if 'nombre' in fila:
