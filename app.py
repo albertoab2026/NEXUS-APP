@@ -846,8 +846,11 @@ if menu == "Ventas":
         productos_mostrar = productos
         
         if busqueda_v.strip() != "":
-            # Si no es código de barras o quieres filtrar el catálogo por NOMBRE:
-            productos_mostrar = [p for p in productos_mostrar if busqueda_v.lower() in p.get('nombre', '').lower()]
+            termino = busqueda_v.strip().lower()
+            productos_mostrar = [
+                p for p in productos_mostrar 
+                if termino in str(p.get('nombre', '')).lower() or termino in str(p.get('codigo_barras', '')).lower()
+            ]
         
         if categoria_seleccionada!= "📁 Todas las Categorías":
             cat_pura = categoria_seleccionada.replace("🏷️ ", "")
