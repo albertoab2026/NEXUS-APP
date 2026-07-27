@@ -709,12 +709,18 @@ if menu == "Productos":
             if seleccion_cat == "+ Agregar nueva categoría" and not cat_final:
                 st.error("Por favor, escribe el nombre de la nueva categoría.")
             elif nombre_nuevo and cat_final:
-                if agregar_producto(nombre_nuevo, pv_nuevo, pc_nuevo, stk_nuevo, cat_final, codigo_nuevo):
-                    st.success("¡Producto agregado!")
-                    st.rerun()
+                # Verificamos si ya existe un producto con el mismo nombre (sin importar mayúsculas/minúsculas)
+                productos_existentes = obtener_productos()
+                nombres_actuales = [str(p.get('nombre', '')).strip().lower() for p in productos_existentes]
+                
+                if nombre_nuevo.strip().lower() in nombres_actuales:
+                    st.error(f"⚠️ El producto '{nombre_nuevo}' ya existe en el inventario.")
+                else:
+                    if agregar_producto(nombre_nuevo, pv_nuevo, pc_nuevo, stk_nuevo, cat_final, codigo_nuevo):
+                        st.success("¡Producto agregado!")
+                        st.rerun()
             else:
                 st.error("Nombre y categoría son obligatorios")
-
     st.subheader("Control de Inventario")
     productos = obtener_productos()
 
