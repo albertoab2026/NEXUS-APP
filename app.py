@@ -867,6 +867,7 @@ if menu == "Ventas":
                         p_nombre = prod.get('nombre', 'Producto sin nombre')
                         p_precio_venta = float(prod.get('precio_venta', 0.0))
                         p_precio_compra = float(prod.get('precio_compra', 0.0))
+                        p_codigo_barras = prod.get('codigo_barras', '')
 
                         cantidad_en_carrito = sum(int(item.get('cantidad', 1)) for item in st.session_state.carrito if item.get('producto_id') == p_id)
                         p_stock_real = int(prod.get('stock', 0))
@@ -891,13 +892,14 @@ if menu == "Ventas":
                                 es_invalido = p_stock_disponible <= 0 or qty <= 0
                                 
                                 st.button("🛒 Añadir", key=f"btn_saas_{p_id}", use_container_width=True, disabled=es_invalido, 
-                                          on_click=lambda i=p_id, n=p_nombre, pv=p_precio_venta, pc=p_precio_compra, q=qty: 
+                                          on_click=lambda i=p_id, n=p_nombre, pv=p_precio_venta, pc=p_precio_compra, q=qty, cb=p_codigo_barras:
                                           st.session_state.carrito.append({
                                               'producto_id': i,
                                               'nombre': n,
                                               'precio_venta': pv,
                                               'precio_compra': pc,
-                                              'cantidad': q
+                                              'cantidad': q,
+                                              'codigo_barras': cb
                                           }) if not any(item['producto_id'] == i for item in st.session_state.carrito) 
                                           else [
                                               item.update({'cantidad': int(item['cantidad']) + q}) 
