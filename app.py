@@ -1348,21 +1348,21 @@ elif menu == "Reportes":
     st.subheader("📊 Análisis Visual del Periodo")
 
     # ==========================
-    # Construcción de Gráficas con Plotly (con nombres reales y sin duplicados)
+    # Construcción de Gráficas con Plotly (Limpiando duplicados y asegurando nombres)
     if not df_filtrado.empty:
         col_graf1, col_graf2 = st.columns(2)
 
         with col_graf1:
-            # Usar la columna de nombre real si existe, evitando el texto genérico
-            col_producto = 'nombre' if 'nombre' in df_filtrado.columns else ('Producto' if 'Producto' in df_filtrado.columns else None)
+            # Verificamos qué columna de producto tiene datos reales con texto
+            col_producto = 'Producto' if 'Producto' in df_filtrado.columns else 'nombre'
+            if 'nombre' in df_filtrado.columns and df_filtrado['nombre'].astype(str).str.strip().ne('').any():
+                col_producto = 'nombre'
             
-            if col_producto:
-                df_top = df_filtrado.groupby(col_producto)['total_venta'].sum().reset_index().sort_values('total_venta', ascending=False).head(10)
-                fig_bar = px.bar(df_top, x='total_venta', y=col_producto, orientation='h', title="Top 10 Productos Más Vendidos")
-                fig_bar.update_layout(yaxis={'categoryorder':'total ascending'})
-                st.plotly_chart(fig_bar, use_container_width=True)
-            else:
-                st.info("No se encontró la columna de productos.")
+            df_top = df_filtrado.groupby(col_producto)['total_venta'].sum().reset_index().sort_values('total_venta', ascending=False).head(10)
+            
+            fig_bar = px.bar(df_top, x='total_venta', y=col_producto, orientation='h', title="Top 10 Productos Más Vendidos")
+            fig_bar.update_layout(yaxis={'categoryorder':'total ascending'})
+            st.plotly_chart(fig_bar, use_container_width=True)
 
         def limpiar_pago(valor):
             v = str(valor).lower().strip()
@@ -1386,37 +1386,14 @@ elif menu == "Reportes":
                 fig_line = px.area(df_hora, x='Hora', y='total_venta', title="Tendencia Horaria de Ventas", line_shape='spline')
                 st.plotly_chart(fig_line, use_container_width=True)
 
-        # Única tabla expandible con auditoría detallada (sin duplicados)
+        # ÚNICO bloque expandible para auditoría (eliminando cualquier duplicado previo)
         with st.expander("📊 Ver detalle de transacciones (Maximizar/Minimizar)"):
             columnas_disponibles = df_filtrado.columns.tolist()
             columnas_a_mostrar = [c for c in ['Hora', 'Producto', 'nombre', 'cantidad', 'total_venta', 'ganancia_real', 'pago'] if c in columnas_disponibles]
             st.dataframe(df_filtrado[columnas_a_mostrar], use_container_width=True)
     else:
         st.warning("No se encontraron registros o transacciones para mostrar en este criterio o turno.")
-    # ==========================
-    # Tabla de auditoría
-    # ==========================
-
-    with st.expander("📊 Ver detalle de transacciones (Maximizar/Minimizar)"):
-        columnas_disponibles = df_filtrado.columns.tolist()
-
-        columnas_a_mostrar = [
-            c for c in [
-                "Hora",
-                "Producto",
-                "cantidad",
-                "total_venta",
-                "ganancia_real",
-                "pago"
-            ]
-            if c in columnas_disponibles
-        ]
-
-        st.dataframe(
-            df_filtrado[columnas_a_mostrar],
-            use_container_width=True
-        )
-
+  
     # ==========================
     # Exportar a Excel
     # ==========================
