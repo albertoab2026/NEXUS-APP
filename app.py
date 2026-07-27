@@ -1252,11 +1252,6 @@ elif menu == "Reportes":
                     df_filtrado[col] = pd.to_numeric(df_filtrado[col], errors='coerce').fillna(0)
                 else:
                     df_filtrado[col] = 0.0
-            # Control de nombre de producto y cálculo automático de ganancia
-            if 'producto_id' in df_filtrado.columns:
-                df_filtrado['Producto'] = df_filtrado['producto_id'].map(mapa_productos).fillna(df_filtrado['producto_id'])
-            elif 'Producto' not in df_filtrado.columns:
-                df_filtrado['Producto'] = 'Producto General'
         
             # Cruzar con el inventario actual para asegurar precios y nombres reales
         if 'productos_raw' in locals() and productos_raw:
