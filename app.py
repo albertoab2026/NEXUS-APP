@@ -1229,13 +1229,14 @@ elif menu == "Reportes":
             # Mapeo de nombres de productos
             mapa_productos = {p['producto_id']: p['nombre'] for p in productos_raw} if productos_raw else {}
     
-            # Controlamos si la estructura viene de una venta unitaria o mapea los productos correctamente
+            # Controlamos si la estructura mapea los productos correctamente o rescata el valor real
             if 'producto_id' in df_filtrado.columns:
                 df_filtrado['Producto'] = df_filtrado['producto_id'].map(mapa_productos).fillna(df_filtrado['producto_id'])
             elif 'Producto' in df_filtrado.columns:
-                df_filtrado['Producto'] = df_filtrado['Producto'].fillna('Producto General')
+                # Si ya tiene 'Producto' pero dice genérico, intentamos conservar el dato original si existe
+                df_filtrado['Producto'] = df_filtrado['Producto'].replace(['Producto General', None, ''], 'Artículo Registrado')
             else:
-                df_filtrado['Producto'] = 'Producto General'
+                df_filtrado['Producto'] = 'Artículo Registrado'
     
             # Normalización del método de pago
             if 'pago' not in df_filtrado.columns:
