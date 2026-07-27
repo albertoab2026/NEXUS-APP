@@ -338,8 +338,8 @@ def registrar_venta(lista_productos, pago, cliente="Consumidor Final", celular="
             
             # Formateamos cada producto para guardarlo ordenadamente dentro del JSON
             productos_json.append({
-                'producto_id': str(prod['producto_id']),
-                'nombre': str(prod.get('nombre') or prod.get('nombre_producto') or prod.get('Producto') or 'Artículo sin nombre'),
+                'producto_id': str(prod.get('producto_id') or prod.get('id') or ''),
+                'nombre': str(prod.get('nombre') or prod.get('nombre_producto') or prod.get('Producto') or prod.get('descripcion') or 'Artículo sin nombre'),
                 'cantidad': int(prod['cantidad']),
                 'precio_venta': Decimal(str(prod['precio_venta'])),
                 'precio_compra': Decimal(str(prod['precio_compra'])),
