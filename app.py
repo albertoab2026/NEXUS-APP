@@ -1412,7 +1412,7 @@ elif menu == "Reportes":
         # ÚNICO bloque expandible para auditoría (eliminando cualquier duplicado previo)
         with st.expander("📊 Ver detalle de transacciones (Maximizar/Minimizar)"):
             columnas_disponibles = df_filtrado.columns.tolist()
-            columnas_a_mostrar = [c for c in ['Hora', 'Producto', 'nombre', 'cantidad', 'total_venta', 'ganancia_real', 'pago'] if c in columnas_disponibles]
+            columnas_a_mostrar = [c for c in ['Hora', 'Código', 'Producto', 'cantidad', 'total_venta', 'ganancia_real', 'pago'] if c in columnas_disponibles]
             st.dataframe(df_filtrado[columnas_a_mostrar], use_container_width=True)
     else:
         st.warning("No se encontraron registros o transacciones para mostrar en este criterio o turno.")
