@@ -1177,9 +1177,17 @@ elif menu == "Reportes":
             if isinstance(lista_prods, list) and len(lista_prods) > 0:
                 for p in lista_prods:
                     fila = v.copy()
-                    nombre_prod = p.get('nombre') or p.get('Producto') or p.get('nombre_producto') or 'Artículo Registrado'
-                    fila['nombre'] = nombre_prod
-                    fila['Producto'] = nombre_prod
+                    
+                    # 1. Asignamos el nombre solo a la columna 'Producto'
+                    fila['Producto'] = p.get('nombre') or p.get('Producto') or p.get('nombre_producto') or 'Artículo Registrado'
+                    
+                    # 2. Agregamos el código de barras / ID del producto
+                    fila['Código'] = p.get('producto_id', '-') 
+                    
+                    # 3. Borramos la clave 'nombre' del diccionario si existe para evitar duplicados
+                    if 'nombre' in fila:
+                        del fila['nombre']
+                        
                     fila['cantidad'] = int(p.get('cantidad', 1))
                     fila['precio_venta'] = float(p.get('precio_venta', 0))
                     filas_desglosadas.append(fila)
@@ -1187,6 +1195,10 @@ elif menu == "Reportes":
                 filas_desglosadas.append(v)
 
         df = pd.DataFrame(filas_desglosadas)
+        
+        # Limpieza final: Si quedó alguna columna 'nombre' vacía o residual, la eliminamos de la tabla
+        if 'nombre' in df.columns:
+            df = df.drop(columns=['nombre'])
 
         # --- NORMALIZACIÓN DE FECHAS ---
         # Convertimos la fecha UTC de DynamoDB, removemos zona horaria y restamos 5 horas para Perú
