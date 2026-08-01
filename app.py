@@ -599,16 +599,20 @@ if not st.session_state.logged_in:
         tab1, tab2 = st.tabs(["🔑 Iniciar Sesión", "✨ Registrarse"])
 
         with tab1:
-            usuario_input = st.text_input("Usuario o DNI", placeholder="Ej: 71234567", key="login_user")
-            password_input = st.text_input("Contraseña", type="password", placeholder="••••", key="login_pass")
-            if st.button("Ingresar al Sistema", use_container_width=True):
-                user_validado = login(usuario_input, password_input)
-                if user_validado:
-                    st.session_state.logged_in = True
-                    st.session_state.user_data = user_validado
-                    st.rerun()
-                else:
-                    st.error("❌ Credenciales inválidas")
+            with st.form("form_login"):
+                usuario_input = st.text_input("Usuario o DNI", placeholder="Ej: 71234567", key="login_user")
+                password_input = st.text_input("Contraseña", type="password", placeholder="****", key="login_pass")
+                
+                submit_login = st.form_submit_button("Ingresar al Sistema", use_container_width=True)
+                
+                if submit_login:
+                    user_validado = login(usuario_input, password_input)
+                    if user_validado:
+                        st.session_state.logged_in = True
+                        st.session_state.user_data = user_validado
+                        st.rerun()
+                    else:
+                        st.error("❌ Credenciales inválidas")
 
         with tab2:
             if "registro_exitoso" in st.session_state and st.session_state.registro_exitoso:
