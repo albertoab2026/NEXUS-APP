@@ -218,6 +218,31 @@ def registrar_dueno(dni, nombre, nombre_negocio, email, password, rubro, celular
         st.error(f"Error en registro: {e}")
         return False
 
+def registrar_empleado(nombre, celular, dni, email, password, usuario_actual):
+    try:
+        timestamp = str(int(datetime.now().timestamp()))[-5:]
+        usuario_id = f"EMP-{timestamp}"
+        
+        tabla_usuarios.put_item(Item={
+            'usuario_id': usuario_id,
+            'id_del_dueno': usuario_actual['usuario_id'],
+            'dni': dni,
+            'nombre': nombre,
+            'nombre_negocio': usuario_actual.get('nombre_negocio', ''),
+            'email': email,
+            'celular': celular,
+            'password_hash': hash_password(password),
+            'rol': 'empleado',
+            'rubro': usuario_actual.get('rubro', ''),
+            'plan': 'empleado',
+            'activo': True,
+            'fecha_registro': datetime.now().isoformat()
+        })
+        return True, usuario_id
+    except Exception as e:
+        st.error(f"Error al registrar empleado: {e}")
+        return False, None        
+
 def obtener_productos():
     try:
         id_dueno = st.session_state.user_data['usuario_id']
