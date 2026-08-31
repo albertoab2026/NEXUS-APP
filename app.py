@@ -678,31 +678,25 @@ def mostrar_ajustes():
                 st.info("No tienes ningún empleado registrado todavía. Crea uno arriba para empezar.")
             else:
                 for i, emp in enumerate(empleados):
-                    with st.container():
-                        col_info1, col_info2, col_info3 = st.columns([2, 2, 2])
-                        with col_info1:
-                            st.write(f"**Nombre:** {emp.get('nombre')}")
-                            st.write(f"ID: `{emp.get('usuario_id')}`")
-                        with col_info2:
-                            st.write(f"DNI: {emp.get('dni')}")
-                            st.write(f"Celular: {emp.get('celular', 'No registrado')}")
-                        with col_info3:
-                            nueva_temp = st.text_input("Nueva clave temporal", type="password", key=f"pass_{i}_{emp.get('usuario_id')}")
-                            
-                            col_btn1, col_btn2 = st.columns(2)
-                            with col_btn1:
-                                if st.button("💾 Actualizar", key=f"btn_save_{i}_{emp.get('usuario_id')}"):
-                                    if nueva_temp:
-                                        if resetear_password_empleado(emp.get('usuario_id'), nueva_temp):
-                                            st.success("¡Contraseña actualizada!")
-                                    else:
-                                        st.warning("Escribe una clave.")
-                            with col_btn2:
-                                if st.button("🗑️ Eliminar", key=f"del_{i}_{emp.get('usuario_id')}"):
-                                    if eliminar_empleado(emp.get('usuario_id')):
-                                        st.success(f"Empleado {emp.get('nombre')} eliminado.")
-                                        st.rerun()
-                        st.markdown("---")    
+                    st.write(f"**Nombre:** {emp.get('nombre')}  |  **DNI:** {emp.get('dni')}")
+                    st.write(f"**ID:** `{emp.get('usuario_id')}`  |  **Celular:** {emp.get('celular', 'No registrado')}")
+                    
+                    nueva_temp = st.text_input("Nueva clave temporal", type="password", key=f"pass_{i}_{emp.get('usuario_id')}")
+                    
+                    c1, c2 = st.columns(2)
+                    with c1:
+                        if st.button("💾 Actualizar Clave", key=f"btn_save_{i}_{emp.get('usuario_id')}"):
+                            if nueva_temp:
+                                if resetear_password_empleado(emp.get('usuario_id'), nueva_temp):
+                                    st.success("¡Contraseña actualizada!")
+                            else:
+                                st.warning("Escribe una clave.")
+                    with c2:
+                        if st.button("🗑️ Eliminar Empleado", key=f"del_{i}_{emp.get('usuario_id')}"):
+                            if eliminar_empleado(emp.get('usuario_id')):
+                                st.success(f"Empleado {emp.get('nombre')} eliminado.")
+                                st.rerun()
+                    st.markdown("---")    
         
 # ======= 4. INTERFAZ DE INICIO =======
 if st.session_state.get("logged_in"):
