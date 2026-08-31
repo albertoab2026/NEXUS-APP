@@ -277,6 +277,17 @@ def eliminar_empleado(usuario_id):
     except Exception as e:
         st.error(f"Error al eliminar empleado: {e}")
         return False        
+def resetear_password_empleado(usuario_id, nueva_password):
+    try:
+        tabla_usuarios.update_item(
+            Key={'usuario_id': usuario_id},
+            UpdateExpression="SET password_hash = :p",
+            ExpressionAttributeValues={":p": hash_password(nueva_password)}
+        )
+        return True
+    except Exception as e:
+        st.error(f"Error al resetear contraseña: {e}")
+        return False
 
 def obtener_productos():
     try:
@@ -667,7 +678,7 @@ def mostrar_ajustes():
                 st.info("No tienes ningún empleado registrado todavía. Crea uno arriba para empezar.")
             else:
                 for emp in empleados:
-                    col_info1, col_info2, col_info3 = st.columns([2, 2, 1])
+                    col_info1, col_info2, col_info3 = st.columns([2, 2, 2])
                     with col_info1:
                         st.write(f"**Nombre:** {emp.get('nombre')}")
                         st.write(f"ID: `{emp.get('usuario_id')}`")
@@ -675,9 +686,19 @@ def mostrar_ajustes():
                         st.write(f"DNI: {emp.get('dni')}")
                         st.write(f"Celular: {emp.get('celular', 'No registrado')}")
                     with col_info3:
+                        # Contenedor para resetear clave de forma ordenada
+                        with st.expander("🔑 Resetear Clave"):
+                            nueva_temp = st.text_input("Nueva temporal", type="password", key=f"pass_{emp.get('usuario_id')}")
+                            if st.button("Guardar clave", key=f"btn_pass_{emp.get('usuario_id')}"):
+                                if nueva_temp:
+                                    if resetear_password_empleado(emp.get('usuario_id'), nueva_temp):
+                                        st.success("¡Contraseña actualizada!")
+                                else:
+                                    st.warning("Escribe una clave temporal.")
+                        
                         if st.button("🗑️ Eliminar", key=f"del_{emp.get('usuario_id')}"):
                             if eliminar_empleado(emp.get('usuario_id')):
-                                st.success(f"Empleado {emp.get('nombre')} eliminado correctamente.")
+                                st.success(f"Empleado {emp.get('nombre')} eliminado.")
                                 st.rerun()
                     st.markdown("---")    
         
