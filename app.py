@@ -572,8 +572,15 @@ def actualizar_inventario_masivo(df_editado):
         return False
 
 def mostrar_ajustes():
-    st.header("⚙️ Ajustes de Cuenta")
+    user_data = st.session_state.get('user_data', {})
+    es_empleado = str(user_data.get('usuario_id', '')).startswith('EMP-')
+    
+    if es_empleado:
+        st.warning("⚠️ No tienes permisos para acceder a los ajustes de cuenta. Esta sección es exclusiva para el dueño.")
+        return
 
+    st.header("⚙️ Ajustes de Cuenta")
+    
     tab_seguridad, tab_pagos, tab_empleados = st.tabs(["🔒 Seguridad", "💳 Planes y Pagos", "👥 Empleados"])
 
     with tab_seguridad:
