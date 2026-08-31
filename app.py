@@ -682,23 +682,23 @@ def mostrar_ajustes():
                     st.write(f"**Nombre:** {emp.get('nombre')}  |  **DNI:** {emp.get('dni')}")
                     st.write(f"**ID:** `{uid}`  |  **Celular:** {emp.get('celular', 'No registrado')}")
                     
-                    # Usamos un formulario independiente para el cambio de clave para evitar conflictos de botones
-                    with st.form(key=f"form_pwd_{i}_{uid}"):
-                        nueva_clave = st.text_input("Nueva contraseña temporal", type="password")
-                        submitted = st.form_submit_button("🔑 Actualizar Contraseña")
-                        if submitted:
+                    # Campo y botón directo sin usar st.form
+                    nueva_clave = st.text_input("Nueva contraseña temporal", type="password", key=f"input_pwd_{i}_{uid}")
+                    
+                    col_b1, col_b2 = st.columns(2)
+                    with col_b1:
+                        if st.button("🔑 Actualizar Clave", key=f"btn_upd_{i}_{uid}"):
                             if nueva_clave:
                                 if resetear_password_empleado(uid, nueva_clave):
                                     st.success("¡Contraseña actualizada con éxito!")
                             else:
                                 st.warning("Ingresa una contraseña nueva.")
-                    
-                    # Botón de eliminar fuera del formulario
-                    if st.button("🗑️ Eliminar Empleado", key=f"del_final_{i}_{uid}"):
-                        if eliminar_empleado(uid):
-                            st.success(f"Empleado {emp.get('nombre')} eliminado.")
-                            st.rerun()
-                            
+                    with col_b2:
+                        if st.button("🗑️ Eliminar Empleado", key=f"btn_del_{i}_{uid}"):
+                            if eliminar_empleado(uid):
+                                st.success(f"Empleado {emp.get('nombre')} eliminado.")
+                                st.rerun()
+                                
                     st.markdown("---")    
         
 # ======= 4. INTERFAZ DE INICIO =======
