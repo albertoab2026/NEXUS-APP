@@ -523,7 +523,7 @@ def actualizar_inventario_masivo(df_editado):
 def mostrar_ajustes():
     st.header("⚙️ Ajustes de Cuenta")
 
-    tab_seguridad, tab_pagos = st.tabs(["🔒 Seguridad", "💳 Planes y Pagos"])
+    tab_seguridad, tab_pagos, tab_empleados = st.tabs(["🔒 Seguridad", "💳 Planes y Pagos", "👥 Empleados"])
 
     with tab_seguridad:
         st.subheader("Cambiar Contraseña")
@@ -589,6 +589,38 @@ def mostrar_ajustes():
         link_wa = f"https://wa.me/51914282688?text={mensaje.replace(' ', '%20')}"
 
         st.markdown(f'<a href="{link_wa}" target="_blank" style="background-color: #25d366; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">📲 Enviar comprobante al WhatsApp</a>', unsafe_allow_html=True)
+
+    with tab_empleados:
+        st.subheader("👥 Registrar Nuevo Empleado")
+        st.write("Crea una cuenta de acceso para tu personal. Podrán iniciar sesión con el ID que se genere y su contraseña.")
+
+        with st.form("form_crear_empleado"):
+            col1, col2 = st.columns(2)
+            with col1:
+                nombre_emp = st.text_input("Nombre completo")
+                dni_emp = st.text_input("DNI")
+                celular_emp = st.text_input("Celular")
+            with col2:
+                email_emp = st.text_input("Correo electrónico")
+                password_emp = st.text_input("Contraseña de acceso", type="password")
+            
+            submit_emp = st.form_submit_button("Crear Empleado")
+
+            if submit_emp:
+                if nombre_emp and password_emp and dni_emp:
+                    exito, id_gen = registrar_empleado(
+                        nombre=nombre_emp, 
+                        celular=celular_emp, 
+                        dni=dni_emp, 
+                        email=email_emp, 
+                        password=password_emp, 
+                        usuario_actual=st.session_state.user_data
+                    )
+                    if exito:
+                        st.success(f"¡Empleado registrado con éxito! Su ID de acceso es: **{id_gen}**")
+                        st.info("Guarde este ID. El empleado lo necesitará junto con su contraseña para iniciar sesión.")
+                else:
+                    st.warning("Por favor completa al menos el nombre, DNI y la contraseña.")
         
 # ======= 4. INTERFAZ DE INICIO =======
 if st.session_state.get("logged_in"):
