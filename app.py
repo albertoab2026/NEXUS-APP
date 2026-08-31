@@ -656,6 +656,30 @@ def mostrar_ajustes():
                         st.info("Guarde este ID. El empleado lo necesitará junto con su contraseña para iniciar sesión.")
                 else:
                     st.warning("Por favor completa al menos el nombre, DNI y la contraseña.")
+           
+            # --- LISTA DE EMPLEADOS
+            st.markdown("---")
+            st.subheader("📋 Lista de Empleados Actuales")
+            
+            empleados = obtener_empleados_del_dueno(st.session_state.user_data['usuario_id'])
+            
+            if not empleados:
+                st.info("No tienes ningún empleado registrado todavía. Crea uno arriba para empezar.")
+            else:
+                for emp in empleados:
+                    col_info1, col_info2, col_info3 = st.columns([2, 2, 1])
+                    with col_info1:
+                        st.write(f"**Nombre:** {emp.get('nombre')}")
+                        st.write(f"ID: `{emp.get('usuario_id')}`")
+                    with col_info2:
+                        st.write(f"DNI: {emp.get('dni')}")
+                        st.write(f"Celular: {emp.get('celular', 'No registrado')}")
+                    with col_info3:
+                        if st.button("🗑️ Eliminar", key=f"del_{emp.get('usuario_id')}"):
+                            if eliminar_empleado(emp.get('usuario_id')):
+                                st.success(f"Empleado {emp.get('nombre')} eliminado correctamente.")
+                                st.rerun()
+                    st.markdown("---")    
         
 # ======= 4. INTERFAZ DE INICIO =======
 if st.session_state.get("logged_in"):
