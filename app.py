@@ -296,7 +296,13 @@ def resetear_password_empleado(usuario_id, nueva_password):
 
 def obtener_productos():
     try:
-        id_dueno = st.session_state.user_data['usuario_id']
+        user_data = st.session_state.user_data
+        # Si es empleado, usa el id_del_dueno; si es dueño, usa su propio usuario_id
+        if str(user_data.get('usuario_id', '')).startswith('EMP-'):
+            id_dueno = user_data.get('id_del_dueno')
+        else:
+            id_dueno = user_data.get('usuario_id')
+            
         response = tabla_productos.query(KeyConditionExpression=Key('id_del_dueno').eq(id_dueno))
         return response.get('Items', [])
     except Exception as e:
