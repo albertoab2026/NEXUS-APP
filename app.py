@@ -682,21 +682,23 @@ def mostrar_ajustes():
                     st.write(f"**Nombre:** {emp.get('nombre')}  |  **DNI:** {emp.get('dni')}")
                     st.write(f"**ID:** `{uid}`  |  **Celular:** {emp.get('celular', 'No registrado')}")
                     
-                    nueva_clave = st.text_input("Nueva contraseña", type="password", key=f"pwd_v2_{i}_{uid}")
-                    
-                    col_u1, col_u2 = st.columns(2)
-                    with col_u1:
-                        if st.button("Cambiar Clave", key=f"save_v2_{i}_{uid}"):
+                    # Usamos un formulario independiente para el cambio de clave para evitar conflictos de botones
+                    with st.form(key=f"form_pwd_{i}_{uid}"):
+                        nueva_clave = st.text_input("Nueva contraseña temporal", type="password")
+                        submitted = st.form_submit_button("🔑 Actualizar Contraseña")
+                        if submitted:
                             if nueva_clave:
                                 if resetear_password_empleado(uid, nueva_clave):
                                     st.success("¡Contraseña actualizada con éxito!")
                             else:
                                 st.warning("Ingresa una contraseña nueva.")
-                    with col_u2:
-                        if st.button("Eliminar Empleado", key=f"del_v2_{i}_{uid}"):
-                            if eliminar_empleado(uid):
-                                st.success(f"Empleado {emp.get('nombre')} eliminado.")
-                                st.rerun()
+                    
+                    # Botón de eliminar fuera del formulario
+                    if st.button("🗑️ Eliminar Empleado", key=f"del_final_{i}_{uid}"):
+                        if eliminar_empleado(uid):
+                            st.success(f"Empleado {emp.get('nombre')} eliminado.")
+                            st.rerun()
+                            
                     st.markdown("---")    
         
 # ======= 4. INTERFAZ DE INICIO =======
