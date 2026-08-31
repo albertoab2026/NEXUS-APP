@@ -686,15 +686,17 @@ def mostrar_ajustes():
                         st.write(f"DNI: {emp.get('dni')}")
                         st.write(f"Celular: {emp.get('celular', 'No registrado')}")
                     with col_info3:
-                        # Contenedor para resetear clave de forma ordenada
-                        with st.expander("🔑 Resetear Clave"):
-                            nueva_temp = st.text_input("Nueva temporal", type="password", key=f"pass_{emp.get('usuario_id')}")
-                            if st.button("Guardar clave", key=f"btn_pass_{emp.get('usuario_id')}"):
+                        with st.form(key=f"form_pass_{emp.get('usuario_id')}"):
+                            st.write("🔑 Nueva Clave")
+                            nueva_temp = st.text_input("Temporal", type="password", label_visibility="collapsed")
+                            btn_guardar = st.form_submit_button("Actualizar")
+                            
+                            if btn_guardar:
                                 if nueva_temp:
                                     if resetear_password_empleado(emp.get('usuario_id'), nueva_temp):
                                         st.success("¡Contraseña actualizada!")
                                 else:
-                                    st.warning("Escribe una clave temporal.")
+                                    st.warning("Escribe una clave.")
                         
                         if st.button("🗑️ Eliminar", key=f"del_{emp.get('usuario_id')}"):
                             if eliminar_empleado(emp.get('usuario_id')):
