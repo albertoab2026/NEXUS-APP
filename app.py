@@ -686,18 +686,30 @@ def mostrar_ajustes():
                         st.write(f"DNI: {emp.get('dni')}")
                         st.write(f"Celular: {emp.get('celular', 'No registrado')}")
                     with col_info3:
-                        with st.form(key=f"form_pass_{emp.get('usuario_id')}"):
-                            st.write("🔑 Nueva Clave")
-                            nueva_temp = st.text_input("Temporal", type="password", label_visibility="collapsed")
-                            btn_guardar = st.form_submit_button("Actualizar")
-                            
-                            if btn_guardar:
-                                if nueva_temp:
-                                    if resetear_password_empleado(emp.get('usuario_id'), nueva_temp):
-                                        st.success("¡Contraseña actualizada!")
-                                else:
-                                    st.warning("Escribe una clave.")
+                        # Botón para activar el campo de nueva contraseña sin usar formularios
+                        key_estado = f"edit_{emp.get('usuario_id')}"
                         
+                        if not st.session_state.get(key_estado, False):
+                            if st.button("🔑 Cambiar Clave", key=f"btn_open_{emp.get('usuario_id')}"):
+                                st.session_state[key_estado] = True
+                                st.rerun()
+                        else:
+                            nueva_temp = st.text_input("Nueva temporal", type="password", key=f"input_{emp.get('usuario_id')}")
+                            col_b1, col_b2 = st.columns(2)
+                            with col_b1:
+                                if st.button("💾 Guardar", key=f"save_{emp.get('usuario_id')}"):
+                                    if nueva_temp:
+                                        if resetear_password_empleado(emp.get('usuario_id'), nueva_temp):
+                                            st.success("¡Actualizado!")
+                                            st.session_state[key_estado] = False
+                                            st.rerun()
+                                    else:
+                                        st.warning("Escribe una clave.")
+                            with col_b2:
+                                if st.button("❌ Cancelar", key=f"cancel_{emp.get('usuario_id')}"):
+                                    st.session_state[key_estado] = False
+                                    st.rerun()
+        
                         if st.button("🗑️ Eliminar", key=f"del_{emp.get('usuario_id')}"):
                             if eliminar_empleado(emp.get('usuario_id')):
                                 st.success(f"Empleado {emp.get('nombre')} eliminado.")
