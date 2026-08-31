@@ -677,7 +677,7 @@ def mostrar_ajustes():
             if not empleados:
                 st.info("No tienes ningún empleado registrado todavía. Crea uno arriba para empezar.")
             else:
-                for emp in empleados:
+                for i, emp in enumerate(empleados):
                     col_info1, col_info2, col_info3 = st.columns([2, 2, 2])
                     with col_info1:
                         st.write(f"**Nombre:** {emp.get('nombre')}")
@@ -686,31 +686,16 @@ def mostrar_ajustes():
                         st.write(f"DNI: {emp.get('dni')}")
                         st.write(f"Celular: {emp.get('celular', 'No registrado')}")
                     with col_info3:
-                        # Botón para activar el campo de nueva contraseña sin usar formularios
-                        key_estado = f"edit_{emp.get('usuario_id')}"
+                        with st.expander("🔑 Cambiar Clave"):
+                            nueva_temp = st.text_input("Nueva temporal", type="password", key=f"pass_{i}_{emp.get('usuario_id')}")
+                            if st.button("Guardar clave", key=f"btn_save_{i}_{emp.get('usuario_id')}"):
+                                if nueva_temp:
+                                    if resetear_password_empleado(emp.get('usuario_id'), nueva_temp):
+                                        st.success("¡Contraseña actualizada!")
+                                else:
+                                    st.warning("Escribe una clave.")
                         
-                        if not st.session_state.get(key_estado, False):
-                            if st.button("🔑 Cambiar Clave", key=f"btn_open_{emp.get('usuario_id')}"):
-                                st.session_state[key_estado] = True
-                                st.rerun()
-                        else:
-                            nueva_temp = st.text_input("Nueva temporal", type="password", key=f"input_{emp.get('usuario_id')}")
-                            col_b1, col_b2 = st.columns(2)
-                            with col_b1:
-                                if st.button("💾 Guardar", key=f"save_{emp.get('usuario_id')}"):
-                                    if nueva_temp:
-                                        if resetear_password_empleado(emp.get('usuario_id'), nueva_temp):
-                                            st.success("¡Actualizado!")
-                                            st.session_state[key_estado] = False
-                                            st.rerun()
-                                    else:
-                                        st.warning("Escribe una clave.")
-                            with col_b2:
-                                if st.button("❌ Cancelar", key=f"cancel_{emp.get('usuario_id')}"):
-                                    st.session_state[key_estado] = False
-                                    st.rerun()
-        
-                        if st.button("🗑️ Eliminar", key=f"del_{emp.get('usuario_id')}"):
+                        if st.button("🗑️ Eliminar", key=f"del_{i}_{emp.get('usuario_id')}"):
                             if eliminar_empleado(emp.get('usuario_id')):
                                 st.success(f"Empleado {emp.get('nombre')} eliminado.")
                                 st.rerun()
