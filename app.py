@@ -678,22 +678,23 @@ def mostrar_ajustes():
                 st.info("No tienes ningún empleado registrado todavía. Crea uno arriba para empezar.")
             else:
                 for i, emp in enumerate(empleados):
+                    uid = emp.get('usuario_id')
                     st.write(f"**Nombre:** {emp.get('nombre')}  |  **DNI:** {emp.get('dni')}")
-                    st.write(f"**ID:** `{emp.get('usuario_id')}`  |  **Celular:** {emp.get('celular', 'No registrado')}")
+                    st.write(f"**ID:** `{uid}`  |  **Celular:** {emp.get('celular', 'No registrado')}")
                     
-                    nueva_temp = st.text_input("Nueva clave temporal", type="password", key=f"pass_{i}_{emp.get('usuario_id')}")
+                    nueva_clave = st.text_input("Nueva contraseña", type="password", key=f"pwd_v2_{i}_{uid}")
                     
-                    c1, c2 = st.columns(2)
-                    with c1:
-                        if st.button("💾 Actualizar Clave", key=f"btn_save_{i}_{emp.get('usuario_id')}"):
-                            if nueva_temp:
-                                if resetear_password_empleado(emp.get('usuario_id'), nueva_temp):
-                                    st.success("¡Contraseña actualizada!")
+                    col_u1, col_u2 = st.columns(2)
+                    with col_u1:
+                        if st.button("Cambiar Clave", key=f"save_v2_{i}_{uid}"):
+                            if nueva_clave:
+                                if resetear_password_empleado(uid, nueva_clave):
+                                    st.success("¡Contraseña actualizada con éxito!")
                             else:
-                                st.warning("Escribe una clave.")
-                    with c2:
-                        if st.button("🗑️ Eliminar Empleado", key=f"del_{i}_{emp.get('usuario_id')}"):
-                            if eliminar_empleado(emp.get('usuario_id')):
+                                st.warning("Ingresa una contraseña nueva.")
+                    with col_u2:
+                        if st.button("Eliminar Empleado", key=f"del_v2_{i}_{uid}"):
+                            if eliminar_empleado(uid):
                                 st.success(f"Empleado {emp.get('nombre')} eliminado.")
                                 st.rerun()
                     st.markdown("---")    
