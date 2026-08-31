@@ -220,9 +220,25 @@ def registrar_dueno(dni, nombre, nombre_negocio, email, password, rubro, celular
 
 def registrar_empleado(nombre, celular, dni, email, password, usuario_actual):
     try:
+        # 1. Validar si el DNI, email o celular ya existen en la base de datos
+        response = tabla_usuarios.scan()
+        if response.get('Items'):
+            for item in response.get('Items'):
+                if item.get('dni') == dni:
+                    st.error("❌ Ya existe un empleado registrado con este DNI.")
+                    return False, None
+                if item.get('email') == email and email != "":
+                    st.error("❌ Este correo electrónico ya está en uso.")
+                    return False, None
+                if item.get('celular') == celular and celular != "":
+                    st.error("❌ Este número de celular ya está registrado.")
+                    return False, None
+
+        # 2. Generar ID único para el empleado con prefijo EMP
         timestamp = str(int(datetime.now().timestamp()))[-5:]
         usuario_id = f"EMP-{timestamp}"
         
+        # 3. Guardar en DynamoDB vinculado al dueño actual
         tabla_usuarios.put_item(Item={
             'usuario_id': usuario_id,
             'id_del_dueno': usuario_actual['usuario_id'],
@@ -241,7 +257,26 @@ def registrar_empleado(nombre, celular, dni, email, password, usuario_actual):
         return True, usuario_id
     except Exception as e:
         st.error(f"Error al registrar empleado: {e}")
-        return False, None        
+        return False, None
+
+def obtener_empleados_del_dueno(id_dueno):
+    try:
+        response = tabla_usuarios.scan(
+            FilterExpression="id_del_dueno = :id_d AND rol = :r",
+            ExpressionAttributeValues={":id_d": id_dueno, ":r": "empleado"}
+        )
+        return response.get('Items', [])
+    except Exception as e:
+        st.error(f"Error al obtener empleados: {e}")
+        return []
+
+def eliminar_empleado(usuario_id):
+    try:
+        tabla_usuarios.delete_item(Key={'usuario_id': usuario_id})
+        return True
+    except Exception as e:
+        st.error(f"Error al eliminar empleado: {e}")
+        return False        
 
 def obtener_productos():
     try:
