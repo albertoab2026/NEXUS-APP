@@ -90,10 +90,15 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ======= 1.5 VERIFICACIÓN DE ESTADO DE CUENTA =======
-if st.session_state.get('logged_in'):
-    user_data = st.session_state.get('user_data', {})
-    fecha_fin_str = user_data.get('fecha_trial_fin', '2026-05-29')
-    plan = user_data.get('plan', 'trial')
+    if st.session_state.get('logged_in'):
+        user_data = st.session_state.get('user_data', {})
+        
+        # Si es un empleado (su ID empieza con EMP), salta la validación de pago por completo
+        es_empleado = str(user_data.get('usuario_id', '')).startswith('EMP-')
+        
+        if not es_empleado:
+            fecha_fin_str = user_data.get('fecha_trial_fin', '2026-05-29')
+            plan = user_data.get('plan', 'trial')
 
     try:
         fecha_fin = datetime.strptime(fecha_fin_str[:10], '%Y-%m-%d')
