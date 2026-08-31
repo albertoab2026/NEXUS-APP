@@ -311,7 +311,13 @@ def obtener_productos():
 
 def obtener_ventas():
     try:
-        id_dueno = st.session_state.user_data['usuario_id']
+        user_data = st.session_state.user_data
+        # Si es empleado, usa el id_del_dueno; si es dueño, usa su propio usuario_id
+        if str(user_data.get('usuario_id', '')).startswith('EMP-'):
+            id_dueno = user_data.get('id_del_dueno')
+        else:
+            id_dueno = user_data.get('usuario_id')
+            
         response = tabla_ventas.query(KeyConditionExpression=Key('usuario_id').eq(id_dueno))
         return response.get('Items', [])
     except Exception as e:
