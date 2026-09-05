@@ -821,13 +821,19 @@ if not st.session_state.logged_in:
 
 # ======= 6. APP PRINCIPAL =======
 user = st.session_state.user_data
+    es_empleado = str(user.get('usuario_id', '')).startswith('EMP-')
 
-with st.sidebar:
-    st.markdown(f"### 🏢 {user.get('nombre_negocio', 'NEXUS')}")
-    st.markdown(f"**Plan:** {user.get('plan', 'trial').upper()}")
-    st.markdown("---")
-    menu = st.sidebar.selectbox("Menú", ["Productos", "Ventas", "Reportes", "⚙️ Ajustes"])
-    st.markdown("---")
+    with st.sidebar:
+        st.markdown(f"### 🏢 {user.get('nombre_negocio', 'NEXUS')}")
+        st.markdown(f"**Plan:** {user.get('plan', 'trial').upper()}")
+        st.markdown("---")
+        
+        if es_empleado:
+            menu = st.sidebar.selectbox("Menú", ["Productos", "Ventas"])
+        else:
+            menu = st.sidebar.selectbox("Menú", ["Productos", "Ventas", "Reportes", "⚙️ Ajustes"])
+            
+        st.markdown("---")
     if st.button("🚪 Cerrar Sesión", use_container_width=True):
         st.session_state.logged_in = False
         st.session_state.user_data = {}
