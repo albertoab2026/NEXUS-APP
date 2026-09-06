@@ -409,20 +409,24 @@ def agregar_producto(nombre, precio_venta, precio_compra, stock, categoria, codi
         st.error(f"Error: {e}")
         return False
 
-def borrar_producto(producto_id, id_dueno):
+def borrar_producto(producto_id, id_dueno=None):
     try:
+        # Si no se pasa el id_dueno, lo obtenemos de la sesión de manera segura
+        if not id_dueno:
+            id_dueno = st.session_state.user_data.get('id_del_dueno') or st.session_state.user_data.get('usuario_id')
+            
         tabla_productos.delete_item(
             Key={'id_del_dueno': str(id_dueno), 'producto_id': str(producto_id)}
         )
         registrar_auditoria_empleado("ELIMINAR_PRODUCTO", f"Se eliminó el producto ID: {producto_id}")
         return True
     except Exception as e:
-        st.error(f"Error al borrar: {e}")
+        st.error(f"Error al eliminar en la base de datos: {e}")
         return False
 
 def actualizar_producto(producto_id, nuevo_precio, nuevo_stock):
     try:
-        id_dueno = st.session_state.user_data['usuario_id']
+        id_dueno = st.session_state.user_data.get('id_del_dueno') or st.session_state.user_data.get('usuario_id')
         tabla_productos.update_item(
             Key={'id_del_dueno': str(id_dueno), 'producto_id': str(producto_id)},
             UpdateExpression="SET precio_venta = :p, stock = :s",
@@ -432,18 +436,6 @@ def actualizar_producto(producto_id, nuevo_precio, nuevo_stock):
         return True
     except Exception as e:
         st.error(f"Error actualizando: {e}")
-        return False
-
-def eliminar_producto(producto_id):
-    try:
-        id_dueno = st.session_state.user_data['usuario_id']
-        tabla_productos.delete_item(
-            Key={'id_del_dueno': str(id_dueno), 'producto_id': str(producto_id)}
-        )
-        registrar_auditoria_empleado("ELIMINAR_PRODUCTO", f"Se eliminó el producto ID: {producto_id}")
-        return True
-    except Exception as e:
-        st.error(f"Error al eliminar en la base de datos: {e}")
         return False
 
 def registrar_venta(lista_productos, pago, cliente="Consumidor Final", celular="", tipo_comprobante="Boleta", documento_numero=""):
