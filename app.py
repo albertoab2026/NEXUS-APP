@@ -18,9 +18,17 @@ st.set_page_config(page_title="NEXUS", page_icon="⚡", layout="wide")
 # === CONFIGURACIÓN DE ENTORNO ===
 ENTORNO = "DEV"
 SUFIJO = "_PRUEBA" if ENTORNO == "DEV" else ""
-TABLA_TENANTS = "NEXUS_TENANTS" + SUFIJO
+
 if ENTORNO == "DEV":
     st.error("🔥 MODO PRUEBA - Datos ficticios")
+
+# Inicializar DynamoDB y todas las tablas usando el sufijo automáticamente
+dynamodb = boto3.resource('dynamodb', region_name='us-east-1')
+
+tabla_usuarios = dynamodb.Table(f'NEXUS_USUARIOS{SUFIJO}')
+tabla_productos = dynamodb.Table(f'NEXUS_PRODUCTOS{SUFIJO}')
+tabla_ventas = dynamodb.Table(f'NEXUS_VENTAS{SUFIJO}')
+tabla_auditoria = dynamodb.Table(f'NEXUS_AUDITORIA{SUFIJO}')
 # === FIN ===
 
 CATEGORIAS_POR_RUBRO = {
@@ -32,7 +40,24 @@ CATEGORIAS_POR_RUBRO = {
     "Almacén": ["Mayorista", "Distribución", "Inventario General"],
     "Otro": ["General"]
 }
-
+def registrar_auditoria_empleado(accion, detalle):
+    try:
+        user_data = st.session_state.get('user_data', {})
+        usuario_id = user_data.get('usuario_id', 'Desconocido')
+        nombre_empleado = user_data.get('nombre', 'Usuario')
+        
+        id_dueno = user_data.get('id_del_dueno') if str(usuario_id).startswith('EMP-') else usuario_id
+        
+        tabla_auditoria.put_item(Item={
+            'id_dueno': id_dueno,
+            'timestamp': str(datetime.now()),
+            'usuario_responsable': usuario_id,
+            'nombre_responsable': nombre_empleado,
+            'accion': accion,
+            'detalle': detalle
+        })
+    except Exception as e:
+        print(f"Error registrando auditoría: {e}")
 # Session state seguro
 if 'logged_in' not in st.session_state:
     st.session_state.logged_in = False
