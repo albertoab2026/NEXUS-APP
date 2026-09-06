@@ -572,12 +572,13 @@ def procesar_carga_excel(df):
         st.warning("Consejo: Revisa que los nombres de las columnas en tu Excel sean: nombre, precio_venta, precio_compra, stock, categoria.")
         return False
 
-def actualizar_inventario_masivo(df_editado):
+def actualizar_inventario_masivo(df_edited):
     try:
         contador = 0
+        id_dueno = st.session_state.user_data.get('id_del_dueno') or st.session_state.user_data.get('usuario_id')
+        
         with st.spinner("Actualizando base de datos..."):
             for index, row in df_edited.iterrows():
-                id_dueno = st.session_state.user_data.get('id_del_dueno') or st.session_state.user_data.get('usuario_id')
                 tabla_productos.update_item(
                     Key={
                         'id_del_dueno': str(id_dueno),
@@ -593,13 +594,17 @@ def actualizar_inventario_masivo(df_editado):
                     }
                 )
                 contador += 1
-
+                
         if contador > 0:
-            st.success("✅ ¡Inventario actualizado correctamente!")
+            st.success("¡Inventario actualizado correctamente!")
             return True
         else:
             st.warning("⚠️ No se detectaron cambios en el inventario.")
             return False
+            
+    except Exception as e:
+        st.error(f"Error al actualizar en la base de datos: {e}")
+        return False
 
     except Exception as e:
         st.error(f"Error al actualizar en la base de datos: {e}")
