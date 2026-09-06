@@ -386,7 +386,7 @@ def registrar_cierre_manual_dynamo(usuario_id):
 
 def agregar_producto(nombre, precio_venta, precio_compra, stock, categoria, codigo_barras=""):
     try:
-        id_dueno = st.session_state.user_data['usuario_id']
+        id_dueno = st.session_state.user_data.get('id_del_dueno') or st.session_state.user_data.get('usuario_id')
         # Creamos el diccionario base del producto
         item_producto = {
             'id_del_dueno': str(id_dueno),
