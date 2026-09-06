@@ -409,16 +409,17 @@ def agregar_producto(nombre, precio_venta, precio_compra, stock, categoria, codi
         st.error(f"Error: {e}")
         return False
 
-def borrar_producto(producto_id, id_dueno=None):
+def borrar_producto(producto_id, nombre_producto=None, id_dueno=None):
     try:
-        # Si no se pasa el id_dueno, lo obtenemos de la sesión de manera segura
         if not id_dueno:
             id_dueno = st.session_state.user_data.get('id_del_dueno') or st.session_state.user_data.get('usuario_id')
             
         tabla_productos.delete_item(
             Key={'id_del_dueno': str(id_dueno), 'producto_id': str(producto_id)}
         )
-        registrar_auditoria_empleado("ELIMINAR_PRODUCTO", f"Se eliminó el producto ID: {producto_id}")
+        
+        detalle = f"Se eliminó el producto: {nombre_producto}" if nombre_producto else f"Se eliminó el producto ID: {producto_id}"
+        registrar_auditoria_empleado("ELIMINAR_PRODUCTO", detalle)
         return True
     except Exception as e:
         st.error(f"Error al eliminar en la base de datos: {e}")
@@ -1006,7 +1007,7 @@ if menu == "Productos":
 
         if st.button("❌ Confirmar Eliminación"):
             fila_prod = df_mostrar[df_mostrar['nombre'] == producto_a_borrar].iloc[0]
-            if borrar_producto(fila_prod['producto_id']):
+            if borrar_producto(fila_prod['producto_id'], nombre_producto=producto_a_borrar):
                 st.success(f"¡{producto_a_borrar} eliminado correctamente!")
                 st.rerun()
 
