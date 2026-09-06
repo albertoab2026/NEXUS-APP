@@ -403,6 +403,7 @@ def agregar_producto(nombre, precio_venta, precio_compra, stock, categoria, codi
             item_producto['codigo_barras'] = str(codigo_barras).strip()
 
         tabla_productos.put_item(Item=item_producto)
+        registrar_auditoria_empleado("CREAR_PRODUCTO", f"Se creó el producto: {nombre}")
         return True
     except Exception as e:
         st.error(f"Error: {e}")
@@ -413,6 +414,7 @@ def borrar_producto(producto_id, id_dueno):
         tabla_productos.delete_item(
             Key={'id_del_dueno': str(id_dueno), 'producto_id': str(producto_id)}
         )
+        registrar_auditoria_empleado("ELIMINAR_PRODUCTO", f"Se eliminó el producto ID: {producto_id}")
         return True
     except Exception as e:
         st.error(f"Error al borrar: {e}")
@@ -426,6 +428,7 @@ def actualizar_producto(producto_id, nuevo_precio, nuevo_stock):
             UpdateExpression="SET precio_venta = :p, stock = :s",
             ExpressionAttributeValues={':p': Decimal(str(nuevo_precio)), ':s': int(nuevo_stock)}
         )
+        registrar_auditoria_empleado("ACTUALIZAR_PRODUCTO", f"Se actualizó el producto ID: {producto_id}")
         return True
     except Exception as e:
         st.error(f"Error actualizando: {e}")
@@ -437,6 +440,7 @@ def eliminar_producto(producto_id):
         tabla_productos.delete_item(
             Key={'id_del_dueno': str(id_dueno), 'producto_id': str(producto_id)}
         )
+        registrar_auditoria_empleado("ELIMINAR_PRODUCTO", f"Se eliminó el producto ID: {producto_id}")
         return True
     except Exception as e:
         st.error(f"Error al eliminar en la base de datos: {e}")
