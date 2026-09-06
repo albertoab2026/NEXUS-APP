@@ -611,6 +611,39 @@ def actualizar_inventario_masivo(df_editado):
     except Exception as e:
         st.error(f"Error al actualizar en la base de datos: {e}")
         return False
+def mostrar_panel_auditoria():
+    st.subheader("🛡️ Auditoría de Movimientos de Empleados")
+    st.markdown("Aquí puedes ver el historial exacto de quién creó, actualizó o eliminó productos.")
+    
+    try:
+        tabla_auditoria = dynamodb.Table(f"NEXUS_AUDITORIA{SUFIJO}")
+        id_dueno = st.session_state.user_data['usuario_id']
+        
+        response = tabla_auditoria.scan(
+            FilterExpression="id_dueno = :id_d",
+            ExpressionAttributeValues={":id_d": str(id_dueno)}
+        )
+        items = response.get('Items', [])
+        
+        if not items:
+            st.info("No hay registros de auditoría todavía.")
+            return
+
+        items = sorted(items, key=lambda x: x.get('timestamp', ''), reverse=True)
+
+        datos_tabla = []
+        for item in items:
+            datos_tabla.append({
+                "Fecha y Hora": item.get('timestamp'),
+                "Empleado": item.get('nombre_responsable'),
+                "Acción": item.get('accion'),
+                "Detalle": item.get('detalle')
+            })
+
+        st.dataframe(datos_tabla, use_container_width=True)
+
+    except Exception as e:
+        st.error(f"Error al cargar la auditoría: {e}")        
 
 def mostrar_ajustes():
     user_data = st.session_state.get('user_data', {})
@@ -622,7 +655,10 @@ def mostrar_ajustes():
 
     st.header("⚙️ Ajustes de Cuenta")
     
-    tab_seguridad, tab_pagos, tab_empleados = st.tabs(["🔒 Seguridad", "💳 Planes y Pagos", "👥 Empleados"])
+    tab_seguridad, tab_pagos, tab_empleados, tab_auditoria = st.tabs(["🔒 Seguridad", "💳 Planes y Pagos", "👥 Empleados", "🛡️ Auditoría"])
+
+    with tab_auditoria:
+        mostrar_panel_auditoria()
 
     with tab_seguridad:
         st.subheader("Cambiar Contraseña")
