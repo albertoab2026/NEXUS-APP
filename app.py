@@ -576,10 +576,11 @@ def actualizar_inventario_masivo(df_editado):
     try:
         contador = 0
         with st.spinner("Actualizando base de datos..."):
-            for index, row in df_editado.iterrows():
+            for index, row in df_edited.iterrows():
+                id_dueno = st.session_state.user_data.get('id_del_dueno') or st.session_state.user_data.get('usuario_id')
                 tabla_productos.update_item(
                     Key={
-                        'id_del_dueno': str(st.session_state.user_data['usuario_id']),
+                        'id_del_dueno': str(id_dueno),
                         'producto_id': str(row['producto_id'])
                     },
                     UpdateExpression="SET nombre = :n, precio_venta = :pv, precio_compra = :pc, stock = :s, categoria = :c",
@@ -1000,7 +1001,7 @@ if menu == "Productos":
 
         if st.button("❌ Confirmar Eliminación"):
             fila_prod = df_mostrar[df_mostrar['nombre'] == producto_a_borrar].iloc[0]
-            if borrar_producto(fila_prod['producto_id'], st.session_state.user_data['usuario_id']):
+            if borrar_producto(fila_prod['producto_id']):
                 st.success(f"¡{producto_a_borrar} eliminado correctamente!")
                 st.rerun()
 
